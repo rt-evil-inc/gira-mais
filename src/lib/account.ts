@@ -1,7 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { getTokensLogin, getTokensRefresh, getUserInfo } from '$lib/emel-api/emel-api';
 import { currentTrip, tripRating } from '$lib/trip';
-import { selectedStation } from '$lib/map';
+import { selectedStation } from '$lib/map.svelte';
 import { Preferences } from '@capacitor/preferences';
 import { startWS } from '$lib/gira-api/ws';
 import { updateOnetimeInfo } from '$lib/injest-api-data';

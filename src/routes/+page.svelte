@@ -9,7 +9,7 @@
 	import TripStatus from '$lib/components/TripStatus.svelte';
 	import TripRating from '$lib/components/TripRating.svelte';
 	import { currentTrip, tripRating } from '$lib/trip';
-	import { following, selectedStation } from '$lib/map';
+	import { following, selectedStation } from '$lib/map.svelte';
 	import { safeInsets } from '$lib/ui';
 	import { Geolocation } from '@capacitor/geolocation';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -27,13 +27,13 @@
 	import { Network, type ConnectionStatus } from '@capacitor/network';
 
 	let backListener: PluginListenerHandle;
-	let menuHeight = 0;
-	let stationMenuPos:number|undefined = 0;
-	let tripStatusHeight:number = 0;
-	let tripStatusWidth:number = 0;
-	let profileOpen = false;
-	let locationPermission = false;
-	let networkStatus = true;
+	let menuHeight = $state(0);
+	let stationMenuPos:number|undefined = $state(0);
+	let tripStatusHeight:number = $state(0);
+	let tripStatusWidth:number = $state(0);
+	let profileOpen = $state(false);
+	let locationPermission = $state(false);
+	let networkStatus = $state(true);
 
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {
@@ -94,7 +94,7 @@
 	</Floating>
 
 	<Floating right={16} y={tripStatusHeight} offset={16}>
-		<ProfileButton on:click={() => profileOpen = true}/>
+		<ProfileButton onclick={() => profileOpen = true}/>
 	</Floating>
 
 	<Floating right={20} y={Math.max(tripStatusHeight + 16, $safeInsets.top)} offset={70}>
@@ -106,7 +106,7 @@
 	</Floating>
 
 	{#if profileOpen}
-		<Profile on:close={() => profileOpen = false}/>
+		<Profile onclose={() => profileOpen = false}/>
 	{/if}
 </div>
 

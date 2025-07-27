@@ -2,7 +2,11 @@
 	import type { TripHistory_TripDetail } from '$lib/gira-api/api-types';
 	import { t } from '$lib/translations';
 
-	export let trip: TripHistory_TripDetail|null;
+	interface Props {
+		trip: TripHistory_TripDetail|null;
+	}
+
+	let { trip }: Props = $props();
 
 	function getMinutesDiff(date1:Date, date2:Date) {
 		const diff = Math.abs(date2.getTime() - date1.getTime());

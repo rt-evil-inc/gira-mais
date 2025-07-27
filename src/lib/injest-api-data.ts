@@ -2,7 +2,7 @@ import type { Q } from '$lib/gira-api/api-types';
 import type { ActiveTripSubscription } from '$lib/gira-api/ws-types';
 import { get } from 'svelte/store';
 import { currentPos } from '$lib/location';
-import { stations, type StationInfo } from '$lib/map';
+import { stations, type StationInfo } from '$lib/map.svelte';
 import { currentTrip, endTrip, tripRating } from '$lib/trip';
 import { fullOnetimeInfo, getActiveTripInfo, tripPayWithNoPoints, tripPayWithPoints } from '$lib/gira-api/api';
 import { accountInfo } from '$lib/account';
@@ -58,7 +58,7 @@ export function ingestStations(maybeStations:Q<['getStations']>) {
 		}
 		stationsList.push({ code, name, description, latitude, longitude, bikes, docks, serialNumber, assetStatus });
 	});
-	stations.set(stationsList);
+	stations.value = stationsList;
 }
 
 export function ingestAccountInfo(maybePointsAndBalance:Q<['client']>) {

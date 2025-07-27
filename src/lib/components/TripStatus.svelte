@@ -1,41 +1,50 @@
 <script lang="ts">
-	import { fade, fly } from 'svelte/transition';
+
 	import Metric from '$lib/components/Metric.svelte';
-	import { cubicInOut } from 'svelte/easing';
+	import { following } from '$lib/map.svelte';
+	import { t } from '$lib/translations';
 	import { currentTrip as trip } from '$lib/trip';
-	import { onMount } from 'svelte';
+	import { safeInsets } from '$lib/ui';
 	import { KeepAwake } from '@capacitor-community/keep-awake';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
-	import { following } from '$lib/map';
-	import { safeInsets } from '$lib/ui';
-	import { t } from '$lib/translations';
+	import { onMount } from 'svelte';
+	import { cubicInOut } from 'svelte/easing';
+	import { fade, fly } from 'svelte/transition';
 
-	export let height:number;
-	export let width:number;
-	export let lockOrientation = false;
-
-	let portrait = true;
-	$: if ($trip) {
-		height = portrait ? ($trip.destination ? 216 : 160) + Math.max(12, $safeInsets.top) : 0;
-		width = portrait ? 0 : ($trip.destination ? 238 : 190) + $safeInsets.top;
-		lockOrientation = false;
-	} else {
-		height = 0;
-		width = 0;
-		lockOrientation = true;
+	interface Props {
+		height: number;
+		width: number;
+		lockOrientation?: boolean;
 	}
 
-	$: if (lockOrientation) {
-		ScreenOrientation.lock({ orientation: 'portrait' });
-	} else {
-		ScreenOrientation.unlock();
-	}
+	let { height = $bindable(), width = $bindable(), lockOrientation = $bindable(false) }: Props = $props();
 
-	let seconds: number;
+	let portrait = $state(true);
+	trip.subscribe(trip => {
+		if (trip) {
+			height = portrait ? (trip.destination ? 216 : 160) + Math.max(12, $safeInsets.top) : 0;
+			console.log(trip);
+			width = portrait ? 0 : (trip.destination ? 238 : 190) + $safeInsets.top;
+			lockOrientation = false;
+		} else {
+			height = 0;
+			width = 0;
+			lockOrientation = true;
+		}
+	});
+
+	$effect(() => {
+		if (lockOrientation) {
+			ScreenOrientation.lock({ orientation: 'portrait' });
+		} else {
+			ScreenOrientation.unlock();
+		}
+	});
+
+	let seconds: number = $state(0);
 	let inter: ReturnType<typeof setInterval>;
 
 	onMount(() => {
-		seconds = 0;
 		inter = setInterval(() => seconds++, 1000);
 		$following = true;
 		KeepAwake.keepAwake();
@@ -62,7 +71,8 @@
 
 <div transition:fly={portrait ? { y: -172 } : { x: -172 }} class="absolute bg-background top-0 left-0 transition-all" style:height={portrait ? `${height}px` : '100%'} style:width={portrait ? '100%' : `${width}px`} style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 	{#if $trip != null}
-		{@const deltaSeconds = Date.now() - $trip.startDate.getTime()}
+		<!-- + seconds - seconds is on purpose so that it refreshes every second -->
+		{@const deltaSeconds = Date.now() - $trip.startDate.getTime() + seconds - seconds}
 		<div class="flex flex-col items-center gap-2 relative {$trip.destination ? 'h-64' : 'h-52'} {portrait ? '' : 'top-1/2 -translate-y-1/2'}" style={`margin-${portrait ? 'top' : 'left'}: ${portrait ? Math.max(12, $safeInsets.top) : $safeInsets.top}px`}>
 			{#if $trip.bikePlate}
 				<span class="font-semibold text-label text-lg">{$trip.bikePlate}</span>

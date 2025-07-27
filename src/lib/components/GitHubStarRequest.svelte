@@ -1,8 +1,12 @@
-<script>
+<script lang="ts">
 	import { getLocale } from '$lib/translations';
 	import { fade } from 'svelte/transition';
 
-	export let className = '';
+	interface Props {
+		className?: string;
+	}
+
+	let { className = '' }: Props = $props();
 	const initialDelay = 2000;
 </script>
 

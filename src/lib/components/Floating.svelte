@@ -2,11 +2,27 @@
 	import { safeInsets } from '$lib/ui';
 	import { fade } from 'svelte/transition';
 
-	export let offset = 0, y:number|undefined = 0, left:undefined|number = undefined, right:undefined|number = undefined, bottom = false;
-	let pos = 0, innerHeight = 0;
+	interface Props {
+		offset?: number;
+		y?: number|undefined;
+		left?: undefined|number;
+		right?: undefined|number;
+		bottom?: boolean;
+		children?: import('svelte').Snippet;
+	}
 
-	let show = true;
-	$: {
+	let {
+		offset = 0,
+		y = 0,
+		left = undefined,
+		right = undefined,
+		bottom = false,
+		children,
+	}: Props = $props();
+	let pos = $state(0), innerHeight = $state(0);
+
+	let show = $state(true);
+	$effect(() => {
 		show = false;
 		if (y !== undefined) {
 			if (bottom) {
@@ -16,7 +32,7 @@
 			}
 			setTimeout(() => show = true, 150);
 		}
-	}
+	});
 </script>
 
 <svelte:window bind:innerHeight />
@@ -24,7 +40,7 @@
 {#key pos}
 	{#if show}
 		<div transition:fade={{ duration: 150 }} class="absolute" style:left="{left}px" style:right="{right}px" style:top="{bottom ? '' : pos + 'px'}" style:bottom="{bottom ? pos + 'px' : ''}">
-			<slot />
+			{@render children?.()}
 		</div>
 	{/if}
 {/key}

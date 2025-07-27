@@ -1,25 +1,25 @@
 <script lang="ts">
-	import IconHistory from '@tabler/icons-svelte/icons/history';
-	import IconX from '@tabler/icons-svelte/icons/x';
-	import IconTool from '@tabler/icons-svelte/icons/tool';
-	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
-	import IconArrowLeft from '@tabler/icons-svelte/icons/arrow-left';
-	import IconTicket from '@tabler/icons-svelte/icons/ticket';
-	import IconLogout2 from '@tabler/icons-svelte/icons/logout-2';
-	import IconMessageReport from '@tabler/icons-svelte/icons/message-report';
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
-	import { safeInsets } from '$lib/ui';
-	import ProfileMenuEntry from '$lib/components/ProfileMenuEntry.svelte';
+	import { accountInfo, logOut, user } from '$lib/account';
 	import Metric from '$lib/components/Metric.svelte';
+	import ProfileMenuEntry from '$lib/components/ProfileMenuEntry.svelte';
+	import Info from '$lib/components/settings/About.svelte';
 	import History from '$lib/components/settings/History.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
-	import Info from '$lib/components/settings/About.svelte';
+	import { getLocale, t } from '$lib/translations';
+	import { safeInsets } from '$lib/ui';
 	import { App } from '@capacitor/app';
 	import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
-	import { user, accountInfo, logOut } from '$lib/account';
 	import { IconHeart, IconStar } from '@tabler/icons-svelte';
-	import { getLocale, t } from '$lib/translations';
+	import IconArrowLeft from '@tabler/icons-svelte/icons/arrow-left';
+	import IconHistory from '@tabler/icons-svelte/icons/history';
+	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
+	import IconLogout2 from '@tabler/icons-svelte/icons/logout-2';
+	import IconMessageReport from '@tabler/icons-svelte/icons/message-report';
+	import IconTicket from '@tabler/icons-svelte/icons/ticket';
+	import IconTool from '@tabler/icons-svelte/icons/tool';
+	import IconX from '@tabler/icons-svelte/icons/x';
+	import { onMount } from 'svelte';
+	import { fade, fly } from 'svelte/transition';
 	const knownSubscriptionTypes = { // TODO: check if this is correct
 		'Passe Anual': 'annual_pass_label',
 		'Passe Mensal': 'monthly_pass_label',
@@ -27,15 +27,16 @@
 		'Passe Diario': 'daily_pass_label',
 	} as const;
 
-	$: subscriptionName = ($accountInfo?.subscription?.name ?? '') as keyof typeof knownSubscriptionTypes;
-	let openPage: 'settings' | 'history' |'info'| null = null;
+	let { onclose }: {onclose: () => void} = $props();
+
+	let subscriptionName = $derived(($accountInfo?.subscription?.name ?? '') as keyof typeof knownSubscriptionTypes);
+	let openPage: 'settings' | 'history' |'info'| null = $state(null);
 	let backListener: PluginListenerHandle;
-	const dispatch = createEventDispatcher();
 
 	onMount(() => {
 		App.addListener('backButton', () => {
 			if (openPage !== null) openPage = null;
-			else dispatch('close');
+			else onclose();
 		}).then(l => backListener = l);
 
 		return () => backListener?.remove();
@@ -70,17 +71,17 @@
 				</div>
 			</div>
 			<div class="flex flex-col grow font-semibold px-2 gap-3 w-full">
-				<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} on:click={() => openPage = 'history'} />
-				<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} on:click={() => openPage = 'settings'} />
+				<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} onclick={() => openPage = 'history'} />
+				<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} onclick={() => openPage = 'settings'} />
 				<a href="https://github.com/rt-evil-inc/gira-mais/issues"><ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external /></a>
-				<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} on:click={() => openPage = 'info'} />
+				<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} onclick={() => openPage = 'info'} />
 				{#if Capacitor.getPlatform() === 'ios'}
 					<a href="https://github.com/rt-evil-inc/gira-mais/"><ProfileMenuEntry icon={IconStar} iconClass="stroke-warning" text={$t('star_label')} subtext={$t('star_subtext')} external /></a>
 				{:else}
 					<a href="https://github.com/sponsors/rt-evil-inc/"><ProfileMenuEntry icon={IconHeart} iconClass="stroke-[#db61a2]" text={$t('contribute_label')} subtext={$t('contribute_subtext')} external /></a>
 				{/if}
 			</div>
-			<button class="flex flex-col items-center mb-3" on:click={() => { dispatch('close'); logOut(); }}>
+			<button class="flex flex-col items-center mb-3" onclick={() => { onclose(); logOut(); }}>
 				<IconLogout2 class="text-primary mr-2" size={32} />
 				<span class="text-2xs font-semibold text-label text-center leading-none max-w-[70px]">{$t('exit_label')}</span>
 			</button>
@@ -93,13 +94,13 @@
 			<Info />
 		{/if}
 		<div class="absolute top-2 right-6 flex justify-end z-40" style:margin-top="{Math.max($safeInsets.top, 16)}px">
-			<button on:click={() => dispatch('close')}>
+			<button onclick={() => onclose()}>
 				<IconX class="text-info" size={24} />
 			</button>
 		</div>
 		{#if openPage !== null}
 			<div transition:fade={{ duration: 150 }} class="absolute top-2 left-6 flex justify-end z-40" style:margin-top="{Math.max($safeInsets.top, 16)}px">
-				<button on:click={() => openPage = null}>
+				<button onclick={() => openPage = null}>
 					<IconArrowLeft class="text-info" size={24} />
 				</button>
 			</div>

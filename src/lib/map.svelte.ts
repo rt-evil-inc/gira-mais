@@ -17,7 +17,7 @@ export type StationInfo ={
 	assetStatus: string;
 }
 
-export const stations = writable<StationInfo[]>([]);
+export const stations = $state<{value:StationInfo[]}>({ value: [] });
 export const selectedStation = writable<string|null>(null);
 export const following = writable<boolean>(false);
 
@@ -26,7 +26,7 @@ export function setSourceData(map: maplibregl.Map) {
 
 	const data: GeoJSON = {
 		'type': 'FeatureCollection',
-		'features': get(stations).map(station => ({
+		'features': stations.value.map(station => ({
 			type: 'Feature',
 			properties: {
 				code: station.code,

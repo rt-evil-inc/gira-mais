@@ -6,10 +6,10 @@
 	import { t } from '$lib/translations';
 	import { IconLoader2 } from '@tabler/icons-svelte';
 
-	let email = '';
-	let password = '';
-	let errorCode:number|null = null;
-	let loading = false;
+	let email = $state('');
+	let password = $state('');
+	let errorCode:number|null = $state(null);
+	let loading = $state(false);
 	const errorCodes:{[key:number]:string} = {
 		100: $t('invalid_credentials_error'),
 	};
@@ -28,7 +28,7 @@
 		}
 	}
 
-	let keyboardHeight = 0;
+	let keyboardHeight = $state(0);
 	Keyboard.addListener('keyboardWillShow', (info:{keyboardHeight:number}) => keyboardHeight = info.keyboardHeight);
 	Keyboard.addListener('keyboardWillHide', () => keyboardHeight = 0);
 
@@ -40,14 +40,14 @@
 <div class="flex flex-col max-w-sm px-4 w-full h-full justify-center transition-all duration-300" style:padding-bottom="{keyboardHeight}px">
 	<div class="bg-background rounded-2xl max-w-sm w-full flex flex-col items-center p-6" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 		<div class="text-center text-lg text-info font-semibold mb-2 rounded-lg">{$t('welcome_message')}</div>
-		<form class="flex flex-col w-full gap-4" on:submit={loginWrapper}>
+		<form class="flex flex-col w-full gap-4" onsubmit={loginWrapper}>
 			<div class="w-full">
 				<div class="text-sm text-info font-medium pb-1">{$t('email_label')}</div>
-				<input type="email" required on:input={clearError} bind:value={email} placeholder={$t('email_placeholder')} class="placeholder-label text-info w-full px-2 h-12 rounded-lg border border-background-tertiary bg-background-secondary focus:ring-primary focus:border-primary">
+				<input type="email" required oninput={clearError} bind:value={email} placeholder={$t('email_placeholder')} class="placeholder-label text-info w-full px-2 h-12 rounded-lg border border-background-tertiary bg-background-secondary focus:ring-primary focus:border-primary">
 			</div>
 			<div class="w-full">
 				<div class="text-sm text-info font-medium pb-1">{$t('password_label')}</div>
-				<input type="password" required on:input={clearError} bind:value={password} placeholder="••••••••" class="placeholder-label text-info w-full px-2 h-12 rounded-lg border border-background-tertiary bg-background-secondary focus:ring-primary focus:border-primary">
+				<input type="password" required oninput={clearError} bind:value={password} placeholder="••••••••" class="placeholder-label text-info w-full px-2 h-12 rounded-lg border border-background-tertiary bg-background-secondary focus:ring-primary focus:border-primary">
 				{#if errorCode !== null && errorCode !== 0}
 					<div class="text-sm text-red-500 pt-1">{errorCodes[errorCode] || $t('unknown_error')}</div>
 				{/if}

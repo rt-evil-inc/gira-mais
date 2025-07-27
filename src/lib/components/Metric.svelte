@@ -1,5 +1,17 @@
 <script lang="ts">
-	export let value:number|string, unit:string = '', label:string, color:string = 'primary';
+	interface Props {
+		value: number|string;
+		unit?: string;
+		label: string;
+		color?: string;
+	}
+
+	let {
+		value,
+		unit = '',
+		label,
+		color = 'primary',
+	}: Props = $props();
 </script>
 
 <div class="flex flex-col items-center">

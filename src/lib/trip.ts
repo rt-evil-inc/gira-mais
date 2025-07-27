@@ -7,7 +7,7 @@ import { currentPos, watchPosition } from '$lib/location';
 import { distanceBetweenCoords } from '$lib/utils';
 import { LOCK_DISTANCE_m } from '$lib/constants';
 import { getTripHistory, getUnratedTrips, knownErrors, reserveBike, startTrip, tripPayWithPoints } from '$lib/gira-api/api';
-import type { StationInfo } from './map';
+import type { StationInfo } from './map.svelte';
 import { ingestLastUnratedTrip, updateActiveTripInfo } from './injest-api-data';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
 import { refreshToken, token, type JWT } from './account';

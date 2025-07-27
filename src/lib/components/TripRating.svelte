@@ -1,37 +1,41 @@
 <script lang="ts">
-	import { errorMessages, safeInsets } from '$lib/ui';
 	import { t } from '$lib/translations';
+	import { errorMessages, safeInsets } from '$lib/ui';
 
-	import IconMoodWrrr from '@tabler/icons-svelte/icons/mood-wrrr';
+	import { rateTrip } from '$lib/gira-api/api';
+	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
+	import { tripRating } from '$lib/trip';
 	import IconMoodConfuzed from '@tabler/icons-svelte/icons/mood-confuzed';
 	import IconMoodConfuzedFilled from '@tabler/icons-svelte/icons/mood-confuzed-filled';
 	import IconMoodEmpty from '@tabler/icons-svelte/icons/mood-empty';
 	import IconMoodEmptyFilled from '@tabler/icons-svelte/icons/mood-empty-filled';
-	import IconMoodSmile from '@tabler/icons-svelte/icons/mood-smile';
-	import IconMoodSmileFilled from '@tabler/icons-svelte/icons/mood-smile-filled';
 	import IconMoodHappy from '@tabler/icons-svelte/icons/mood-happy';
 	import IconMoodHappyFilled from '@tabler/icons-svelte/icons/mood-happy-filled';
+	import IconMoodSmile from '@tabler/icons-svelte/icons/mood-smile';
+	import IconMoodSmileFilled from '@tabler/icons-svelte/icons/mood-smile-filled';
+	import IconMoodWrrr from '@tabler/icons-svelte/icons/mood-wrrr';
 	import { fade, fly } from 'svelte/transition';
-	import { tripRating } from '$lib/trip';
-	import { rateTrip } from '$lib/gira-api/api';
-	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 
-	export let code:string;
-	let rating:number;
+	interface Props {
+		code: string;
+	}
+
+	let { code }: Props = $props();
+	let rating:number|undefined = $state();
 
 	async function rate(code:string, rating:number) {
 		postBikeRating(code, rating);
 		return (await rateTrip(code, rating)).rateTrip;
 	}
 
-	$: if (rating !== undefined) {
-		rate(code, rating).then(r => {
-			$tripRating.currentRating = null;
-			if (!r) {
-				errorMessages.add($t('rate_trip_error'));
-				reportErrorEvent('rate_trip_error');
-			}
-		});
+	async function setRating(ratingValue: number) {
+		rating = ratingValue;
+		const result = await rate(code, rating);
+		$tripRating.currentRating = null;
+		if (!result) {
+			errorMessages.add($t('rate_trip_error'));
+			reportErrorEvent('rate_trip_error');
+		}
 	}
 </script>
 
@@ -46,7 +50,7 @@
 				</svg>
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" on:touchstart={() => rating = 1}>
+			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" ontouchstart={() => setRating(1)}>
 				<IconMoodWrrr size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -56,7 +60,7 @@
 				<IconMoodConfuzedFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" on:touchstart={() => rating = 2}>
+			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" ontouchstart={() => setRating(2)}>
 				<IconMoodConfuzed size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -66,7 +70,7 @@
 				<IconMoodEmptyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" on:touchstart={() => rating = 3}>
+			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" ontouchstart={() => setRating(3)}>
 				<IconMoodEmpty size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -76,7 +80,7 @@
 				<IconMoodSmileFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" on:touchstart={() => rating = 4}>
+			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" ontouchstart={() => setRating(4)}>
 				<IconMoodSmile size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -86,7 +90,7 @@
 				<IconMoodHappyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" on:touchstart={() => rating = 5}>
+			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" ontouchstart={() => setRating(5)}>
 				<IconMoodHappy size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}

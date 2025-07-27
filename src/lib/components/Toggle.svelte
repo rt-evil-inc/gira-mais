@@ -1,5 +1,9 @@
 <script lang="ts">
-	export let checked = false;
+	interface Props {
+		checked?: boolean;
+	}
+
+	let { checked = $bindable(false) }: Props = $props();
 </script>
 
 <div class="flex">

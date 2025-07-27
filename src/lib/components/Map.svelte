@@ -1,32 +1,44 @@
 <script lang="ts">
+	import { token } from '$lib/account';
 	import { bearing, bearingNorth, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
+	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
+	import { appSettings } from '$lib/settings';
+	import { currentTrip, type ActiveTrip } from '$lib/trip';
+	import { getTheme } from '$lib/utils';
+	import type { Position } from '@capacitor/geolocation';
+	import type { GeoJSON } from 'geojson';
 	import maplibregl from 'maplibre-gl';
 	import { onMount, tick } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { token } from '$lib/account';
-	import { loadImages, selectedStation, setSourceData, stations, following, addLayers } from '$lib/map';
-	import { getTheme } from '$lib/utils';
-	import { appSettings } from '$lib/settings';
-	import { currentTrip, type ActiveTrip } from '$lib/trip';
-	import type { GeoJSON } from 'geojson';
-	import type { Position } from '@capacitor/geolocation';
 
-	export let loading = true;
-	export let bottomPadding = 0;
-	export let topPadding = 0;
-	export let leftPadding = 0;
+	interface Props {
+		loading?: boolean;
+		bottomPadding?: number;
+		topPadding?: number;
+		leftPadding?: number;
+	}
+
+	let {
+		loading = true,
+		bottomPadding = $bindable(0),
+		topPadding = $bindable(0),
+		leftPadding = $bindable(0),
+	}: Props = $props();
 
 	let mapElem: HTMLDivElement;
 	let map : maplibregl.Map;
-	let mapLoaded = false;
-	let ready = false;
-	let blurred = true;
+	let mapLoaded = $state(false);
+	let ready = $derived(mapLoaded && !loading && stations.value.length != 0);
+	let blurred = $state(true);
 
-	$: ready = mapLoaded && !loading && $stations.length != 0;
-	$: if (ready) setTimeout(() => blurred = false, 500);
+	$effect(() => {
+		if (ready) setTimeout(() => blurred = false, 500);
+	});
 
-	$: if ($bearingNorth) map.flyTo({ bearing: 0 });
+	$effect(() => {
+		if ($bearingNorth) map.flyTo({ bearing: 0 });
+	});
 
 	function addEventListeners(map: maplibregl.Map) {
 		map.on('click', 'points', async function (e) {
@@ -157,20 +169,26 @@
 		}
 	});
 
-	$: if ($stations && map) {
-		$selectedStation = $selectedStation;
-		if (mapLoaded) {
-			setSourceData(map);
+	$effect(() => {
+		if (stations.value && map) {
+			$selectedStation = $selectedStation;
+			if (mapLoaded) {
+				setSourceData(map);
+			}
 		}
-	}
+	});
 
-	$: if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
+	$effect(() => {
+		if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
+	});
 
-	$: if ($selectedStation == null) bottomPadding = 0;
+	$effect(() => {
+		if ($selectedStation == null) bottomPadding = 0;
+	});
 </script>
 
 {#if !ready}
-	<div out:fade={{ duration: 500 }} class="blur fixed bg-cover top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2000px] h-[2000px] z-10 bg-[url(/assets/map-preview-light.jpg)] dark:bg-[url(/assets/map-preview-dark.jpg)]" />
+	<div out:fade={{ duration: 500 }} class="blur fixed bg-cover top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2000px] h-[2000px] z-10 bg-[url(/assets/map-preview-light.jpg)] dark:bg-[url(/assets/map-preview-dark.jpg)]"></div>
 	<svg out:fade={{ duration: 500 }} class="absolute w-20 h-12 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 transition-opacity {$token === null ? 'opacity-0' : 'opacity-100'}" width="62" height="38" viewBox="0 0 62 38" fill="none" xmlns="http://www.w3.org/2000/svg">
 		<path d="M11.0862 26.6841L18.6347 20.9505C15.871 17.2807 10.0799 18.3456 7.56726 18.814C13.1653 19.8331 11.0862 26.6841 11.0862 26.6841Z" class="fill-primary"/>
 		<path d="M11.0862 26.6848L20.8612 26.8514C20.5211 24.2944 19.7072 22.3752 18.6347 20.9512L11.0862 26.6848Z" class="fill-primary"/>

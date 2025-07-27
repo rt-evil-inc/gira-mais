@@ -8,9 +8,9 @@
 	import { version } from '$app/environment';
 	import X from '@tabler/icons-svelte/icons/x';
 
-	let message = '';
-	let messageTimestamp = '';
-	let latestVersion = '';
+	let message = $state('');
+	let messageTimestamp = $state('');
+	let latestVersion = $state('');
 
 	onMount(() => {
 		getMessage().then(async res => {
@@ -47,9 +47,9 @@
 			<div class="relative bg-background rounded-2xl col-start-1 col-end-2 max-w-sm w-full flex flex-col p-6 m-2" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 				<div class="text-info font-medium max-h-[70vh] overflow-y-auto">{@html message}</div>
 				<div class="flex justify-end mt-4">
-					<button class="text-primary font-bold mx-2" on:click={() => { message = ''; Preferences.set({ key: 'lastMessageTimestamp', value: messageTimestamp }); }}>{$t('ok_button')}</button>
+					<button class="text-primary font-bold mx-2" onclick={() => { message = ''; Preferences.set({ key: 'lastMessageTimestamp', value: messageTimestamp }); }}>{$t('ok_button')}</button>
 				</div>
-				<button class="absolute top-4 right-4 text-label" on:click={() => { message = ''; Preferences.set({ key: 'lastMessageTimestamp', value: messageTimestamp }); }}>
+				<button class="absolute top-4 right-4 text-label" onclick={() => { message = ''; Preferences.set({ key: 'lastMessageTimestamp', value: messageTimestamp }); }}>
 					<X class="w-6 h-6" />
 				</button>
 			</div>
@@ -62,10 +62,10 @@
 					<p class="text-xs text-label mt-2">{$t('update_warning_setting_note')}</p>
 				</div>
 				<div class="flex justify-end mt-4 gap-2">
-					<button class="text-primary font-bold mx-2" on:click={() => { Preferences.set({ key: 'ignoredVersion', value: latestVersion }); latestVersion = ''; }}>{$t('ignore_button')}</button>
-					<button class="text-primary font-bold mx-2" on:click={() => { latestVersion = ''; }}>{$t('ok_button')}</button>
+					<button class="text-primary font-bold mx-2" onclick={() => { Preferences.set({ key: 'ignoredVersion', value: latestVersion }); latestVersion = ''; }}>{$t('ignore_button')}</button>
+					<button class="text-primary font-bold mx-2" onclick={() => { latestVersion = ''; }}>{$t('ok_button')}</button>
 				</div>
-				<button class="absolute top-4 right-4 text-label" on:click={() => { latestVersion = ''; }}>
+				<button class="absolute top-4 right-4 text-label" onclick={() => { latestVersion = ''; }}>
 					<X class="w-6 h-6" />
 				</button>
 			</div>

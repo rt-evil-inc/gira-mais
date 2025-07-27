@@ -8,11 +8,11 @@
 	import { getTripHistory } from '$lib/gira-api/api';
 	import { getLocale, t } from '$lib/translations';
 
-	let trips:TripHistory_TripDetail[] = [];
-	let observed:HTMLDivElement;
-	let didFirstRequest = false;
+	let trips:TripHistory_TripDetail[] = $state([]);
+	let observed:HTMLDivElement|undefined = $state();
+	let didFirstRequest = $state(false);
 	let loading = false;
-	let loadedAll = false;
+	let loadedAll = $state(false);
 	const loadedPerPage = 15;
 
 	async function loadMoreTripHistory() {
@@ -26,7 +26,6 @@
 			if (cur != null) acc.push(cur);
 			return acc;
 		}, [] as TripHistory_TripDetail[]));
-		console.debug(trips);
 		loading = false;
 	}
 
@@ -41,13 +40,13 @@
 			if (entries[0].isIntersecting) loadMoreTripHistory();
 		}
 		observer = new IntersectionObserver(loadMoreTripHistoryProxy, options);
-		observer.observe(observed);
+		if (observed) observer.observe(observed);
 		return () => {
 			observer.disconnect();
 		};
 	});
 
-	$: aggregate = Object.entries(trips.reduce((acc, cur) => {
+	let aggregate = $derived(Object.entries(trips.reduce((acc, cur) => {
 		if (cur == null) return acc;
 		const date = new Date(cur.startDate);
 		const key = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()}`;
@@ -58,13 +57,13 @@
 		const aDate = new Date(a[0]);
 		const bDate = new Date(b[0]);
 		return bDate.getTime() - aDate.getTime();
-	});
+	}));
 </script>
 
 <MenuPage>
 	<div class="text-3xl font-bold text-info px-5 pt-5">{$t('trips_label')}</div>
-	{#if didFirstRequest }
-		{#if didFirstRequest && trips.length == 0 }
+	{#if didFirstRequest}
+		{#if didFirstRequest && trips.length == 0}
 			<div class="flex flex-col items-center justify-center h-full" style:margin-top={-$safeInsets.top - 32 + 'px'}>
 				<div class="text-2xl font-bold text-info">{$t('no_trips_label')}</div>
 				<div class="text-label text-sm text-center">{$t('no_trips_registered_label')}</div>

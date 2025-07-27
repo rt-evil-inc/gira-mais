@@ -20,6 +20,11 @@
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
+	interface Props {
+		children?: import('svelte').Snippet;
+	}
+
+	let { children }: Props = $props();
 
 	if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
 		StatusBar.setOverlaysWebView({ overlay: true });
@@ -66,6 +71,6 @@
 
 {#if $appSettings?.theme}
 	<div class="w-screen h-screen font-sans">
-		<slot />
+		{@render children?.()}
 	</div>
 {/if}
