@@ -32,9 +32,10 @@ A aplicação está a ser desenvolvida em **SvelteKit**, juntamente com a biblio
 ## Instalação e Compilação
 
 ### Android
-É possível descarregar a versão mais recente da aplicação [aqui](https://github.com/rt-evil-inc/gira-mais/releases/latest).
 
-A aplicação irá ser disponibilizada na PlayStore e na F-Droid.
+A aplicação está [disponível no Google Play](https://gira-mais.app/android), e será também brevemente disponibilizada no F-Droid.
+
+É possível também descarregar o APK da versão mais recente da aplicação [aqui](https://github.com/rt-evil-inc/gira-mais/releases/latest).
 
 Alternativamente, a aplicação pode ser compilada através dos seguintes passos:
 
@@ -64,7 +65,7 @@ O ficheiro .apk será criado em `android/app/build/outputs/apk/debug/app-debug.a
 
 ### iOS
 
-A aplicação irá ser disponibilizada na App Store.
+A aplicação está [disponível na App Store](https://gira-mais.app/ios).
 
 De momento, a aplicação pode ser compilada através dos seguintes passos:
 
