@@ -1,6 +1,6 @@
 import { dev, version } from '$app/environment';
 import { GIRA_MAIS_API_URL } from '$lib/constants';
-import type { ErrorStatisticsPostRequest, ErrorStatisticsPostResponse, MessageGetResponse, TripStatisticsPostRequest, TripStatisticsPostResponse, UsageStatisticsPostRequest, UsageStatisticsPostResponse } from '$lib/gira-mais-api/types';
+import type { BikeRatingPostRequest, BikeRatingPostResponse, ErrorStatisticsPostRequest, ErrorStatisticsPostResponse, MessageGetResponse, TripStatisticsPostRequest, TripStatisticsPostResponse, UsageStatisticsPostRequest, UsageStatisticsPostResponse } from '$lib/gira-mais-api/types';
 import { appSettings } from '$lib/settings';
 import { getLocale } from '$lib/translations';
 import { httpRequestWithRetry } from '$lib/utils';
@@ -80,7 +80,7 @@ export async function getMessage() {
 	return response?.data as MessageGetResponse;
 }
 
-export async function postBikeRating(bikeSerial: string, rating: number) {
+export async function postBikeRating(bikeSerial: string, rating: number, timestamp?: string) {
 	if (!get(appSettings).reportRatings || dev) return;
 
 	const response = await httpRequestWithRetry({
@@ -94,7 +94,8 @@ export async function postBikeRating(bikeSerial: string, rating: number) {
 			deviceId: (await Device.getId()).identifier,
 			bikeSerial,
 			rating,
-		},
+			...timestamp && { timestamp },
+		} as BikeRatingPostRequest,
 	});
-	return response?.data as { success: boolean };
+	return response?.data as BikeRatingPostResponse;
 }

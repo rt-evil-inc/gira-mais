@@ -39,6 +39,7 @@ export type BikeRatingPostRequest = {
   deviceId: string;
   bikeSerial: string;
   rating: number;
+  timestamp?: string;
 }
 
 export type BikeRatingPostResponse = {

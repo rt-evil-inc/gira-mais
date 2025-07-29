@@ -81,7 +81,7 @@
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
 		{#if $tripRating.currentRating != null && networkStatus}
-			<TripRating code={$tripRating.currentRating.code} />
+			<TripRating code={$tripRating.currentRating.code} date={$tripRating.currentRating.endDate} />
 		{/if}
 	{/if}
 

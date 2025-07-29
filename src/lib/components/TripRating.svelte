@@ -17,10 +17,11 @@
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 
 	export let code:string;
+	export let date:Date|undefined = undefined;
 	let rating:number;
 
 	async function rate(code:string, rating:number) {
-		postBikeRating(code, rating);
+		postBikeRating(code, rating, date?.toISOString());
 		return (await rateTrip(code, rating)).rateTrip;
 	}
 
