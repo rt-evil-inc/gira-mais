@@ -66,6 +66,8 @@
 		<div class="flex flex-col items-center gap-2 relative {$trip.destination ? 'h-64' : 'h-52'} {portrait ? '' : 'top-1/2 -translate-y-1/2'}" style={`margin-${portrait ? 'top' : 'left'}: ${portrait ? Math.max(12, $safeInsets.top) : $safeInsets.top}px`}>
 			{#if $trip.bikePlate}
 				<span class="font-semibold text-label text-lg">{$trip.bikePlate}</span>
+			{:else}
+				<div class="w-14 h-5 my-1 bg-background-tertiary animate-pulse rounded-md"></div>
 			{/if}
 			<span class="text-5xl text-primary font-bold">{msToMinuteSeconds(deltaSeconds) ?? seconds}</span> <!-- Using `seconds` variable to force an update every second -->
 			<div class="absolute top-[92px] transition-all {portrait ? $trip.destination ? 'left-12' : 'left-20' : $trip.destination ? 'left-4' : 'right-1/2 translate-x-1/2'}">
