@@ -33,6 +33,7 @@
 					</div>
 					<select bind:value={$appSettings.theme} class="bg-background-secondary dark:bg-background-tertiary rounded-xl border-none focus:ring-0 text-sm">
 						<option value="system">{$t('system_theme')}</option>
+						<option value="daylight">{$t('daylight_theme')}</option>
 						<option value="light">{$t('light_theme')}</option>
 						<option value="dark">{$t('dark_theme')}</option>
 					</select>

@@ -1,5 +1,4 @@
 import { get } from 'svelte/store';
-import { appSettings } from '$lib/settings';
 import { CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
 import type { ThrownError } from './gira-api/api-types';
 import { knownErrors } from './gira-api/api';
@@ -36,11 +35,6 @@ export function randomUUID() {
 
 export function getCssVariable(name:string) {
 	return getComputedStyle(document.documentElement).getPropertyValue(name);
-}
-
-export function getTheme() {
-	const settings = get(appSettings);
-	return settings.theme === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' : settings.theme;
 }
 
 const maxAttempts = 5;

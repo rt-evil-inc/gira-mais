@@ -273,6 +273,10 @@ const translations = {
 		en: 'Dark',
 		pt: 'Escuro',
 	},
+	daylight_theme: {
+		en: 'Daylight',
+		pt: 'Luz do dia',
+	},
 	locale_setting_label: {
 		en: 'Language',
 		pt: 'Idioma',

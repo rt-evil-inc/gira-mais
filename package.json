@@ -63,8 +63,10 @@
     "@fontsource/roboto-mono": "^5.2.5",
     "@mauricewegner/capacitor-navigation-bar": "^2.0.3",
     "@tabler/icons-svelte": "^3.31.0",
+    "@types/suncalc": "^1.9.2",
     "capacitor-plugin-safe-area": "^2.0.6",
-    "maplibre-gl": "^4.7.1"
+    "maplibre-gl": "^4.7.1",
+    "suncalc": "^1.9.0"
   },
   "trustedDependencies": [
     "@sveltejs/kit",

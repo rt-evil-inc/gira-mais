@@ -1,7 +1,8 @@
 import { get, writable } from 'svelte/store';
 import { pulsingDot } from '$lib/pulsing-dot';
 import type { GeoJSON } from 'geojson';
-import { getCssVariable, getTheme } from '$lib/utils';
+import { getCssVariable } from '$lib/utils';
+import { theme } from '$lib/theme';
 import maplibregl from 'maplibre-gl';
 import { currentPos } from '$lib/location';
 
@@ -200,7 +201,7 @@ export async function loadImages(map: maplibregl.Map) {
 		accent,
 		background: getCssVariable('--color-background'),
 		inactive: getCssVariable('--color-label'),
-		shadow_strength: getTheme() === 'light' ? '0.25' : '1',
+		shadow_strength: get(theme) === 'light' ? '0.25' : '1',
 	};
 
 	function addOrReplace(id:string, img: Parameters<typeof map.addImage>[1], options: Parameters<typeof map.addImage>[2] = {}) {

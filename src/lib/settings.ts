@@ -7,7 +7,7 @@ export type AppSettings = {
 	backgroundLocation: boolean;
 	analytics: boolean;
 	reportRatings: boolean;
-	theme: 'light'|'dark'|'system';
+	theme: 'light'|'dark'|'system'|'daylight';
 	locale: 'pt'|'en'|'system';
 	updateWarning: boolean;
 }
@@ -20,7 +20,7 @@ export async function loadSettings() {
 	const backgroundLocation = (await Preferences.get({ key: 'settings/backgroundLocation' })).value !== 'false';
 	const analytics = (await Preferences.get({ key: 'settings/analytics' })).value !== 'false';
 	const reportRatings = (await Preferences.get({ key: 'settings/reportRatings' })).value !== 'false';
-	const theme = ((await Preferences.get({ key: 'settings/theme' })).value || 'system') as 'light'|'dark'|'system';
+	const theme = ((await Preferences.get({ key: 'settings/theme' })).value || 'system') as 'light'|'dark'|'system'|'daylight';
 	const locale = ((await Preferences.get({ key: 'settings/locale' })).value || 'system') as 'pt'|'en'|'system';
 	const updateWarning = (await Preferences.get({ key: 'settings/updateWarning' })).value !== 'false';
 	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings });

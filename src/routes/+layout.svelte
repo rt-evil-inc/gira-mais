@@ -16,10 +16,10 @@
 	import { loadUserCreds, refreshToken, token } from '$lib/account';
 	import { updateActiveTripInfo } from '$lib/injest-api-data';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
-	import { getTheme } from '$lib/utils';
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
+	import { theme } from '$lib/theme';
 
 	if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
 		StatusBar.setOverlaysWebView({ overlay: true });
@@ -35,7 +35,6 @@
 			reportAppUsageEvent();
 			appSettings.subscribe(() => {
 				watchPosition();
-				updateTheme();
 			});
 		});
 		App.addListener('resume', () => {
@@ -46,20 +45,18 @@
 			updateActiveTripInfo();
 		});
 
-		ScreenOrientation.lock({ orientation: 'portrait' });
-
-		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-		const updateTheme = () => {
-			if (!$appSettings?.theme) return;
-			const currentTheme = getTheme();
+		theme.subscribe(currentTheme => {
+			if (!currentTheme) return;
 			document.documentElement.setAttribute('data-theme', currentTheme);
-			if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') StatusBar.setStyle({ style: currentTheme == 'dark' ? Style.Dark : Style.Light });
-		};
-		mediaQuery.addEventListener('change', updateTheme);
+			if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+				StatusBar.setStyle({ style: currentTheme === 'dark' ? Style.Dark : Style.Light });
+			}
+		});
+
+		ScreenOrientation.lock({ orientation: 'portrait' });
 
 		return () => {
 			App.removeAllListeners();
-			mediaQuery.removeEventListener('change', updateTheme);
 		};
 	});
 </script>
