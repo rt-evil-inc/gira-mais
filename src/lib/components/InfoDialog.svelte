@@ -12,6 +12,33 @@
 	let messageTimestamp = '';
 	let latestVersion = '';
 
+	/**
+	 * Compare two semantic versions
+	 * @param {string} version1 - First version (e.g., "1.2.3" or "v1.2.3")
+	 * @param {string} version2 - Second version (e.g., "1.3.0" or "v1.3.0")
+	 * @returns {number} - Returns 1 if version1 > version2, -1 if version1 < version2, 0 if equal
+	 */
+	function compareSemanticVersions(version1, version2) {
+		// Clean versions by removing 'v' prefix if present
+		const cleanV1 = version1.startsWith('v') ? version1.slice(1) : version1;
+		const cleanV2 = version2.startsWith('v') ? version2.slice(1) : version2;
+
+		const v1Parts = cleanV1.split('.').map(Number);
+		const v2Parts = cleanV2.split('.').map(Number);
+
+		// Pad with zeros if one version has fewer parts
+		const maxLength = Math.max(v1Parts.length, v2Parts.length);
+		while (v1Parts.length < maxLength) v1Parts.push(0);
+		while (v2Parts.length < maxLength) v2Parts.push(0);
+
+		for (let i = 0; i < maxLength; i++) {
+			if (v1Parts[i] > v2Parts[i]) return 1;
+			if (v1Parts[i] < v2Parts[i]) return -1;
+		}
+
+		return 0;
+	}
+
 	onMount(() => {
 		getMessage().then(async res => {
 			if (res) {
@@ -32,8 +59,11 @@
 				}).then(async response => {
 					if (!response || response.status !== 200) return;
 					const ignoredVersion = (await Preferences.get({ key: 'ignoredVersion' })).value || '';
-					if (response.data.tag_name !== 'v' + version && response.data.tag_name !== ignoredVersion) {
-						latestVersion = response.data.tag_name;
+					const latestVersionTag = response.data.tag_name;
+
+					// Only show dialog if latest version is semantically greater than current version and not ignored
+					if (latestVersionTag !== ignoredVersion && compareSemanticVersions(latestVersionTag, version) > 0) {
+						latestVersion = latestVersionTag;
 					}
 				});
 			}
