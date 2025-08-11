@@ -80,7 +80,7 @@ export async function getMessage() {
 	return response?.data as MessageGetResponse;
 }
 
-export async function postBikeRating(bikeSerial: string, rating: number, timestamp?: string) {
+export async function postBikeRating(tripCode: string, bikePlate: string, rating: number, timestamp?: string) {
 	if (!get(appSettings).reportRatings || dev) return;
 
 	const response = await httpRequestWithRetry({
@@ -92,7 +92,8 @@ export async function postBikeRating(bikeSerial: string, rating: number, timesta
 		},
 		data: {
 			deviceId: (await Device.getId()).identifier,
-			bikeSerial,
+			tripCode,
+			bikePlate,
 			rating,
 			...timestamp && { timestamp },
 		} as BikeRatingPostRequest,

@@ -32,7 +32,7 @@ export type ActiveTrip = {
 export type TripRating = {
 	currentRating:{
 		code:string,
-		bikePlate:string|null,
+		bikePlate:string,
 		startDate:Date,
 		endDate:Date,
 		tripPoints:number,

@@ -150,12 +150,15 @@ export function ingestLastUnratedTrip(lastTripData:Q<['unratedTrips', 'tripHisto
 			if (lastTripCode !== unratedTrip.code) return;
 		}
 	}
+	if (bikePlate === null || bikePlate === undefined) {
+		console.warn('ingestLastUnratedTrip: bike plate is null or undefined');
+		return;
+	}
 
 	tripRating.set({
 		currentRating: {
 			code: unratedTrip.code,
-			// probably have to translate asset to bike id
-			bikePlate: bikePlate ?? '???',
+			bikePlate,
 			startDate: new Date(unratedTrip.startDate),
 			endDate: new Date(unratedTrip.endDate),
 			tripPoints: unratedTrip.costBonus || 0,
