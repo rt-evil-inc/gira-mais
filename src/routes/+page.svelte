@@ -86,7 +86,7 @@
 	{/if}
 
 	{#if !networkStatus}
-		<NetworkWarning />
+		<NetworkWarning {tripStatusHeight} {tripStatusWidth} />
 	{/if}
 
 	<Floating right={20} y={stationMenuPos} bottom offset={20}>
@@ -101,7 +101,7 @@
 		<Compass />
 	</Floating>
 
-	<Floating left={20} y={tripStatusHeight} offset={20}>
+	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={20}>
 		<SupportButton />
 	</Floating>
 
