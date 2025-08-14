@@ -1,3 +1,4 @@
+import { App } from '@capacitor/app';
 import { writable } from 'svelte/store';
 
 export type Insets = {
@@ -11,7 +12,8 @@ export const safeInsets = writable<Insets>({ top: 0, bottom: 0, left: 0, right: 
 
 export const errorMessages = (() => {
 	const { subscribe, update } = writable<{ msg: string, id: number }[]>([]);
-	const add = (msg: string, delay = 3000) => {
+	const add = async (msg: string, delay = 3000) => {
+		if (!(await App.getState()).isActive) return;
 		const id = Math.random();
 		update(messages => [...messages, { msg, id }].slice(-3));
 		setTimeout(() => update(messages => messages.filter(m => m.id !== id)), delay);
