@@ -42,6 +42,8 @@ export type TripRating = {
 export const currentTrip = writable<ActiveTrip|null>(null);
 export const tripRating = writable<TripRating>({ currentRating: null });
 
+let updating = false;
+
 async function checkTripStarted(serial: string) {
 	if (get(currentTrip) === null) return;
 	if ((await reserveBike(serial)).reserveBike) {
@@ -71,9 +73,9 @@ export async function tryStartTrip(id: string, serial: string, station: StationI
 			const success = (await startTrip()).startTrip;
 			if (success) {
 				reportTripStartEvent(serial, station.serialNumber);
-				for (let i = 15000; i <= 30000; i += 5000) {
+				/* for (let i = 15000; i <= 30000; i += 5000) {
 					setTimeout(() => checkTripStarted(serial), i);
-				}
+				} */
 				const pos = get(currentPos);
 				currentTrip.set({
 					code: '',
@@ -130,6 +132,8 @@ export async function tryStartTrip(id: string, serial: string, station: StationI
 /** Force trip info update if more than 30 seconds have passed since last update.
 	* Meant to be called while the app is in background. */
 export function checkTripActive() {
+	if (updating) return;
+
 	const lastUpdate = get(currentTrip)?.lastUpdate;
 	if (!lastUpdate || Date.now() - lastUpdate.getTime() < 1000 * 30) return;
 
@@ -139,7 +143,8 @@ export function checkTripActive() {
 
 	// Refresh token if it expires in less than 30 seconds and update trip info
 	if (jwt.exp * 1000 - Date.now() < 30 * 1000) {
-		refreshToken().then(updateActiveTripInfo);
+		updating = true;
+		refreshToken().then(updateActiveTripInfo).finally(() => updating = false);
 	} else {
 		updateActiveTripInfo();
 	}

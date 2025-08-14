@@ -37,10 +37,10 @@
 				watchPosition();
 			});
 		});
-		App.addListener('resume', () => {
+		App.addListener('resume', async () => {
 			if ($token != null && $token.refreshToken != null) {
 				console.debug('Refreshing token because app was reopened');
-				refreshToken();
+				await refreshToken();
 			}
 			updateActiveTripInfo();
 		});

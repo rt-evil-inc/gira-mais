@@ -12,6 +12,7 @@ import { errorMessages } from './ui';
 import { t } from './translations';
 import { reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 import { encryptToken, hash } from '$lib/crypto';
+import { Network } from '@capacitor/network';
 
 export type Token = {
   accessToken: string;
@@ -185,6 +186,7 @@ export async function logOut() {
 const msBetweenRefreshAttempts = 2000;
 const attempts = 5;
 export async function refreshToken() {
+	if (await Network.getStatus().then(status => !status.connected)) return false;
 	const tokens = get(token);
 	if (!tokens) return false;
 	let success = false;
