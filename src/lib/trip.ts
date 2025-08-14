@@ -73,9 +73,9 @@ export async function tryStartTrip(id: string, serial: string, station: StationI
 			const success = (await startTrip()).startTrip;
 			if (success) {
 				reportTripStartEvent(serial, station.serialNumber);
-				/* for (let i = 15000; i <= 30000; i += 5000) {
+				for (let i = 15000; i <= 30000; i += 5000) {
 					setTimeout(() => checkTripStarted(serial), i);
-				} */
+				}
 				const pos = get(currentPos);
 				currentTrip.set({
 					code: '',
