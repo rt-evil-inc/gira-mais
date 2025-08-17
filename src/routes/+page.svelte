@@ -19,13 +19,12 @@
 	import Compass from '$lib/components/Compass.svelte';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import { App } from '@capacitor/app';
-	import { refreshToken, token } from '$lib/account';
+	import { token } from '$lib/account';
 	import type { PluginListenerHandle } from '@capacitor/core';
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import SupportButton from '$lib/components/SupportButton.svelte';
 	import NetworkWarning from '$lib/components/NetworkWarning.svelte';
-	import { Network, type ConnectionStatus } from '@capacitor/network';
-	import { updateActiveTripInfo } from '$lib/injest-api-data';
+	import { networkStatus } from '$lib/network';
 
 	let backListener: PluginListenerHandle;
 	let menuHeight = 0;
@@ -34,7 +33,6 @@
 	let tripStatusWidth:number = 0;
 	let profileOpen = false;
 	let locationPermission = false;
-	let networkStatus = true;
 
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {
@@ -62,12 +60,6 @@
 
 		return () => backListener?.remove();
 	});
-
-	Network.getStatus().then((s: ConnectionStatus) => networkStatus = s.connected);
-	Network.addListener('networkStatusChange', (status: ConnectionStatus) => {
-		networkStatus = status.connected;
-		if (status.connected) refreshToken().then(updateActiveTripInfo);
-	});
 </script>
 
 <div class="h-full w-full relative overflow-hidden">
@@ -82,12 +74,12 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && networkStatus}
+		{#if $tripRating.currentRating != null && $networkStatus}
 			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
 	{/if}
 
-	{#if !networkStatus}
+	{#if !$networkStatus}
 		<NetworkWarning {tripStatusHeight} {tripStatusWidth} />
 	{/if}
 
