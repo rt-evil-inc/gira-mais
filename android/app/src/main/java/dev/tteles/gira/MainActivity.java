@@ -7,6 +7,8 @@ import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewRenderProcess;
 import android.webkit.WebViewRenderProcessClient;
+import android.webkit.WebViewClient;
+import android.webkit.RenderProcessGoneDetail;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -23,6 +25,7 @@ public class MainActivity extends BridgeActivity {
     // Attach crash handler to Capacitor's WebView
     WebView webView = this.bridge.getWebView();
     if (webView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      // Monitor responsiveness (API 29+)
       webView.setWebViewRenderProcessClient(new WebViewRenderProcessClient() {
         @Override
         public void onRenderProcessUnresponsive(WebView view, WebViewRenderProcess renderer) {
@@ -30,18 +33,25 @@ public class MainActivity extends BridgeActivity {
         }
 
         @Override
-        public void onRenderProcessGone(WebView view, WebViewRenderProcess renderer) {
+        public void onRenderProcessResponsive(WebView view, WebViewRenderProcess renderer) {
+          Log.i("CapacitorWebView", "✅ WebView became responsive again.");
+        }
+      });
+
+      // Handle renderer crashes
+      webView.setWebViewClient(new WebViewClient() {
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
           Log.e("CapacitorWebView", "❌ WebView renderer crashed. Restarting activity…");
 
-          // Destroy the crashed WebView to avoid fatal crash
           try {
             view.destroy();
           } catch (Exception e) {
             Log.e("CapacitorWebView", "Error while destroying WebView", e);
           }
 
-          // Restart activity to reload the WebView cleanly
           recreate();
+          return true;
         }
       });
 
