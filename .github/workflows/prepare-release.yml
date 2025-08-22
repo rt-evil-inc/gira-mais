@@ -3,8 +3,8 @@ name: Prepare new release
 on:
   workflow_dispatch:
     inputs:
-      serverBump:
-        description: "Bump server version"
+      semanticBump:
+        description: "Bump semantic version"
         required: true
         default: "false"
         type: choice
@@ -36,7 +36,7 @@ jobs:
           token: ${{ secrets.ORG_RELEASE_TOKEN }}
 
       - name: Bump version
-        run: misc/release/bump-version.sh -s "${{ inputs.serverBump }}" -m "${{ inputs.mobileBump }}"
+        run: misc/release/bump-version.sh -s "${{ inputs.semanticBump }}" -m "${{ inputs.mobileBump }}"
 
       - name: Get user details
         id: user-details
@@ -52,8 +52,8 @@ jobs:
         with:
           author_name: ${{ steps.user-details.outputs.name }}
           author_email: ${{ steps.user-details.outputs.email }}
-          message: "Bump version to ${{ env.GIRA_VERSION }}"
-          tag: ${{ inputs.serverBump != 'false' && env.GIRA_VERSION || '' }}
+          message: ${{ inputs.semanticBump == 'false' && inputs.mobileBump == true && 'Bump mobile build number' || format('Bump version to {0}', env.GIRA_VERSION) }}
+          tag: ${{ inputs.semanticBump != 'false' && env.GIRA_VERSION || '' }}
           push: true
 
   build_mobile:
