@@ -20,7 +20,6 @@
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
 	import { theme } from '$lib/theme';
-	import { startWS } from '$lib/gira-api/ws';
 
 	if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
 		StatusBar.setOverlaysWebView({ overlay: true });
@@ -45,7 +44,6 @@
 			}
 			updateActiveTripInfo();
 			updateStations();
-			startWS();
 		});
 
 		theme.subscribe(currentTheme => {
