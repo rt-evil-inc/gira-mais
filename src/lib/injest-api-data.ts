@@ -4,7 +4,7 @@ import { get } from 'svelte/store';
 import { currentPos } from '$lib/location';
 import { stations, type StationInfo } from '$lib/map';
 import { currentTrip, endTrip, tripRating } from '$lib/trip';
-import { fullOnetimeInfo, getActiveTripInfo, tripPayWithNoPoints, tripPayWithPoints } from '$lib/gira-api/api';
+import { fullOnetimeInfo, getActiveTripInfo, getStations, tripPayWithNoPoints, tripPayWithPoints } from '$lib/gira-api/api';
 import { accountInfo } from '$lib/account';
 
 export async function updateOnetimeInfo() {
@@ -18,6 +18,10 @@ export async function updateOnetimeInfo() {
 
 export function updateActiveTripInfo() {
 	getActiveTripInfo().then(ingestActiveTripInfo);
+}
+
+export async function updateStations() {
+	getStations().then(ingestStations);
 }
 
 export function updateWithTripMessage(recvTrip:ActiveTripSubscription) {

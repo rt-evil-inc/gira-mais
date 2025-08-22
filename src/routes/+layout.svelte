@@ -14,12 +14,13 @@
 	import '../app.css';
 	import { App } from '@capacitor/app';
 	import { loadUserCreds, refreshToken, token } from '$lib/account';
-	import { updateActiveTripInfo } from '$lib/injest-api-data';
+	import { updateActiveTripInfo, updateStations } from '$lib/injest-api-data';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
 	import { theme } from '$lib/theme';
+	import { startWS } from '$lib/gira-api/ws';
 
 	if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
 		StatusBar.setOverlaysWebView({ overlay: true });
@@ -43,6 +44,8 @@
 				await refreshToken();
 			}
 			updateActiveTripInfo();
+			updateStations();
+			startWS();
 		});
 
 		theme.subscribe(currentTheme => {

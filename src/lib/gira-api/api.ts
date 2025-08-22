@@ -75,14 +75,14 @@ async function query<T extends(keyof Query)[]>(body:any): Promise<Q<T>> {
 	return res?.data.data as Promise<Q<T>>;
 }
 
-// async getStations(): Promise<Q<['getStations']>> {
-// 	const req = query<['getStations']>({
-// 		'operationName': 'getStations',
-// 		'variables': {},
-// 		'query': 'query getStations {getStations {code, description, latitude, longitude, name, bikes, docks, serialNumber, assetStatus }}',
-// 	});
-// 	return req;
-// }
+export async function getStations(): Promise<Q<['getStations']>> {
+	const req = query<['getStations']>({
+		'operationName': 'getStations',
+		'variables': {},
+		'query': 'query getStations {getStations {code, description, latitude, longitude, name, bikes, docks, serialNumber, assetStatus }}',
+	});
+	return req;
+}
 
 export function getStationInfo(stationId: string): Promise<Q<['getBikes', 'getDocks']>> {
 	const req = query<['getBikes', 'getDocks']>({
