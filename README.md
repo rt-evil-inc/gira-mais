@@ -32,9 +32,10 @@ A aplicação está a ser desenvolvida em **SvelteKit**, juntamente com a biblio
 ## Instalação e Compilação
 
 ### Android
-É possível descarregar a versão mais recente da aplicação [aqui](https://github.com/rt-evil-inc/gira-mais/releases/latest).
 
-A aplicação irá ser disponibilizada na PlayStore e na F-Droid.
+A aplicação está [disponível no Google Play](https://gira-mais.app/android), e será também brevemente disponibilizada no F-Droid.
+
+É possível também descarregar o APK da versão mais recente da aplicação [aqui](https://github.com/rt-evil-inc/gira-mais/releases/latest).
 
 Alternativamente, a aplicação pode ser compilada através dos seguintes passos:
 
@@ -64,9 +65,9 @@ O ficheiro .apk será criado em `android/app/build/outputs/apk/debug/app-debug.a
 
 ### iOS
 
-A aplicação irá ser disponibilizada na App Store.
+A aplicação está [disponível na App Store](https://gira-mais.app/ios).
 
-De momento, a aplicação pode ser compilada através dos seguintes passos:
+Alternativamente, a aplicação pode ser compilada através dos seguintes passos:
 
 1. Preparação:
  - Garantir que o Xcode está instalado.
@@ -88,6 +89,14 @@ bun install
 bun run build
 bunx cap run ios
 ```
+
+## Contribuição
+Contribuições são bem-vindas! Consulte o ficheiro [`CONTRIBUTING.md`](CONTRIBUTING.md) para mais informações sobre como contribuir para o projeto.
+
+## Licença
+Este projeto está licenciado sob a licença [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), com uma permissão adicional que concede aos contribuidores originais do projeto, Rodrigo e Tiago, o direito de disponibilizar o projeto sob qualquer licença adicional no futuro, sem remover a licença GPL v3 da versão atual do projeto. O intuito desta permissão adicional é possibilitar a utilização do código para fins que não sejam compatíveis com código open-source, desde que com autorização explícita dos contribuidores originais.
+
+Consulte o ficheiro [LICENSE](LICENSE) para os termos completos.
 
 ## Misc
 Cumprimentos ao [@afonsosousah](https://github.com/afonsosousah), que inspirou o projeto com a [mGira](https://github.com/afonsosousah/mgira).  

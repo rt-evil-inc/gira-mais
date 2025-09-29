@@ -22,15 +22,18 @@
 
 	let { code }: Props = $props();
 	let rating:number|undefined = $state();
+	export let tripCode:string;
+	export let bikePlate:string;
+	export let date:Date|undefined = undefined;
 
-	async function rate(code:string, rating:number) {
-		postBikeRating(code, rating);
-		return (await rateTrip(code, rating)).rateTrip;
+	async function rate(tripCode: string, bikePlate:string, rating:number) {
+		postBikeRating(tripCode, bikePlate, rating, date?.toISOString());
+		return (await rateTrip(tripCode, rating)).rateTrip;
 	}
 
 	async function setRating(ratingValue: number) {
 		rating = ratingValue;
-		const result = await rate(code, rating);
+		const result = await rate(tripCode, bikePlate, rating);
 		$tripRating.currentRating = null;
 		if (!result) {
 			errorMessages.add($t('rate_trip_error'));

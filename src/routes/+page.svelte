@@ -24,7 +24,7 @@
 	import InfoDialog from '$lib/components/InfoDialog.svelte';
 	import SupportButton from '$lib/components/SupportButton.svelte';
 	import NetworkWarning from '$lib/components/NetworkWarning.svelte';
-	import { Network, type ConnectionStatus } from '@capacitor/network';
+	import { networkStatus } from '$lib/network';
 
 	let backListener: PluginListenerHandle;
 	let menuHeight = $state(0);
@@ -61,11 +61,6 @@
 
 		return () => backListener?.remove();
 	});
-
-	Network.getStatus().then((s: ConnectionStatus) => networkStatus = s.connected);
-	Network.addListener('networkStatusChange', (status: ConnectionStatus) => {
-		networkStatus = status.connected;
-	});
 </script>
 
 <div class="h-full w-full relative overflow-hidden">
@@ -80,13 +75,13 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && networkStatus}
-			<TripRating code={$tripRating.currentRating.code} />
+		{#if $tripRating.currentRating != null && $networkStatus}
+			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
 	{/if}
 
-	{#if !networkStatus}
-		<NetworkWarning />
+	{#if !$networkStatus}
+		<NetworkWarning {tripStatusHeight} {tripStatusWidth} />
 	{/if}
 
 	<Floating right={20} y={stationMenuPos} bottom offset={20}>
@@ -101,7 +96,7 @@
 		<Compass />
 	</Floating>
 
-	<Floating left={20} y={tripStatusHeight} offset={20}>
+	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={20}>
 		<SupportButton />
 	</Floating>
 

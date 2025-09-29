@@ -1,0 +1,1 @@
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting your PR.

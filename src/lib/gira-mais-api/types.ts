@@ -37,8 +37,10 @@ export type ErrorStatisticsPostResponse = {
 
 export type BikeRatingPostRequest = {
   deviceId: string;
-  bikeSerial: string;
+  tripCode: string;
+  bikePlate: string;
   rating: number;
+  timestamp?: string;
 }
 
 export type BikeRatingPostResponse = {

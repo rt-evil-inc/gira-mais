@@ -10,6 +10,7 @@
 	import type { GeoJSON } from 'geojson';
 	import maplibregl from 'maplibre-gl';
 	import { onMount, tick } from 'svelte';
+	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 
 	interface Props {
@@ -130,7 +131,7 @@
 	onMount(() => {
 		map = new maplibregl.Map({
 			container: mapElem,
-			style: getMapStyle(getTheme()),
+			style: getMapStyle(get(theme)),
 			center: [-9.15, 38.744],
 			zoom: 11,
 			attributionControl: false,
@@ -149,8 +150,8 @@
 		};
 	});
 
-	appSettings.subscribe(() => {
-		if (map) {
+	theme.subscribe(currentTheme => {
+		if (map && currentTheme) {
 			map.once('styledata', () => {
 				console.debug('style.load fired');
 				loadImages(map);
@@ -158,7 +159,7 @@
 				addLayers(map);
 				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
-			map.setStyle(getMapStyle(getTheme()), { diff: true });
+			map.setStyle(getMapStyle(currentTheme), { diff: true });
 		}
 	});
 

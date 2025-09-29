@@ -1,5 +1,4 @@
 import { get } from 'svelte/store';
-import { appSettings } from '$lib/settings';
 import { CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
 import type { ThrownError } from './gira-api/api-types';
 import { knownErrors } from './gira-api/api';
@@ -7,6 +6,7 @@ import { errorMessages } from './ui';
 import { GIRA_API_URL, GIRA_AUTH_URL, GIRA_WS_URL } from './constants';
 import { reportErrorEvent } from './gira-mais-api/gira-mais-api';
 import { t } from './translations';
+import { networkStatus } from '$lib/network';
 
 export const deg2rad = (deg:number) => deg * (Math.PI / 180);
 
@@ -38,11 +38,6 @@ export function getCssVariable(name:string) {
 	return getComputedStyle(document.documentElement).getPropertyValue(name);
 }
 
-export function getTheme() {
-	const settings = get(appSettings);
-	return settings.theme === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' : settings.theme;
-}
-
 const maxAttempts = 5;
 const retryDelay = 1000;
 
@@ -71,7 +66,7 @@ export async function httpRequestWithRetry(options: HttpOptions, retryOnStatus =
 			const isAuthUrl = options.url.startsWith(GIRA_AUTH_URL);
 			const isGiraApiUrl = options.url.startsWith(GIRA_API_URL) || options.url.includes(GIRA_WS_URL.split('://')[1]);
 			if (attempt < maxAttempts) {
-				if (error.status === undefined && attempt === 1) {
+				if (error.status === undefined && attempt === 1 && get(networkStatus)) {
 					if (isAuthUrl) {
 						errorMessages.add(get(t)('auth_api_communication_error_retry'), 5000);
 					} else if (isGiraApiUrl) {
@@ -81,7 +76,7 @@ export async function httpRequestWithRetry(options: HttpOptions, retryOnStatus =
 				await new Promise(resolve => setTimeout(resolve, retryDelay * attempt)); // Linear backoff
 			} else {
 				console.error('Max attempts reached. Throwing error.');
-				if (error.status === undefined) {
+				if (error.status === undefined && get(networkStatus)) {
 					if (isAuthUrl) {
 						errorMessages.add(get(t)('auth_api_communication_error'), 5000);
 						reportErrorEvent('auth_api_communication_error', JSON.stringify(e));
