@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { version } from '$app/environment';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import GitHubStarRequest from '$lib/components/GitHubStarRequest.svelte';
 	import { t } from '$lib/translations';

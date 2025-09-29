@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { fade } from 'svelte/transition';
 
 	interface Props {

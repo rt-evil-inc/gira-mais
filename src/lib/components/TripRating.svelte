@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/translations';
-	import { errorMessages, safeInsets } from '$lib/ui';
+	import { errorMessages, safeInsets } from '$lib/ui.svelte';
 
 	import { rateTrip } from '$lib/gira-api/api';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';

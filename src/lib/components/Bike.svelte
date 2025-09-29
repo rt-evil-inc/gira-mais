@@ -19,9 +19,9 @@
 		type?: 'classic'|'electric'|null;
 		id?: string;
 		battery?: number|null;
-		dock: string;
+		dock: string|null;
 		disabled?: boolean;
-		serial: string;
+		serial: string|null;
 		station: StationInfo;
 	}
 
@@ -105,8 +105,11 @@
 		style:left="{pos.current}px">
 		{#if type === 'electric'}
 			<IconBolt size={42} stroke={1.7} class="text-primary -mx-3" />
-		{:else}
+		{:else if type === 'classic'}
 			<IconSettings size={42} stroke={1.7} class="text-primary -mx-3" />
+		{:else}
+			<!-- Weird styling to perfectly align with the other icons -->
+			<div class="text-label font-bold text-xl -mr-6 w-[42px]">--</div>
 		{/if}
 		<span class="text-[15px] font-bold text-primary">{id}</span>
 		<div class="grow"></div>
@@ -126,8 +129,14 @@
 				{/if}
 			</div>
 		{/if}
-		<div class="flex flex-col items-center text-primary w-6">
-			<span class="font-bold text-2xl leading-none">{dock}</span>
+		{#if type === null}
+			<div class="flex items-center h-6 px-[6px] bg-label rounded-md gap-1">
+				<span class="text-xs font-bold text-background">--</span>
+				<IconBattery4 size={25} stroke={1.7} class="text-background -m-1" />
+			</div>
+		{/if}
+		<div class="flex flex-col items-center w-6 {dock == null ? 'text-label' : 'text-primary'}">
+			<span class="font-bold text-2xl leading-none">{dock ?? '--'}</span>
 			<span class="font-bold text-[7px] text-center leading-none">{$t('dock_label')}</span>
 		</div>
 	</div>

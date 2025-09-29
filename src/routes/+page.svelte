@@ -10,7 +10,7 @@
 	import TripRating from '$lib/components/TripRating.svelte';
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { fade } from 'svelte/transition';
@@ -25,6 +25,7 @@
 	import SupportButton from '$lib/components/SupportButton.svelte';
 	import NetworkWarning from '$lib/components/NetworkWarning.svelte';
 	import { networkStatus } from '$lib/network';
+	import Dialog from '$lib/components/Dialog.svelte';
 
 	let backListener: PluginListenerHandle;
 	let menuHeight = $state(0);
@@ -102,6 +103,7 @@
 	{#if profileOpen}
 		<Profile onclose={() => profileOpen = false}/>
 	{/if}
+	<Dialog />
 </div>
 
 <InfoDialog />

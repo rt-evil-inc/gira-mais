@@ -8,7 +8,7 @@ import { updateOnetimeInfo } from '$lib/injest-api-data';
 import { GIRA_MAIS_API_URL } from './constants';
 import { dev, version } from '$app/environment';
 import { httpRequestWithRetry } from '$lib/utils';
-import { errorMessages } from './ui';
+import { errorMessages } from './ui.svelte';
 import { t } from './translations';
 import { reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 import { encryptToken, hash } from '$lib/crypto';

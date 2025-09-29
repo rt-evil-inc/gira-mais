@@ -5,7 +5,10 @@
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
-	import { distanceBetweenCoords, formatDistance } from '$lib/utils';
+	import { enqueueDialog, errorMessages } from '$lib/ui.svelte';
+	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
+	import { IconX } from '@tabler/icons-svelte';
+	import Search from '@tabler/icons-svelte/icons/search';
 	import { onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { tweened } from 'svelte/motion';
@@ -17,6 +20,7 @@
 	}
 
 	let { bikeListHeight = $bindable(0), posTop = $bindable<number|undefined>(0) }: Props = $props();
+
 	let initPos = 0;
 	let pos = tweened($selectedStation != null ? 0 : 9999, {
 		duration: 150,
@@ -46,6 +50,8 @@
 	});
 
 	let bikeInfo: {type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string}[] = $state([]);
+	let ghostBikes = $state<{id:string}[]>([]);
+	$inspect(ghostBikes);
 	let isScrolling = $state(false);
 	let dragging = $state(false);
 	let timeout:ReturnType<typeof setTimeout>;
@@ -158,9 +164,48 @@
 		}
 		return s;
 	}
+
+	function getSelectArrowBackground() {
+		const primaryColor = getCssVariable('--color-primary').slice(1);
+		return `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23${primaryColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`;
+	}
+
+	let bikeIdNumber = $state('');
+	let bikeType = $state<'classic'|'electric'>('electric');
+	let bikeId = $derived.by(() => {
+		if (bikeIdNumber.trim() === '') return null;
+		return (bikeType === 'electric' ? 'E' : 'C') + bikeIdNumber.trim();
+	});
 </script>
 
 <svelte:window bind:innerHeight={windowHeight} />
+
+{#snippet addGhostBike(dismiss:() => void)}
+	<div class="w-[340px] max-w-md mx-auto p-6 bg-background rounded-2xl shadow-lg text-left flex flex-col gap-3">
+		<div class="flex justify-between">
+			<h1 class="text-lg font-semibold text-info">{$t('ghost_bike_title')}</h1>
+			<IconX class="text-label hover:text-primary cursor-pointer" size="24" stroke="1.5" onclick={dismiss} aria-label="Close dialog"/>
+		</div>
+		<div class="text-sm text-label">{$t('ghost_bike_description')}</div>
+		<div class="flex w-full text-background rounded-lg p-2 bg-background-secondary border border-background-tertiary focus:border-primary focus:outline-none h-12">
+			<select bind:value={bikeType} name="Bike Type" class="bg-background-secondary text-primary rounded-lg px-px pr-8 pl-1 -my-1 -mr-3 border-0 w-12 border-none focus:ring-0 font-bold appearance-none" style:background-image={getSelectArrowBackground()}>
+				<option value="classic">C</option>
+				<option value="electric">E</option>
+			</select>
+			<input bind:value={bikeIdNumber} name="Bike ID" type="text" placeholder="1234" class="bg-background-secondary text-label rounded-lg p-2 w-full border-none focus:ring-0" />
+		</div>
+		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={() => {
+			if (bikeId) ghostBikes.push({ id: bikeId });
+			else {
+				errorMessages.add(
+					$t('bike_unlock_no_serial_error'),
+					3000,
+				);
+			}
+			dismiss();
+		}}>{$t('ghost_dismiss_label')}</button>
+	</div>
+{/snippet}
 
 <div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{$pos}px)" >
 	<div bind:this={dragged} class="bg-background rounded-t-4xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
@@ -191,6 +236,8 @@
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
 						<BikeSkeleton />
+					{:else}
+						<span class="text-center text-sm text-label mt-4">{$t('no_bikes_found')}</span>
 					{/each}
 				{/if}
 				{#if $selectedStation !== null}
@@ -198,7 +245,13 @@
 					{#each bikeInfo as bike}
 						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.serial} disabled={isScrolling} station={station} />
 					{/each}
+					{#each ghostBikes as bike}
+						<Bike type={null} id={bike.id} battery={null} dock={null} serial={null} disabled={isScrolling} station={station} />
+					{/each}
 				{/if}
+				<button class="py-4 pb-2 px-8 w-full flex justify-center text-primary items-center font-semibold gap-2" onclick={() => enqueueDialog(addGhostBike)}>
+					<Search size="16px" stroke="2"/> {$t('search_other_bikes')}
+				</button>
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>
 		</div>

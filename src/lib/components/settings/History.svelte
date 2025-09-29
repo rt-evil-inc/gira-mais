@@ -2,7 +2,7 @@
 	import type { TripHistory_TripDetail } from '$lib/gira-api/api-types';
 	import { onMount } from 'svelte';
 	import HistoryItem from '$lib/components/settings/HistoryItem.svelte';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { fly } from 'svelte/transition';
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import { getTripHistory } from '$lib/gira-api/api';

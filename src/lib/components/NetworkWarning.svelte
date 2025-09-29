@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import IconWifiOff from '@tabler/icons-svelte/icons/wifi-off';
 	import { t } from '$lib/translations';
 

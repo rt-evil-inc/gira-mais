@@ -1,17 +1,17 @@
-import { get, writable } from 'svelte/store';
-import type { ThrownError } from '$lib/gira-api/api-types';
-import { accountInfo } from '$lib/account';
-import { errorMessages } from '$lib/ui';
-import { appSettings } from '$lib/settings';
-import { currentPos, watchPosition } from '$lib/location';
-import { distanceBetweenCoords } from '$lib/utils';
 import { LOCK_DISTANCE_m } from '$lib/constants';
 import { getTripHistory, getUnratedTrips, knownErrors, reserveBike, startTrip, tripPayWithPoints } from '$lib/gira-api/api';
-import type { StationInfo } from './map.svelte';
-import { ingestLastUnratedTrip, updateActiveTripInfo } from './injest-api-data';
+import type { ThrownError } from '$lib/gira-api/api-types';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
+import { currentPos, watchPosition } from '$lib/location';
+import { appSettings } from '$lib/settings';
+import { errorMessages } from '$lib/ui.svelte';
+import { distanceBetweenCoords } from '$lib/utils';
+import { get, writable } from 'svelte/store';
 import { refreshToken, token, type JWT } from './account';
+import { ingestLastUnratedTrip, updateActiveTripInfo } from './injest-api-data';
+import type { StationInfo } from './map.svelte';
 import { t, type Translations } from './translations';
+import { IdToSerial } from '$lib/gira-api/bikeMapping';
 
 export type ActiveTrip = {
 	code: string,
@@ -53,8 +53,22 @@ async function checkTripStarted(serial: string) {
 	}
 }
 
-export async function tryStartTrip(id: string, serial: string, station: StationInfo) {
-	if (serial == null) return;
+/**
+ * 
+ * @param id ID is the bike's plate, e.g. "E0001"
+ * @param serial Serial is the bike's internal identifier, e.g. "41db86c6da"
+ * @param station 
+ * @returns True if the trip was started successfully, false otherwise
+ */
+export async function tryStartTrip(id: string, serial: string|null, station: StationInfo): Promise<boolean> {
+	if (serial == null){
+		serial = IdToSerial.get(id) ?? null;
+	}
+	if (serial == null) {
+		errorMessages.add(get(t)('bike_unlock_no_serial_error'));
+		reportErrorEvent('bike_unlock_no_serial_error', id);
+		return false;
+	}
 	try {
 		if (get(appSettings).distanceLock) {
 			const pos = get(currentPos);
@@ -108,6 +122,7 @@ export async function tryStartTrip(id: string, serial: string, station: StationI
 				return false;
 			}
 		}
+		return false;
 	} catch (_e) {
 		const e = _e as ThrownError;
 		let addedError = false;

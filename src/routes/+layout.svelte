@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { appSettings } from '$lib/settings';
 	import '@fontsource/inter/latin-400.css';
 	import '@fontsource/inter/latin-500.css';

@@ -4,7 +4,7 @@
 	import { following } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
 	import { currentTrip as trip } from '$lib/trip';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { KeepAwake } from '@capacitor-community/keep-awake';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
 	import { onMount } from 'svelte';

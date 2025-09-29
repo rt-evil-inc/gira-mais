@@ -1,4 +1,5 @@
 import { App } from '@capacitor/app';
+import type { Snippet } from 'svelte';
 import { writable } from 'svelte/store';
 
 export type Insets = {
@@ -22,3 +23,14 @@ export const errorMessages = (() => {
 })();
 
 // TODO: remove this file and put it in a svelte file using context
+type DialogSnippet = Snippet<[dismiss: () => void]>;
+
+export const dialogQueue = $state<{snippet: DialogSnippet,dismiss: () => void}[]>([]);
+
+export const enqueueDialog = (snippet:DialogSnippet) => {
+	let dismiss = () => {
+		const index = dialogQueue.findIndex(d => d.dismiss === dismiss);
+		if (index !== -1) dialogQueue.splice(index, 1);
+	}
+	dialogQueue.push({snippet, dismiss});
+};

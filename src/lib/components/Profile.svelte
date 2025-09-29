@@ -6,7 +6,7 @@
 	import History from '$lib/components/settings/History.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
 	import { getLocale, t } from '$lib/translations';
-	import { safeInsets } from '$lib/ui';
+	import { safeInsets } from '$lib/ui.svelte';
 	import { App } from '@capacitor/app';
 	import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 	import { IconHeart, IconStar } from '@tabler/icons-svelte';

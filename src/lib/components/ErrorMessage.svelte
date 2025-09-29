@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { errorMessages } from '$lib/ui';
+	import { errorMessages } from '$lib/ui.svelte';
 	import { flip } from 'svelte/animate';
 	import { fly } from 'svelte/transition';
 </script>

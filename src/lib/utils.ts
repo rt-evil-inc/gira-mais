@@ -2,7 +2,7 @@ import { get } from 'svelte/store';
 import { CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
 import type { ThrownError } from './gira-api/api-types';
 import { knownErrors } from './gira-api/api';
-import { errorMessages } from './ui';
+import { errorMessages } from './ui.svelte';
 import { GIRA_API_URL, GIRA_AUTH_URL, GIRA_WS_URL } from './constants';
 import { reportErrorEvent } from './gira-mais-api/gira-mais-api';
 import { t } from './translations';

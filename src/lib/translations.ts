@@ -397,6 +397,10 @@ const translations = {
 		en: 'It was not possible to unlock the bicycle',
 		pt: 'Não foi possível desbloquear a bicicleta',
 	},
+	bike_unlock_no_serial_error: {
+		en: 'Bike identification number not found',
+		pt: 'Numero de identificação da bicicleta não encontrado',
+	},
 	service_hours_error: {
 		en: 'Service unavailable. Hours of operation between 06:00 and 02:00.',
 		pt: 'Serviço indisponível. Horário de utilização entre as 06:00 e as 02:00.',
@@ -440,6 +444,26 @@ const translations = {
 	update_warning_setting_description: {
 		en: 'Show a warning when a new version of the app is available',
 		pt: 'Mostrar um aviso quando uma nova versão da aplicação estiver disponível',
+	},
+	no_bikes_found: {
+		en: 'No bikes found',
+		pt: 'Nenhuma bicicleta encontrada',
+	},
+	search_other_bikes: {
+		en: 'Search for other bikes',
+		pt: 'Procurar outras bicicletas',
+	},
+	ghost_bike_title: {
+		en: 'Missing bikes',
+		pt: 'Bicicletas em falta',
+	},
+	ghost_bike_description: {
+		en: 'You can try to retrieve bikes with a green light that do not appear in the system through their number.',
+		pt: 'Pode tentar retirar bicicletas com luz verde que não aparecem no sistema através do seu número.',
+	},
+	ghost_dismiss_label: {
+		en: 'Attempt to unlock',
+		pt: 'Tentar retirar',
 	},
 } as const;
 
