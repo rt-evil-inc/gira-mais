@@ -86,5 +86,5 @@
 		</div>
 	</div>
 {:else}
-	<div class="bg-neutral-50 animate-pulse h-32 rounded-2xl py-4 px-6 gap-5 dark:bg-background-secondary" style:box-shadow="0px 0px 12px 0px var(--color-shadow)"></div>
+	<div class="bg-neutral-50 animate-pulse h-36 rounded-2xl py-4 px-6 gap-5 dark:bg-background-secondary" style:box-shadow="0px 0px 12px 0px var(--color-shadow)"></div>
 {/if}
