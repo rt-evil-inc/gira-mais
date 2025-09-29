@@ -17,14 +17,13 @@
 	import { fade, fly } from 'svelte/transition';
 
 	interface Props {
-		code: string;
+		tripCode: string;
+		bikePlate: string;
+		date?: Date;
 	}
 
-	let { code }: Props = $props();
+	let { tripCode, bikePlate, date }: Props = $props();
 	let rating:number|undefined = $state();
-	export let tripCode:string;
-	export let bikePlate:string;
-	export let date:Date|undefined = undefined;
 
 	async function rate(tripCode: string, bikePlate:string, rating:number) {
 		postBikeRating(tripCode, bikePlate, rating, date?.toISOString());

@@ -33,7 +33,6 @@
 	let tripStatusWidth:number = $state(0);
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
-	let networkStatus = $state(true);
 
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {

@@ -5,7 +5,7 @@ import SunCalc from 'suncalc';
 
 export type Theme = 'light' | 'dark';
 
-export const theme = derived(appSettings, ($appSettings, set) => {
+export const theme = derived<typeof appSettings, Theme>(appSettings, ($appSettings, set) => {
 	if (!$appSettings) return;
 
 	const calculateTheme = (): Theme => {
@@ -16,10 +16,10 @@ export const theme = derived(appSettings, ($appSettings, set) => {
 			const times = SunCalc.getTimes(now, coords.latitude, coords.longitude);
 			const dawnMidpoint = new Date((times.dawn.getTime() + times.sunrise.getTime()) / 2);
 			const duskMidpoint = new Date((times.sunset.getTime() + times.dusk.getTime()) / 2);
-			return now >= dawnMidpoint && now < duskMidpoint ? 'light' : 'dark';
+			return now >= dawnMidpoint && now < duskMidpoint ? 'light' : 'dark' as Theme;
 		}
 		if ($appSettings.theme === 'system') {
-			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+			return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light' as Theme;
 		}
 		return $appSettings.theme as Theme;
 	};

@@ -3,9 +3,8 @@
 	import { bearing, bearingNorth, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
-	import { appSettings } from '$lib/settings';
+    import { theme } from '$lib/theme';
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
-	import { getTheme } from '$lib/utils';
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
 	import maplibregl from 'maplibre-gl';
