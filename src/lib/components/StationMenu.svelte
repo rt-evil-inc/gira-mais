@@ -7,9 +7,10 @@
 	import { t } from '$lib/translations';
 	import { enqueueDialog, errorMessages } from '$lib/ui.svelte';
 	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
+	import { Keyboard } from '@capacitor/keyboard';
 	import { IconX } from '@tabler/icons-svelte';
 	import Search from '@tabler/icons-svelte/icons/search';
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { tweened } from 'svelte/motion';
 	import { fade } from 'svelte/transition';
@@ -49,9 +50,11 @@
 		return undefined;
 	});
 
-	let bikeInfo: {type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string}[] = $state([]);
-	let ghostBikes = $state<{id:string}[]>([]);
-	$inspect(ghostBikes);
+	let bikeInfo:({type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string}|{id:string})[] = $state([]);
+	function isRealBike(bike: typeof bikeInfo[number]): bike is {type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string} {
+		return 'type' in bike === true;
+	}
+
 	let isScrolling = $state(false);
 	let dragging = $state(false);
 	let timeout:ReturnType<typeof setTimeout>;
@@ -176,6 +179,36 @@
 		if (bikeIdNumber.trim() === '') return null;
 		return (bikeType === 'electric' ? 'E' : 'C') + bikeIdNumber.trim();
 	});
+
+	const makeExtraBikeFunction = (dismiss: () => void) => {
+		return async () => {
+			await tick();
+			if (!bikeIdNumber.match(/^\d{4}$/)) {
+				errorMessages.add(
+					$t('bike_unlock_invalid_id_error'),
+					2000,
+				);
+				return;
+			}
+			if (bikeId) bikeInfo.push({ id: bikeId });
+			else {
+				errorMessages.add(
+					$t('bike_unlock_no_serial_error'),
+					3000,
+				);
+			}
+			dismiss();
+			await tick();
+			bikeListHeight = bikeList.clientHeight;
+		};
+	};
+
+	let bikeIdInput: HTMLInputElement|null = $state(null);
+	$effect(() => {
+		if (bikeIdInput && $selectedStation !== null) {
+			bikeIdInput.focus();
+		}
+	});
 </script>
 
 <svelte:window bind:innerHeight={windowHeight} />
@@ -188,22 +221,25 @@
 		</div>
 		<div class="text-sm text-label">{$t('ghost_bike_description')}</div>
 		<div class="flex w-full text-background rounded-lg p-2 bg-background-secondary border border-background-tertiary focus:border-primary focus:outline-none h-12">
-			<select bind:value={bikeType} name="Bike Type" class="bg-background-secondary text-primary rounded-lg px-px pr-8 pl-1 -my-1 -mr-3 border-0 w-12 border-none focus:ring-0 font-bold appearance-none" style:background-image={getSelectArrowBackground()}>
+			<select bind:value={bikeType} name="Bike Type" class="bg-background-secondary text-primary rounded-lg px-px pr-8 pl-1 -my-1 -mr-3 border-0 w-12 border-none focus:ring-0 font-bold appearance-none"
+				style:background-image={getSelectArrowBackground()}
+			>
 				<option value="classic">C</option>
 				<option value="electric">E</option>
 			</select>
-			<input bind:value={bikeIdNumber} name="Bike ID" type="text" placeholder="1234" class="bg-background-secondary text-label rounded-lg p-2 w-full border-none focus:ring-0" />
+			<input bind:this={bikeIdInput} bind:value={bikeIdNumber} name="Bike ID" type="text" placeholder="1234"
+				class="bg-background-secondary text-label rounded-lg p-2 w-full border-none focus:ring-0"
+				onkeydown={async e => {
+					if (e.key.length === 1 && (e.key < '0' || e.key > '9')) {
+						e.preventDefault();
+					}
+					if (e.key === 'Enter') {
+						makeExtraBikeFunction(dismiss)();
+					}
+				}}
+			/>
 		</div>
-		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={() => {
-			if (bikeId) ghostBikes.push({ id: bikeId });
-			else {
-				errorMessages.add(
-					$t('bike_unlock_no_serial_error'),
-					3000,
-				);
-			}
-			dismiss();
-		}}>{$t('ghost_dismiss_label')}</button>
+		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={makeExtraBikeFunction(dismiss)}>{$t('ghost_dismiss_label')}</button>
 	</div>
 {/snippet}
 
@@ -243,10 +279,12 @@
 				{#if $selectedStation !== null}
 					{@const station = getStationFromSerial($selectedStation)}
 					{#each bikeInfo as bike}
-						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.serial} disabled={isScrolling} station={station} />
-					{/each}
-					{#each ghostBikes as bike}
-						<Bike type={null} id={bike.id} battery={null} dock={null} serial={null} disabled={isScrolling} station={station} />
+						{#if isRealBike(bike)}
+							<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.serial} disabled={isScrolling} station={station} />
+						{:else}
+							<Bike type={null} id={bike.id} battery={null} dock={null} serial={null} disabled={isScrolling} station={station} />
+						{/if}
+
 					{/each}
 				{/if}
 				<button class="py-4 pb-2 px-8 w-full flex justify-center text-primary items-center font-semibold gap-2" onclick={() => enqueueDialog(addGhostBike)}>

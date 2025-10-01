@@ -465,6 +465,10 @@ const translations = {
 		en: 'Attempt to unlock',
 		pt: 'Tentar retirar',
 	},
+	bike_unlock_invalid_id_error: {
+		en: 'Invalid bike ID. It should be a 4-digit number.',
+		pt: 'ID de bicicleta inválido. Deve ser um número de 4 dígitos.',
+	},
 } as const;
 
 export type Translations = typeof translations;
