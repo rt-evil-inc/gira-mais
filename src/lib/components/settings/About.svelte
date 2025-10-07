@@ -71,7 +71,7 @@
 					<img src="https://avatars.githubusercontent.com/u/34187774?s=64" alt="" class="w-14 h-14 rounded-full" />
 					<div class="flex flex-col">
 						<span class="font-bold text-primary">Rodrigo Palmeirim</span>
-						<span class="font-semibold text-label text-xs -mt-[2px]">gira@rodlabs.dev</span>
+						<span class="font-semibold text-label text-xs -mt-[2px]">rodrigo@gira-mais.app</span>
 					</div>
 				</a>
 				<a href="https://github.com/ttmx" class="flex gap-3 items-center z-10 origin-[1.75rem_1.75rem]"
@@ -79,7 +79,7 @@
 					<img src="https://avatars.githubusercontent.com/u/12669467?s=64" alt="" class="w-14 h-14 rounded-full" />
 					<div class="flex flex-col">
 						<span class="font-bold text-primary">Tiago Teles</span>
-						<span class="font-semibold text-label text-xs -mt-[2px]">gira@tteles.dev</span>
+						<span class="font-semibold text-label text-xs -mt-[2px]">tiago@gira-mais.app</span>
 					</div>
 				</a>
 				<div class="absolute -left-12 top-[4.5rem]">
