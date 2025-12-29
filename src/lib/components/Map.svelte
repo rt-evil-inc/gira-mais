@@ -14,19 +14,12 @@
 	import { AttributionControl, GeoJSONSource, LineLayer, MapLibre, SymbolLayer } from 'svelte-maplibre-gl';
 	import { fade } from 'svelte/transition';
 
-	interface Props {
-		loading?: boolean;
-		bottomPadding?: number;
-		topPadding?: number;
-		leftPadding?: number;
-	}
-
 	let {
 		loading = true,
 		bottomPadding = $bindable(0),
 		topPadding = $bindable(0),
 		leftPadding = $bindable(0),
-	}: Props = $props();
+	} = $props();
 
 	let map: MaplibreMap | undefined = $state();
 	let mapLoaded = $state(false);
