@@ -458,8 +458,8 @@ const translations = {
 		pt: 'Bicicletas em falta',
 	},
 	ghost_bike_description: {
-		en: 'You can try to retrieve bikes with a green light that do not appear in the system through their number.',
-		pt: 'Pode tentar retirar bicicletas com luz verde que não aparecem no sistema através do seu número.',
+		en: 'You can try to retrieve bikes that do not appear in the system through their number.',
+		pt: 'Pode tentar retirar bicicletas que não aparecem no sistema através do seu número.',
 	},
 	ghost_dismiss_label: {
 		en: 'Attempt to unlock',
