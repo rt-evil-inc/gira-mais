@@ -7,12 +7,11 @@
 	import { t } from '$lib/translations';
 	import { enqueueDialog, errorMessages } from '$lib/ui.svelte';
 	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
-	import { Keyboard } from '@capacitor/keyboard';
 	import { IconX } from '@tabler/icons-svelte';
 	import Search from '@tabler/icons-svelte/icons/search';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
-	import { tweened } from 'svelte/motion';
+	import { Tween } from 'svelte/motion';
 	import { fade } from 'svelte/transition';
 
 	interface Props {
@@ -23,7 +22,7 @@
 	let { bikeListHeight = $bindable(0), posTop = $bindable<number|undefined>(0) }: Props = $props();
 
 	let initPos = 0;
-	let pos = tweened($selectedStation != null ? 0 : 9999, {
+	let pos = new Tween($selectedStation != null ? 0 : 9999, {
 		duration: 150,
 		easing: cubicOut,
 	});
@@ -64,7 +63,7 @@
 	let windowHeight:number|undefined = $state();
 
 	$effect(() => {
-		if ($pos !== null && !dragging && !updating && windowHeight !== undefined) {
+		if (pos.current !== null && !dragging && !updating && windowHeight !== undefined) {
 			const newPosTop = Math.min(menu?.getBoundingClientRect().y, windowHeight);
 			posTop = newPosTop;
 		} else {
@@ -73,7 +72,7 @@
 	});
 
 	function onTouchStart(event: TouchEvent) {
-		initPos = event.touches[0].clientY - $pos;
+		initPos = event.touches[0].clientY - pos.current;
 	}
 
 	function onTouchMove(event: TouchEvent) {
@@ -84,7 +83,7 @@
 
 	function onTouchEnd() {
 		dragging = false;
-		if (Math.abs($pos) > dragged.clientHeight * 0.3) {
+		if (Math.abs(pos.current) > dragged.clientHeight * 0.3) {
 			dismiss();
 		} else {
 			pos.set(0);
@@ -141,7 +140,7 @@
 
 	$effect(() => {
 		if ($selectedStation != null) {
-			$pos = 0;
+			pos.set(0);
 			bikeInfo = [];
 			updateInfo($selectedStation);
 		} else if (dragged) {
@@ -173,17 +172,17 @@
 		return `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23${primaryColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`;
 	}
 
-	let bikeIdNumber = $state('');
+	let bikeIdNumber = $state<number|null>(null);
 	let bikeType = $state<'classic'|'electric'>('electric');
 	let bikeId = $derived.by(() => {
-		if (bikeIdNumber.trim() === '') return null;
-		return (bikeType === 'electric' ? 'E' : 'C') + bikeIdNumber.trim();
+		if (bikeIdNumber === null) return null;
+		return (bikeType === 'electric' ? 'E' : 'C') + bikeIdNumber.toString().padStart(4, '0');
 	});
 
 	const makeExtraBikeFunction = (dismiss: () => void) => {
 		return async () => {
 			await tick();
-			if (!bikeIdNumber.match(/^\d{4}$/)) {
+			if (bikeIdNumber === null || bikeIdNumber > 10000 || bikeIdNumber < 0) {
 				errorMessages.add(
 					$t('bike_unlock_invalid_id_error'),
 					2000,
@@ -200,6 +199,7 @@
 			dismiss();
 			await tick();
 			bikeListHeight = bikeList.clientHeight;
+			bikeIdNumber = null;
 		};
 	};
 
@@ -227,8 +227,8 @@
 				<option value="classic">C</option>
 				<option value="electric">E</option>
 			</select>
-			<input bind:this={bikeIdInput} bind:value={bikeIdNumber} name="Bike ID" type="text" placeholder="1234"
-				class="bg-background-secondary text-label rounded-lg p-2 w-full border-none focus:ring-0"
+			<input bind:this={bikeIdInput} bind:value={bikeIdNumber} name="Bike ID" type="number" placeholder="1234"
+				class="bg-background-secondary placeholder-label text-info rounded-lg p-2 w-full border-none focus:ring-0"
 				onkeydown={async e => {
 					if (e.key.length === 1 && (e.key < '0' || e.key > '9')) {
 						e.preventDefault();
@@ -243,7 +243,7 @@
 	</div>
 {/snippet}
 
-<div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{$pos}px)" >
+<div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{pos.current}px)" >
 	<div bind:this={dragged} class="bg-background rounded-t-4xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 		<div class="w-full h-6 pt-2" ontouchstart={onTouchStart} ontouchend={onTouchEnd} ontouchmove={onTouchMove}>
 			<div class="mx-auto bg-background-tertiary w-16 h-[6px] rounded-full"></div>

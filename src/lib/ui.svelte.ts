@@ -1,4 +1,5 @@
 import { App } from '@capacitor/app';
+import { Keyboard } from '@capacitor/keyboard';
 import type { Snippet } from 'svelte';
 import { writable } from 'svelte/store';
 
@@ -25,12 +26,24 @@ export const errorMessages = (() => {
 // TODO: remove this file and put it in a svelte file using context
 type DialogSnippet = Snippet<[dismiss: () => void]>;
 
-export const dialogQueue = $state<{snippet: DialogSnippet,dismiss: () => void}[]>([]);
+export const dialogQueue = $state<{ snippet: DialogSnippet, dismiss: () => void }[]>([]);
 
-export const enqueueDialog = (snippet:DialogSnippet) => {
+export const enqueueDialog = (snippet: DialogSnippet) => {
 	let dismiss = () => {
 		const index = dialogQueue.findIndex(d => d.dismiss === dismiss);
 		if (index !== -1) dialogQueue.splice(index, 1);
 	}
-	dialogQueue.push({snippet, dismiss});
+	dialogQueue.push({ snippet, dismiss });
 };
+
+
+export let keyboard = $state({ visible: false, height: 0 });
+
+Keyboard.addListener('keyboardWillShow', info => {
+	keyboard.visible = true;
+	keyboard.height = info.keyboardHeight;
+});
+Keyboard.addListener('keyboardWillHide', () => {
+	keyboard.visible = false;
+	keyboard.height = 0;
+});

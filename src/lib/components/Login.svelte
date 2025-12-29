@@ -5,6 +5,7 @@
 	import { Keyboard } from '@capacitor/keyboard';
 	import { t } from '$lib/translations';
 	import { IconLoader2 } from '@tabler/icons-svelte';
+	import { keyboard } from '$lib/ui.svelte';
 
 	let email = $state('');
 	let password = $state('');
@@ -27,17 +28,9 @@
 			loading = false;
 		}
 	}
-
-	let keyboardHeight = $state(0);
-	Keyboard.addListener('keyboardWillShow', (info:{keyboardHeight:number}) => keyboardHeight = info.keyboardHeight);
-	Keyboard.addListener('keyboardWillHide', () => keyboardHeight = 0);
-
-	onDestroy(() => {
-		Keyboard.removeAllListeners();
-	});
 </script>
 
-<div class="flex flex-col max-w-sm px-4 w-full h-full justify-center transition-all duration-300" style:padding-bottom="{keyboardHeight}px">
+<div class="flex flex-col max-w-sm px-4 w-full h-full justify-center transition-all duration-300" style:padding-bottom="{keyboard.height}px">
 	<div class="bg-background rounded-2xl max-w-sm w-full flex flex-col items-center p-6" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 		<div class="text-center text-lg text-info font-semibold mb-2 rounded-lg">{$t('welcome_message')}</div>
 		<form class="flex flex-col w-full gap-4" onsubmit={loginWrapper}>
