@@ -2,14 +2,16 @@
 	import { token } from '$lib/account';
 	import { bearing, bearingNorth, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
+	import { following, loadAllImages, selectedStation, stations } from '$lib/map.svelte';
 	import { theme } from '$lib/theme';
-	import { currentTrip, type ActiveTrip } from '$lib/trip';
+	import { currentTrip } from '$lib/trip';
+	import { getCssVariable } from '$lib/utils';
 	import type { Position } from '@capacitor/geolocation';
-	import type { GeoJSON } from 'geojson';
-	import maplibregl from 'maplibre-gl';
-	import { onMount, tick } from 'svelte';
-	import { get } from 'svelte/store';
+	import type GeoJSON from 'geojson';
+	import type maplibregl from 'maplibre-gl';
+	import type { MapLayerMouseEvent, Map as MaplibreMap } from 'maplibre-gl';
+	import { tick } from 'svelte';
+	import { AttributionControl, GeoJSONSource, LineLayer, MapLibre, SymbolLayer } from 'svelte-maplibre-gl';
 	import { fade } from 'svelte/transition';
 
 	interface Props {
@@ -26,10 +28,10 @@
 		leftPadding = $bindable(0),
 	}: Props = $props();
 
-	let mapElem: HTMLDivElement;
-	let map : maplibregl.Map;
+	let map: MaplibreMap | undefined = $state();
 	let mapLoaded = $state(false);
-	let ready = $derived(mapLoaded && !loading && stations.value.length != 0);
+	let imagesLoaded = $state(false);
+	let ready = $derived(mapLoaded && imagesLoaded && !loading && stations.value.length !== 0);
 	let blurred = $state(true);
 
 	$effect(() => {
@@ -37,41 +39,101 @@
 	});
 
 	$effect(() => {
-		if ($bearingNorth) map.flyTo({ bearing: 0 });
+		if ($bearingNorth && map) map.flyTo({ bearing: 0 });
 	});
 
-	function addEventListeners(map: maplibregl.Map) {
-		map.on('click', 'points', async function (e) {
-			if (e.features === undefined) return;
-			following.set(false);
-			const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
-			const props = feature.properties as { serialNumber: string, name: string, bikes: number };
-			selectedStation.set(props.serialNumber);
-			await tick();
-			await tick();
-			map.flyTo({
-				center: feature.geometry.coordinates as [number, number],
-				padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
-				curve: 0,
-			});
-		});
-		// on dragging map, remove user tracking
-		map.on('dragstart', () => {
-			following.set(false);
-		});
-		map.on('click', e => {
-			const features = map.queryRenderedFeatures(e.point, { layers: ['points'] });
-			if (features.length == 0) {
-				selectedStation.set(null);
-			}
-		});
-		map.on('rotate', () => {
-			bearing.set(map.getBearing());
-			bearingNorth.set(false);
+	// Build station GeoJSON data
+	let stationsGeoJSON = $derived<GeoJSON.FeatureCollection>({
+		type: 'FeatureCollection',
+		features: stations.value.map(station => ({
+			type: 'Feature',
+			properties: {
+				code: station.code,
+				serialNumber: station.serialNumber,
+				name: station.name,
+				bikes: station.bikes,
+				selected: station.serialNumber === $selectedStation,
+				inService: station.assetStatus === 'active',
+				docks: station.docks,
+				freeDocks: station.docks - station.bikes,
+			},
+			geometry: {
+				type: 'Point',
+				coordinates: [station.longitude, station.latitude],
+			},
+		})),
+	});
+
+	// Build user location GeoJSON
+	let userLocationGeoJSON = $derived<GeoJSON.FeatureCollection>({
+		type: 'FeatureCollection',
+		features: $currentPos ? [{
+			type: 'Feature',
+			properties: {},
+			geometry: {
+				type: 'Point',
+				coordinates: [$currentPos.coords.longitude, $currentPos.coords.latitude],
+			},
+		}] : [],
+	});
+
+	// Build trip path GeoJSON
+	let tripPathGeoJSON = $derived<GeoJSON.Feature>({
+		type: 'Feature',
+		properties: {},
+		geometry: {
+			type: 'LineString',
+			coordinates: $currentTrip?.pathTaken?.map(p => [p.lng, p.lat]) ?? [],
+		},
+	});
+
+	// Map style based on theme
+	let mapStyle = $derived(getMapStyle($theme));
+
+	// Layer visibility based on trip status
+	let showBikeLayer = $derived($currentTrip === null);
+	let showDockLayer = $derived($currentTrip !== null);
+
+	// Handle station click
+	async function handleStationClick(e: MapLayerMouseEvent) {
+		if (!e.features || e.features.length === 0 || !map) return;
+		following.set(false);
+		const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
+		const props = feature.properties as { serialNumber: string };
+		selectedStation.set(props.serialNumber);
+		await tick();
+		await tick();
+		map.flyTo({
+			center: feature.geometry.coordinates as [number, number],
+			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
+			curve: 0,
 		});
 	}
 
+	// Handle map click (deselect station)
+	function handleMapClick(e: maplibregl.MapMouseEvent) {
+		if (!map) return;
+		const features = map.queryRenderedFeatures(e.point, { layers: ['points', 'docks'] });
+		if (features.length === 0) {
+			selectedStation.set(null);
+		}
+	}
+
+	// Handle map drag
+	function handleDragStart() {
+		following.set(false);
+	}
+
+	// Handle map rotate
+	function handleRotate() {
+		if (!map) return;
+		bearing.set(map.getBearing());
+		bearingNorth.set(false);
+	}
+
+	// Center map on user position
 	function centerMap(pos: Position) {
+		if (!map) return;
 		map.flyTo({
 			center: [pos.coords.longitude, pos.coords.latitude],
 			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
@@ -79,111 +141,33 @@
 		});
 	}
 
-	currentPos.subscribe((pos: Position|null) => {
-		if (!mapLoaded) return;
-		if (pos && pos.coords) {
-			if ($following && !blurred) centerMap(pos);
-			const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
-			const data:GeoJSON = {
-				'type': 'FeatureCollection',
-				'features': [{
-					type: 'Feature',
-					properties: {},
-					geometry: {
-						type: 'Point',
-						coordinates: [pos.coords.longitude, pos.coords.latitude],
-					},
-				}],
-			};
-			if (src != null) {
-				src.setData(data);
-			} else {
-				map.addSource('user-location', {
-					'type': 'geojson',
-					'data': data,
-				});
-			}
-		}
-	});
-
-	currentTrip.subscribe((trip: ActiveTrip | null) => {
-		if (!mapLoaded) return;
-		const src = map.getSource<maplibregl.GeoJSONSource>('trip-path');
-		const data:GeoJSON = {
-			type: 'Feature',
-			properties: {},
-			geometry: {
-				type: 'LineString',
-				coordinates: trip?.pathTaken?.map(p => [p.lng, p.lat]) ?? [],
-			},
-		};
-		if (src != null) {
-			src.setData(data);
-		} else {
-			map.addSource('trip-path', {
-				'type': 'geojson',
-				'data': data,
-			});
-		}
-	});
-
-	onMount(() => {
-		map = new maplibregl.Map({
-			container: mapElem,
-			style: getMapStyle(get(theme)),
-			center: [-9.15, 38.744],
-			zoom: 11,
-			attributionControl: false,
-		});
-		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
-		map.once('load', async () => {
-			console.debug('Map loaded');
-			await loadImages(map);
-			mapLoaded = true;
-			setSourceData(map);
-			addLayers(map);
-			addEventListeners(map);
-		});
-		return () => {
-			map.remove();
-		};
-	});
-
-	theme.subscribe(currentTheme => {
-		if (map && currentTheme) {
-			map.once('styledata', () => {
-				console.debug('style.load fired');
-				loadImages(map);
-				setSourceData(map);
-				addLayers(map);
-				console.debug(map, map.getStyle(), map.getSource('points'));
-			});
-			map.setStyle(getMapStyle(currentTheme), { diff: true });
-		}
-	});
-
-	currentTrip.subscribe(trip => {
-		if (mapLoaded) {
-			map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
-			map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
-		}
-	});
-
+	// Follow user position effect
 	$effect(() => {
-		if (stations.value && map) {
-			$selectedStation = $selectedStation;
-			if (mapLoaded) {
-				setSourceData(map);
-			}
+		if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) {
+			centerMap($currentPos);
 		}
 	});
 
-	$effect(() => {
-		if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
-	});
-
+	// Reset bottom padding when station is deselected
 	$effect(() => {
 		if ($selectedStation == null) bottomPadding = 0;
+	});
+
+	// Load images when map is ready
+	async function handleMapLoad(e: maplibregl.MapLibreEvent) {
+		console.debug('Map loaded');
+		mapLoaded = true;
+	}
+
+	// Reload images when theme changes
+	$effect(() => {
+		if (map && mapLoaded) {
+			// Wait for the new style to fully load before reloading images
+			console.debug('Theme changed, reloading images');
+			loadAllImages(map, $theme).then(() => {
+				imagesLoaded = true;
+			});
+		}
 	});
 </script>
 
@@ -207,4 +191,108 @@
 		</g>
 	</svg>
 {/if}
-<div bind:this={mapElem} class="h-full w-full"></div>
+
+<MapLibre
+	bind:map
+	class="h-full w-full"
+	style={mapStyle}
+	center={{ lng: -9.15, lat: 38.744 }}
+	zoom={11}
+	attributionControl={false}
+	autoloadGlobalCss={false}
+	onload={handleMapLoad}
+	onclick={handleMapClick}
+	ondragstart={handleDragStart}
+	onrotate={handleRotate}
+>
+	<AttributionControl position="bottom-left" />
+
+	<!-- Trip path layer -->
+	<GeoJSONSource id="trip-path" data={tripPathGeoJSON}>
+		<LineLayer
+			id="trip-path-outline"
+			beforeId="building"
+			layout={{
+				'line-cap': 'round',
+				'line-join': 'round',
+			}}
+			paint={{
+				'line-color': getCssVariable('--color-background'),
+				'line-width': 10,
+			}}
+		/>
+		<LineLayer
+			id="trip-path"
+			beforeId="building"
+			layout={{
+				'line-cap': 'round',
+				'line-join': 'round',
+			}}
+			paint={{
+				'line-color': getCssVariable('--color-primary'),
+				'line-width': 6,
+			}}
+		/>
+	</GeoJSONSource>
+
+	<!-- Station markers layer -->
+	{#if imagesLoaded}
+		<GeoJSONSource id="points" data={stationsGeoJSON}>
+			<!-- Bike markers (visible when no trip) -->
+			<SymbolLayer
+				id="points"
+				layout={{
+					'visibility': showBikeLayer ? 'visible' : 'none',
+					'icon-image': ['case',
+						['get', 'selected'],
+						['case',
+							['get', 'inService'],
+							['concat', 'bike_selected-', ['get', 'bikes']],
+							'bike_inactive_selected'],
+						['case',
+							['get', 'inService'],
+							['concat', 'bike-', ['get', 'bikes']],
+							'bike_inactive']],
+					'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 13, 0.5],
+					'icon-anchor': 'bottom',
+					'icon-allow-overlap': true,
+					'icon-padding': 0,
+				}}
+				onclick={handleStationClick}
+			/>
+
+			<!-- Dock markers (visible during trip) -->
+			<SymbolLayer
+				id="docks"
+				layout={{
+					'visibility': showDockLayer ? 'visible' : 'none',
+					'icon-image': ['case',
+						['get', 'selected'],
+						['case',
+							['get', 'inService'],
+							['concat', 'dock_selected-', ['get', 'freeDocks']],
+							'dock_inactive_selected'],
+						['case',
+							['get', 'inService'],
+							['concat', 'dock-', ['get', 'freeDocks']],
+							'dock_inactive']],
+					'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 13, 0.5],
+					'icon-anchor': 'bottom',
+					'icon-allow-overlap': true,
+					'icon-padding': 0,
+				}}
+				onclick={handleStationClick}
+			/>
+		</GeoJSONSource>
+
+		<!-- User location layer -->
+		<GeoJSONSource id="user-location" data={userLocationGeoJSON}>
+			<SymbolLayer
+				id="user-location"
+				layout={{
+					'icon-image': 'pulsing-dot',
+				}}
+			/>
+		</GeoJSONSource>
+	{/if}
+</MapLibre>

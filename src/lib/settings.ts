@@ -24,14 +24,23 @@ export async function loadSettings() {
 	const locale = ((await Preferences.get({ key: 'settings/locale' })).value || 'system') as 'pt'|'en'|'system';
 	const updateWarning = (await Preferences.get({ key: 'settings/updateWarning' })).value !== 'false';
 	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings });
-	appSettings.subscribe(async v => {
-		Preferences.set({ key: 'settings/distanceLock', value: v.distanceLock.toString() });
-		Preferences.set({ key: 'settings/mockUnlock', value: v.mockUnlock.toString() });
-		Preferences.set({ key: 'settings/backgroundLocation', value: v.backgroundLocation.toString() });
-		Preferences.set({ key: 'settings/analytics', value: v.analytics.toString() });
-		Preferences.set({ key: 'settings/reportRatings', value: v.reportRatings.toString() });
-		Preferences.set({ key: 'settings/theme', value: v.theme });
-		Preferences.set({ key: 'settings/locale', value: v.locale });
-		Preferences.set({ key: 'settings/updateWarning', value: v.updateWarning.toString() });
+
+	// Track previous values to only save changed settings
+	let prev: AppSettings | undefined;
+	appSettings.subscribe(v => {
+		if (!prev) {
+			prev = v;
+			return; // Skip initial subscription call
+		}
+		// Only save settings that have actually changed
+		if (v.distanceLock !== prev.distanceLock) Preferences.set({ key: 'settings/distanceLock', value: v.distanceLock.toString() });
+		if (v.mockUnlock !== prev.mockUnlock) Preferences.set({ key: 'settings/mockUnlock', value: v.mockUnlock.toString() });
+		if (v.backgroundLocation !== prev.backgroundLocation) Preferences.set({ key: 'settings/backgroundLocation', value: v.backgroundLocation.toString() });
+		if (v.analytics !== prev.analytics) Preferences.set({ key: 'settings/analytics', value: v.analytics.toString() });
+		if (v.reportRatings !== prev.reportRatings) Preferences.set({ key: 'settings/reportRatings', value: v.reportRatings.toString() });
+		if (v.theme !== prev.theme) Preferences.set({ key: 'settings/theme', value: v.theme });
+		if (v.locale !== prev.locale) Preferences.set({ key: 'settings/locale', value: v.locale });
+		if (v.updateWarning !== prev.updateWarning) Preferences.set({ key: 'settings/updateWarning', value: v.updateWarning.toString() });
+		prev = v;
 	});
 }

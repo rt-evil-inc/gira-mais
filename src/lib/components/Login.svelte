@@ -1,11 +1,8 @@
 <script lang="ts">
-	import { login } from '$lib/account';
-	import { onDestroy } from 'svelte';
-	import { userCredentials } from '$lib/account';
-	import { Keyboard } from '@capacitor/keyboard';
+	import { login, userCredentials } from '$lib/account';
 	import { t } from '$lib/translations';
-	import { IconLoader2 } from '@tabler/icons-svelte';
 	import { keyboard } from '$lib/ui.svelte';
+	import { IconLoader2 } from '@tabler/icons-svelte';
 
 	let email = $state('');
 	let password = $state('');
