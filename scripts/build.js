@@ -60,14 +60,18 @@ async function updateAppId(dev = false) {
 }
 
 async function syncNetworkConfig() {
+	const port = await getPort();
 	const capacitorConfigRaw = await fs.readFile('./capacitor.config.json');
 	await fs.copyFile('./capacitor.config.json', `./capacitor.config.json.timestamp-${Date.now()}`);
 	const config = JSON.parse(String(capacitorConfigRaw));
 	if (!config.server) config.server = {};
-	config.server.url = `http://${getIp()}:${await getPort()}/`;
+	// Use localhost + adb reverse for secure context (crypto.subtle requires secure context)
+	config.server.url = `http://localhost:${port}/`;
 	config.server.cleartext = true;
 	await fs.writeFile('./capacitor.config.json', JSON.stringify(config));
 	await execCommand('npx cap sync');
+	// Set up adb reverse so device's localhost:port forwards to host machine
+	await execCommand(`adb reverse tcp:${port} tcp:${port}`);
 	await cleanupNetworkConfig();
 }
 
