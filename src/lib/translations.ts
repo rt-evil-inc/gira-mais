@@ -450,8 +450,8 @@ const translations = {
 		pt: 'Nenhuma bicicleta encontrada',
 	},
 	search_other_bikes: {
-		en: 'Search for other bikes',
-		pt: 'Procurar outras bicicletas',
+		en: 'Add missing bike',
+		pt: 'Adicionar bicicleta em falta',
 	},
 	ghost_bike_title: {
 		en: 'Missing bikes',
@@ -462,8 +462,8 @@ const translations = {
 		pt: 'Pode tentar retirar bicicletas que não aparecem no sistema através do seu número.',
 	},
 	ghost_dismiss_label: {
-		en: 'Attempt to unlock',
-		pt: 'Tentar retirar',
+		en: 'Add missing bike',
+		pt: 'Adicionar bicicleta em falta',
 	},
 	bike_unlock_invalid_id_error: {
 		en: 'Invalid bike ID. It should be a 4-digit number.',

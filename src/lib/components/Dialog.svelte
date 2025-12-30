@@ -10,10 +10,8 @@
 	$effect(() => {
 		if (toRender) {
 			document.documentElement.addEventListener('touchmove', stopScrolling, { passive: false });
-			console.log('--- added touchmove listener to stop scrolling');
 		} else {
 			document.documentElement.removeEventListener('touchmove', stopScrolling);
-			console.log('--- removed touchmove listener to stop scrolling');
 		}
 	});
 </script>
