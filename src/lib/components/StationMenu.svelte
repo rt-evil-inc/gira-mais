@@ -2,6 +2,7 @@
 	import Bike from '$lib/components/Bike.svelte';
 	import BikeSkeleton from '$lib/components/BikeSkeleton.svelte';
 	import { getStationInfo } from '$lib/gira-api/api';
+	import { IdToSerial } from '$lib/gira-api/bikeMapping';
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
@@ -49,7 +50,7 @@
 		return undefined;
 	});
 
-	let bikeInfo:({type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string}|{id:string})[] = $state([]);
+	let bikeInfo:({type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string}|{id:string, serial: string})[] = $state([]);
 	function isRealBike(bike: typeof bikeInfo[number]): bike is {type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string} {
 		return 'type' in bike === true;
 	}
@@ -182,19 +183,21 @@
 	const makeExtraBikeFunction = (dismiss: () => void) => {
 		return async () => {
 			await tick();
-			if (bikeIdNumber === null || bikeIdNumber > 10000 || bikeIdNumber < 0) {
+			if (bikeId === null) {
 				errorMessages.add(
 					$t('bike_unlock_invalid_id_error'),
 					2000,
 				);
 				return;
 			}
-			if (bikeId) bikeInfo.push({ id: bikeId });
+			let serial = IdToSerial.get(bikeId);
+			if (serial) bikeInfo.push({ id: bikeId, serial: serial });
 			else {
 				errorMessages.add(
 					$t('bike_unlock_no_serial_error'),
 					3000,
 				);
+				return;
 			}
 			dismiss();
 			await tick();
@@ -282,7 +285,7 @@
 						{#if isRealBike(bike)}
 							<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.serial} disabled={isScrolling} station={station} />
 						{:else}
-							<Bike type={null} id={bike.id} battery={null} dock={null} serial={null} disabled={isScrolling} station={station} />
+							<Bike type={null} id={bike.id} battery={null} dock={null} serial={bike.serial} disabled={isScrolling} station={station} />
 						{/if}
 
 					{/each}

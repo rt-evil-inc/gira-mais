@@ -21,7 +21,7 @@
 		battery?: number|null;
 		dock: string|null;
 		disabled?: boolean;
-		serial: string|null;
+		serial: string;
 		station: StationInfo;
 	}
 

@@ -60,15 +60,15 @@ async function checkTripStarted(serial: string) {
  * @param station 
  * @returns True if the trip was started successfully, false otherwise
  */
-export async function tryStartTrip(id: string, serial: string|null, station: StationInfo): Promise<boolean> {
-	if (serial == null){
-		serial = IdToSerial.get(id) ?? null;
-	}
-	if (serial == null) {
-		errorMessages.add(get(t)('bike_unlock_no_serial_error'));
-		reportErrorEvent('bike_unlock_no_serial_error', id);
-		return false;
-	}
+export async function tryStartTrip(id: string, serial: string, station: StationInfo): Promise<boolean> {
+	// if (serial == null){
+	// 	serial = IdToSerial.get(id) ?? null;
+	// }
+	// if (serial == null) {
+	// 	errorMessages.add(get(t)('bike_unlock_no_serial_error'));
+	// 	reportErrorEvent('bike_unlock_no_serial_error', id);
+	// 	return false;
+	// }
 	try {
 		if (get(appSettings).distanceLock) {
 			const pos = get(currentPos);
