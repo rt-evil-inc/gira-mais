@@ -96,11 +96,7 @@
 		selectedStation.set(props.serialNumber);
 		await tick();
 		await tick();
-		map.flyTo({
-			center: feature.geometry.coordinates as [number, number],
-			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
-			curve: 0,
-		});
+		map.flyTo({ center: feature.geometry.coordinates as [number, number] });
 	}
 
 	// Handle map click (deselect station)
@@ -129,7 +125,6 @@
 		if (!map) return;
 		map.flyTo({
 			center: [pos.coords.longitude, pos.coords.latitude],
-			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
 			zoom: 16,
 		});
 	}
@@ -191,6 +186,7 @@
 	style={mapStyle}
 	center={{ lng: -9.15, lat: 38.744 }}
 	zoom={11}
+	padding={{ top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding, right: 0 }}
 	attributionControl={false}
 	autoloadGlobalCss={false}
 	onload={handleMapLoad}

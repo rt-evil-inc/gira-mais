@@ -66,7 +66,6 @@
     "@tabler/icons-svelte": "^3.34.1",
     "@types/suncalc": "^1.9.2",
     "capacitor-plugin-safe-area": "^2.0.6",
-    "maplibre-gl": "^4.7.1",
     "suncalc": "^1.9.0",
     "svelte-maplibre-gl": "^1.0.2"
   },
