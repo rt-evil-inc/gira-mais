@@ -6,7 +6,7 @@
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
-	import { enqueueDialog, errorMessages } from '$lib/ui.svelte';
+	import { enqueueDialog, errorMessages, safeInsets } from '$lib/ui.svelte';
 	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
 	import { IconX } from '@tabler/icons-svelte';
 	import Search from '@tabler/icons-svelte/icons/search';
@@ -271,7 +271,7 @@
 			</div>
 		</div>
 		<div class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
-			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3">
+			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom={$safeInsets.bottom + 'px'}>
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
 						<BikeSkeleton />
