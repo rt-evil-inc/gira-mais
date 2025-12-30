@@ -4,7 +4,7 @@ import { get } from 'svelte/store';
 import { currentPos } from '$lib/location';
 import { stations, type StationInfo } from '$lib/map.svelte';
 import { currentTrip, endTrip, tripRating } from '$lib/trip';
-import { fullOnetimeInfo, getActiveTripInfo, getStations, tripPayWithNoPoints, tripPayWithPoints } from '$lib/gira-api/api';
+import { fullOnetimeInfo, getActiveTripInfo, getStations, rateTrip, tripPayWithNoPoints, tripPayWithPoints } from '$lib/gira-api/api';
 import { accountInfo } from '$lib/account';
 
 export async function updateOnetimeInfo() {
@@ -143,8 +143,12 @@ export function ingestLastUnratedTrip(lastTripData:Q<['unratedTrips', 'tripHisto
 	if (unratedTrip == null || unratedTrip.code == null || unratedTrip.asset == null) return;
 	const endToNow = (new Date).getTime() - new Date(unratedTrip.endDate).getTime();
 	if (unratedTrip) tripPayWithPoints(unratedTrip.code); // attempt to pay with points just in case
-	// check if 24h have passed
-	if (!(endToNow < 24 * 60 * 60 * 1000)) return;
+	// check if 7 days have passed
+	if (endToNow > 24 * 60 * 60 * 1000 * 7){
+		// auto-rate trip as 5 stars
+		rateTrip(unratedTrip.code, 5)
+		return;
+	}
 	let bikePlate;
 	if (lastTripData.tripHistory !== null && lastTripData.tripHistory !== undefined && lastTripData.tripHistory.length > 0) {
 		const lastTrip = lastTripData.tripHistory[0];
