@@ -7,6 +7,9 @@ export type AppSettings = {
 	backgroundLocation: boolean;
 	analytics: boolean;
 	reportRatings: boolean;
+	explainers: {
+		rating_drag: boolean;
+	};
 	theme: 'light'|'dark'|'system'|'daylight';
 	locale: 'pt'|'en'|'system';
 	updateWarning: boolean;
@@ -20,10 +23,13 @@ export async function loadSettings() {
 	const backgroundLocation = (await Preferences.get({ key: 'settings/backgroundLocation' })).value !== 'false';
 	const analytics = (await Preferences.get({ key: 'settings/analytics' })).value !== 'false';
 	const reportRatings = (await Preferences.get({ key: 'settings/reportRatings' })).value !== 'false';
+	const explainers = {
+		rating_drag: (await Preferences.get({ key: 'settings/explainers/rating_drag' })).value === 'true',
+	};
 	const theme = ((await Preferences.get({ key: 'settings/theme' })).value || 'system') as 'light'|'dark'|'system'|'daylight';
 	const locale = ((await Preferences.get({ key: 'settings/locale' })).value || 'system') as 'pt'|'en'|'system';
 	const updateWarning = (await Preferences.get({ key: 'settings/updateWarning' })).value !== 'false';
-	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings });
+	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings, explainers });
 
 	// Track previous values to only save changed settings
 	let prev: AppSettings | undefined;
@@ -38,9 +44,19 @@ export async function loadSettings() {
 		if (v.backgroundLocation !== prev.backgroundLocation) Preferences.set({ key: 'settings/backgroundLocation', value: v.backgroundLocation.toString() });
 		if (v.analytics !== prev.analytics) Preferences.set({ key: 'settings/analytics', value: v.analytics.toString() });
 		if (v.reportRatings !== prev.reportRatings) Preferences.set({ key: 'settings/reportRatings', value: v.reportRatings.toString() });
+		if (v.explainers.rating_drag !== prev.explainers.rating_drag) Preferences.set({ key: 'settings/explainers/rating_drag', value: v.explainers.rating_drag.toString() });
 		if (v.theme !== prev.theme) Preferences.set({ key: 'settings/theme', value: v.theme });
 		if (v.locale !== prev.locale) Preferences.set({ key: 'settings/locale', value: v.locale });
 		if (v.updateWarning !== prev.updateWarning) Preferences.set({ key: 'settings/updateWarning', value: v.updateWarning.toString() });
 		prev = v;
 	});
+}
+
+export function resetExplainers() {
+	appSettings.update(settings => ({
+		...settings,
+		explainers: {
+			rating_drag: false,
+		},
+	}));
 }

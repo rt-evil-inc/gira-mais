@@ -1,7 +1,7 @@
 <script>
 	import { dev } from '$app/environment';
 	import { LOCK_DISTANCE_m } from '$lib/constants';
-	import { appSettings } from '$lib/settings';
+	import { appSettings, resetExplainers } from '$lib/settings';
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import Toggle from '$lib/components/Toggle.svelte';
 	import { t } from '$lib/translations';
@@ -72,6 +72,15 @@
 						<div class="text-xs font-medium leading-[1.1] text-label">{$t('update_warning_setting_description')}</div>
 					</div>
 					<Toggle bind:checked={$appSettings.updateWarning} />
+				</div>
+				<div class="flex bg-background rounded-2xl py-4 px-5 gap-5 text-info justify-between items-center dark:bg-background-secondary" style:box-shadow="0px 0px 12px 0px var(--color-shadow)">
+					<div class="grow">
+						<div class="font-semibold leading-tight mb-1">{$t('reset_explainers_setting_label')}</div>
+						<div class="text-xs font-medium leading-[1.1] text-label">{$t('reset_explainers_setting_description')}</div>
+					</div>
+					<button class="h-12 rounded-lg bg-background-secondary px-4 text-sm font-bold text-info active:bg-background-tertiary dark:bg-background-tertiary" onclick={resetExplainers}>
+						{$t('reset_button')}
+					</button>
 				</div>
 			</div>
 		</div>

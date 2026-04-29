@@ -34,6 +34,16 @@
 	let tripStatusWidth:number = $state(0);
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
+	const showRatingMenuForTesting = true;
+	let previewRatingDismissed = $state(false);
+	let visibleTripRating = $derived($tripRating.currentRating ?? (showRatingMenuForTesting && !previewRatingDismissed ? {
+		code: 'preview-trip',
+		bikePlate: 'E0000',
+		startDate: new Date(),
+		endDate: new Date(),
+		tripPoints: 0,
+	} : null));
+	let ratingMenuIsPreview = $derived($tripRating.currentRating === null && visibleTripRating !== null);
 
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {
@@ -75,8 +85,16 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && $networkStatus}
-			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
+		{#if visibleTripRating != null && $networkStatus}
+			<TripRating
+				tripCode={visibleTripRating.code}
+				bikePlate={visibleTripRating.bikePlate}
+				date={visibleTripRating.endDate}
+				preview={ratingMenuIsPreview}
+				onDismiss={() => {
+					if (ratingMenuIsPreview) previewRatingDismissed = true;
+				}}
+			/>
 		{/if}
 	{/if}
 

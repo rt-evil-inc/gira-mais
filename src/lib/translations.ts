@@ -37,6 +37,14 @@ const translations = {
 		en: 'Ignore this version',
 		pt: 'Ignorar esta versão',
 	},
+	reset_button: {
+		en: 'Reset',
+		pt: 'Repor',
+	},
+	undo_button: {
+		en: 'Undo',
+		pt: 'Anular',
+	},
 	new_version_available: {
 		en: 'New version available!',
 		pt: 'Nova versão disponível!',
@@ -76,6 +84,74 @@ const translations = {
 	last_trip_question: {
 		en: 'How was your last trip?',
 		pt: 'Como foi a sua última viagem?',
+	},
+	rating_details_button: {
+		en: 'Details',
+		pt: 'Detalhes',
+	},
+	rating_hide_details_button: {
+		en: 'Less',
+		pt: 'Menos',
+	},
+	rating_drag_handle_label: {
+		en: 'Drag down for details or up to dismiss',
+		pt: 'Arraste para baixo para ver detalhes ou para cima para fechar',
+	},
+	rating_drag_explainer: {
+		en: 'Drag the bar down for details, or up to dismiss.',
+		pt: 'Arraste a barra para baixo para ver detalhes, ou para cima para fechar.',
+	},
+	rating_collapse_label: {
+		en: 'Collapse rating form',
+		pt: 'Fechar avaliação',
+	},
+	rating_problem_question: {
+		en: 'What went wrong?',
+		pt: 'O que correu mal?',
+	},
+	rating_reason_brakes: {
+		en: 'Brakes',
+		pt: 'Travões',
+	},
+	rating_reason_wheels: {
+		en: 'Wheels',
+		pt: 'Rodas',
+	},
+	rating_reason_pedals: {
+		en: 'Pedals',
+		pt: 'Pedais',
+	},
+	rating_reason_dock: {
+		en: 'Dock',
+		pt: 'Doca',
+	},
+	rating_reason_acceleration: {
+		en: 'Acceleration',
+		pt: 'Aceleração',
+	},
+	rating_reason_other: {
+		en: 'Other',
+		pt: 'Outro',
+	},
+	rating_other_button: {
+		en: 'Other',
+		pt: 'Outro',
+	},
+	rating_other_label: {
+		en: 'Other reason',
+		pt: 'Outro motivo',
+	},
+	rating_other_placeholder: {
+		en: 'Tell us what went wrong',
+		pt: 'Indique o que correu mal',
+	},
+	rating_submit_button: {
+		en: 'Submit',
+		pt: 'Enviar',
+	},
+	rating_thank_you: {
+		en: 'Thank you',
+		pt: 'Obrigado',
 	},
 	station_label: {
 		en: 'Station',
@@ -360,6 +436,14 @@ const translations = {
 	warnings_settings_section: {
 		en: 'Warnings',
 		pt: 'Avisos',
+	},
+	reset_explainers_setting_label: {
+		en: 'Reset tips',
+		pt: 'Repor dicas',
+	},
+	reset_explainers_setting_description: {
+		en: 'Show first-time tips again',
+		pt: 'Mostrar novamente as dicas iniciais',
 	},
 	statistics_settings_section: {
 		en: 'Statistics',
