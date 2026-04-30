@@ -121,7 +121,6 @@
 
 	async function setRating(ratingValue: number) {
 		rating = ratingValue;
-		if (ratingValue >= 4) selectedReasons = [];
 		if (detailsProgress === 0) await submitRating();
 	}
 
