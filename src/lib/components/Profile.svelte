@@ -42,19 +42,6 @@
 		return () => backListener?.remove();
 	});
 
-	function formatName(name: string) {
-		if (!name) {
-			return $t('user_label');
-		}
-
-		let names = name.split(' ');
-		if (names.length > 1) {
-			return `${names[0]} ${names[names.length - 1]}`;
-		}
-
-		return names[0];
-	}
-
 </script>
 
 <div transition:fly={{ duration: 150, x: 100 }} class="absolute w-full h-full inset-0 bg-background z-30 grid" >
@@ -65,7 +52,7 @@
 			<div class="flex flex-col justify-center items-center w-full gap-6 mt-9">
 				<div class="flex flex-col items-center">
 					<div class="font-bold text-primary text-3xl text-center leading-none">
-						{formatName($user?.name)}
+						{$user?.name ? `${$user.name.split(' ').shift()}${$user.name.includes(' ') ? ` ${$user.name.split(' ').pop()}` : ''}` : $t('user_label')}
 					</div>
 					<div class="text-sm font-medium text-label">{$user?.email}</div>
 				</div>
