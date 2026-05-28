@@ -41,8 +41,8 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
-          java-version: "21.x"
+          distribution: "temurin"
+          java-version: "21"
           cache: "gradle"
       - name: Create the Keystore
         if: ${{ !github.event.pull_request.head.repo.fork }}
