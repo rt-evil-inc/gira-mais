@@ -21,8 +21,9 @@ concurrency:
 jobs:
   build-sign-android:
     name: Build and sign Android
-    # Skip when PR from a fork
-    if: ${{ !github.event.pull_request.head.repo.fork && github.actor != 'dependabot[bot]' }}
+    # Fork PRs build an unsigned debug APK (secrets aren't available to forks);
+    # internal PRs / pushes build the signed release artifacts.
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -44,6 +45,7 @@ jobs:
           java-version: "21.x"
           cache: "gradle"
       - name: Create the Keystore
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: echo "$KEYSTORE_B64" | base64 -d > android/key.keystore
@@ -54,26 +56,43 @@ jobs:
       - run: bun run build
       - run: bunx cap sync android
 
-      - name: Build Android App Bundle
+      - name: Build signed Android App Bundle
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: ./gradlew assembleRelease bundleRelease
         working-directory: android
 
+      - name: Build debug APK (fork PRs)
+        if: ${{ github.event.pull_request.head.repo.fork }}
+        run: ./gradlew assembleDebug
+        working-directory: android
+
       - name: Publish Android APK
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         uses: actions/upload-artifact@v4
         with:
           name: release-apk-signed
           path: android/app/build/outputs/apk/release/*.apk
       - name: Publish Android AAB
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         uses: actions/upload-artifact@v4
         with:
           name: release-aab-signed
           path: android/app/build/outputs/bundle/release/*.aab
+      - name: Publish debug APK (fork PRs)
+        if: ${{ github.event.pull_request.head.repo.fork }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
   build:
     runs-on: macos-latest
     name: Build iOS app
+    # Fork PRs do a no-codesign compile check (secrets aren't available to forks);
+    # internal PRs / pushes archive and export a signed IPA.
+    if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - name: Determine ref
         id: get-ref
@@ -89,6 +108,7 @@ jobs:
           ref: ${{ steps.get-ref.outputs.ref }}
 
       - name: Install the Apple certificate and provisioning profile
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
@@ -129,12 +149,19 @@ jobs:
       - run: bunx cap sync ios
 
       - name: Build project
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         run: xcodebuild -workspace './ios/App/App.xcworkspace' -scheme GiraMais -destination generic/platform=iOS -archivePath App.xcarchive archive
 
       - name: 🍻 Assemble IPA
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         run: xcodebuild archive -archivePath App.xcarchive -exportArchive -exportOptionsPlist ./archive.plist -exportPath output -allowProvisioningUpdates
 
+      - name: Build project (compile check, fork PRs)
+        if: ${{ github.event.pull_request.head.repo.fork }}
+        run: xcodebuild build -workspace './ios/App/App.xcworkspace' -scheme GiraMais -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO
+
       - name: Upload release bundle
+        if: ${{ !github.event.pull_request.head.repo.fork }}
         uses: actions/upload-artifact@v4
         with:
           name: app-ios
