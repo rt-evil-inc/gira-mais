@@ -26,6 +26,6 @@
 			role="none"
 		></div>
 		{@render toRender.snippet(toRender.dismiss)}
-		<div style:padding-bottom={Math.max(0, keyboard.height - 20) + 'px'} class="w-full"></div>
+		<div style:padding-bottom={Math.max(0, keyboard.height - 20) + 'px'} class="w-full transition-all duration-300"></div>
 	</div>
 {/if}
