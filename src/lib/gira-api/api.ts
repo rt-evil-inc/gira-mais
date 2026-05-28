@@ -198,7 +198,7 @@ export async function getTrip(tripCode:string) {
 export async function getActiveTripInfo() {
 	const req = query<['activeTrip']>({
 		'variables': {},
-		'query': `query { activeTrip { user, startDate, endDate, startLocation, endLocation, distance, rating, photo, cost, startOccupation, endOccupation, totalBonus, client, costBonus, comment, compensationTime, endTripDock, tripStatus, code, name, description, creationDate, createdBy, updateDate, updatedBy, defaultOrder, version } }`,
+		'query': `query { activeTrip { user, asset, startDate, endDate, startLocation, endLocation, distance, rating, photo, cost, startOccupation, endOccupation, totalBonus, client, costBonus, comment, compensationTime, endTripDock, tripStatus, code, name, description, creationDate, createdBy, updateDate, updatedBy, defaultOrder, version } }`,
 	});
 	return req;
 }
@@ -261,7 +261,7 @@ export async function fullOnetimeInfo(): Promise<Q<['getStations', 'client', 'ac
 	megaQuery += `getStations {code, description, latitude, longitude, name, bikes, docks, serialNumber, assetStatus } `;
 	megaQuery += `client { balance, bonus } `;
 	megaQuery += `activeUserSubscriptions { expirationDate subscriptionStatus name type active } `;
-	megaQuery += `activeTrip { user, startDate, endDate, startLocation, endLocation, distance, rating, photo, cost, startOccupation, endOccupation, totalBonus, client, costBonus, comment, compensationTime, endTripDock, tripStatus, code, name, description, creationDate, createdBy, updateDate, updatedBy, defaultOrder, version } `;
+	megaQuery += `activeTrip { user, asset, startDate, endDate, startLocation, endLocation, distance, rating, photo, cost, startOccupation, endOccupation, totalBonus, client, costBonus, comment, compensationTime, endTripDock, tripStatus, code, name, description, creationDate, createdBy, updateDate, updatedBy, defaultOrder, version } `;
 	megaQuery += `unratedTrips(pageInput: { _pageNum: 0, _pageSize: 1 }) { code, startDate, endDate, rating, startLocation, endLocation, cost, costBonus, asset } `;
 	megaQuery += `tripHistory(pageInput: { _pageNum: 0, _pageSize: 1 }) { code, startDate, endDate, rating, bikeName, startLocation, endLocation, bonus, usedPoints, cost, bikeType } `;
 	megaQuery += `}`;
