@@ -29,7 +29,7 @@ export async function loadSettings() {
 	let prev: AppSettings | undefined;
 	appSettings.subscribe(v => {
 		if (!prev) {
-			prev = v;
+			prev = { ...v };
 			return; // Skip initial subscription call
 		}
 		// Only save settings that have actually changed
@@ -41,6 +41,6 @@ export async function loadSettings() {
 		if (v.theme !== prev.theme) Preferences.set({ key: 'settings/theme', value: v.theme });
 		if (v.locale !== prev.locale) Preferences.set({ key: 'settings/locale', value: v.locale });
 		if (v.updateWarning !== prev.updateWarning) Preferences.set({ key: 'settings/updateWarning', value: v.updateWarning.toString() });
-		prev = v;
+		prev = { ...v };
 	});
 }
