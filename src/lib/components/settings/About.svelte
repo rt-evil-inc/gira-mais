@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { version } from '$app/environment';
-	import { safeInsets } from '$lib/ui.svelte';
+	import { enqueueDialog, safeInsets } from '$lib/ui.svelte';
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import GitHubStarRequest from '$lib/components/GitHubStarRequest.svelte';
+	import ServiceWarningDialog from '$lib/components/ServiceWarningDialog.svelte';
 	import { t } from '$lib/translations';
 	import { IconMail, IconWorldWww } from '@tabler/icons-svelte';
+	const emailUrl = 'mailto:contact@gira-mais.app';
 	async function wait(ms:number) {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
@@ -34,6 +36,10 @@
 	}
 </script>
 
+{#snippet emailWarning(dismiss: () => void)}
+	<ServiceWarningDialog url={emailUrl} {dismiss} />
+{/snippet}
+
 <MenuPage>
 	<div class="flex flex-col p-5 relative grow overflow-hidden" style:padding-bottom="{Math.max($safeInsets.bottom, 20)}px">
 		<div class="text-3xl font-bold text-info pl-2">{$t('about_label')}</div>
@@ -46,7 +52,7 @@
 				<a href="https://gira-mais.app/">
 					<IconWorldWww size={24} stroke={1.7} class="stroke-info" />
 				</a>
-				<a href="mailto:contact@gira-mais.app">
+				<a href={emailUrl} onclick={e => { e.preventDefault(); enqueueDialog(emailWarning); }}>
 					<IconMail size={24} stroke={1.7} class="stroke-info" />
 				</a>
 				<a href="https://gira-mais.app/discord">

@@ -489,6 +489,22 @@ const translations = {
 		en: 'Invalid bike ID. It should be a 4-digit number.',
 		pt: 'ID de bicicleta inválido. Deve ser um número de 4 dígitos.',
 	},
+	cancel_button: {
+		en: 'Cancel',
+		pt: 'Cancelar',
+	},
+	service_warning_title: {
+		en: 'Before you continue',
+		pt: 'Antes de continuar',
+	},
+	service_warning_message: {
+		en: 'Gira+ is an unofficial app and is not affiliated with EMEL. We can\'t help with problems related to the GIRA service itself, such as trips that won\'t end, charges, account issues, or bike/dock maintenance.\nFor those, please contact EMEL via {{email}}.\n\nOnly continue if your message is about this app.',
+		pt: 'A Gira+ é uma aplicação não oficial e não está afiliada à EMEL. Não podemos ajudar com problemas relacionados com o serviço GIRA em si, como viagens que não terminam, cobranças, problemas de conta ou manutenção de bicicletas ou docas.\nPara esses casos, contacte a EMEL via {{email}}.\n\nContinue apenas se a sua mensagem for sobre esta aplicação.',
+	},
+	service_warning_continue: {
+		en: 'Continue anyway',
+		pt: 'Continuar mesmo assim',
+	},
 } as const;
 
 export type Translations = typeof translations;

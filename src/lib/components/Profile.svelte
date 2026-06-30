@@ -2,11 +2,12 @@
 	import { accountInfo, logOut, user } from '$lib/account';
 	import Metric from '$lib/components/Metric.svelte';
 	import ProfileMenuEntry from '$lib/components/ProfileMenuEntry.svelte';
+	import ServiceWarningDialog from '$lib/components/ServiceWarningDialog.svelte';
 	import Info from '$lib/components/settings/About.svelte';
 	import History from '$lib/components/settings/History.svelte';
 	import Settings from '$lib/components/settings/Settings.svelte';
 	import { getLocale, t } from '$lib/translations';
-	import { safeInsets } from '$lib/ui.svelte';
+	import { enqueueDialog, safeInsets } from '$lib/ui.svelte';
 	import { App } from '@capacitor/app';
 	import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 	import { IconHeart, IconStar } from '@tabler/icons-svelte';
@@ -42,7 +43,12 @@
 		return () => backListener?.remove();
 	});
 
+	const feedbackUrl = 'https://github.com/rt-evil-inc/gira-mais/issues';
 </script>
+
+{#snippet feedbackWarning(dismiss: () => void)}
+	<ServiceWarningDialog url={feedbackUrl} {dismiss} />
+{/snippet}
 
 <div transition:fly={{ duration: 150, x: 100 }} class="absolute w-full h-full inset-0 bg-background z-30 grid" >
 	{#if $user}
@@ -73,7 +79,7 @@
 			<div class="flex flex-col grow font-semibold px-2 gap-3 w-full">
 				<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} onclick={() => openPage = 'history'} />
 				<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} onclick={() => openPage = 'settings'} />
-				<a href="https://github.com/rt-evil-inc/gira-mais/issues"><ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external /></a>
+				<a href={feedbackUrl} onclick={e => { e.preventDefault(); enqueueDialog(feedbackWarning); }}><ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external /></a>
 				<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} onclick={() => openPage = 'info'} />
 				{#if Capacitor.getPlatform() === 'ios'}
 					<a href="https://github.com/rt-evil-inc/gira-mais/"><ProfileMenuEntry icon={IconStar} iconClass="stroke-warning" text={$t('star_label')} subtext={$t('star_subtext')} external /></a>
