@@ -17,7 +17,7 @@ Com um olhar atento ao design, à experiência do utilizador (UX) e à estabilid
 - Mapa com ciclovias
 - Modo escuro
 - Cálculo da distância percorrida e velocidade média durante uma viagem
-- Vizualização do trajeto percorrido
+- Visualização do trajeto percorrido
 
 ### Não implementado
 - Criação de contas
