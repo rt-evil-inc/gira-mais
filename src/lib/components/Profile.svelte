@@ -79,7 +79,7 @@
 			<div class="flex flex-col grow font-semibold px-2 gap-3 w-full">
 				<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} onclick={() => openPage = 'history'} />
 				<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} onclick={() => openPage = 'settings'} />
-				<a href={feedbackUrl} onclick={e => { e.preventDefault(); enqueueDialog(feedbackWarning); }}><ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external /></a>
+				<ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external onclick={() => enqueueDialog(feedbackWarning)} />
 				<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} onclick={() => openPage = 'info'} />
 				{#if Capacitor.getPlatform() === 'ios'}
 					<a href="https://github.com/rt-evil-inc/gira-mais/"><ProfileMenuEntry icon={IconStar} iconClass="stroke-warning" text={$t('star_label')} subtext={$t('star_subtext')} external /></a>
