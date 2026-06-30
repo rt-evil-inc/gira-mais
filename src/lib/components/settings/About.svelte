@@ -6,7 +6,6 @@
 	import ServiceWarningDialog from '$lib/components/ServiceWarningDialog.svelte';
 	import { t } from '$lib/translations';
 	import { IconMail, IconWorldWww } from '@tabler/icons-svelte';
-	const emailUrl = 'mailto:contact@gira-mais.app';
 	async function wait(ms:number) {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
@@ -37,7 +36,7 @@
 </script>
 
 {#snippet emailWarning(dismiss: () => void)}
-	<ServiceWarningDialog url={emailUrl} {dismiss} />
+	<ServiceWarningDialog url="mailto:contact@gira-mais.app" {dismiss} />
 {/snippet}
 
 <MenuPage>

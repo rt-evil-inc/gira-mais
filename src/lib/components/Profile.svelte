@@ -42,12 +42,10 @@
 
 		return () => backListener?.remove();
 	});
-
-	const feedbackUrl = 'https://github.com/rt-evil-inc/gira-mais/issues';
 </script>
 
 {#snippet feedbackWarning(dismiss: () => void)}
-	<ServiceWarningDialog url={feedbackUrl} {dismiss} />
+	<ServiceWarningDialog url="https://github.com/rt-evil-inc/gira-mais/issues" {dismiss} />
 {/snippet}
 
 <div transition:fly={{ duration: 150, x: 100 }} class="absolute w-full h-full inset-0 bg-background z-30 grid" >
