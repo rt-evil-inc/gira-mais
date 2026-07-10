@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { currentRoute } from '$lib/routing';
 	import { t } from '$lib/translations';
 	import { errorMessages, safeInsets } from '$lib/ui.svelte';
 
@@ -41,7 +42,8 @@
 	}
 </script>
 
-<div transition:fly={{ y: -120 }} class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center p-2 gap-1 bg-background rounded-2xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)" style:top="{Math.max(16, $safeInsets.top + 8)}px">
+<!-- sits below the search bar (64px), and below its route summary extension too when one is shown -->
+<div transition:fly={{ y: -120 }} class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center p-2 gap-1 bg-background rounded-2xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)" style:top="{Math.max(16, $safeInsets.top + 8) + 64 + ($currentRoute ? 40 : 0)}px">
 	<span class="font-bold text-info text-sm mx-1 whitespace-nowrap">{$t('last_trip_question')}</span>
 	<div class="grid columns-5 gap-[3px]">
 		{#if rating === 1}

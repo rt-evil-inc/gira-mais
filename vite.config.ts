@@ -3,4 +3,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	test: {
+		environment: 'happy-dom',
+	},
 });

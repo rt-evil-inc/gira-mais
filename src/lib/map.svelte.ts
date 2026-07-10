@@ -88,6 +88,21 @@ export function setSourceData(map: maplibregl.Map) {
 			},
 		});
 	}
+
+	const routeSrc = map.getSource('route');
+	if (!(routeSrc instanceof maplibregl.GeoJSONSource)) {
+		map.addSource('route', {
+			'type': 'geojson',
+			'data': { type: 'FeatureCollection', features: [] },
+		});
+	}
+	const routeDestSrc = map.getSource('route-destination');
+	if (!(routeDestSrc instanceof maplibregl.GeoJSONSource)) {
+		map.addSource('route-destination', {
+			'type': 'geojson',
+			'data': { type: 'FeatureCollection', features: [] },
+		});
+	}
 }
 
 export async function loadSvg(url: string, replaces?:Record<string, string>): Promise<HTMLImageElement> {
@@ -131,6 +146,66 @@ export function addLayers(map: maplibregl.Map) {
 		'paint': {
 			'line-color': getCssVariable('--color-primary'),
 			'line-width': 6,
+		},
+	}, 'building');
+	map.addLayer({
+		'id': 'route-outline',
+		'type': 'line',
+		'source': 'route',
+		'layout': {
+			'line-cap': 'round',
+			'line-join': 'round',
+		},
+		'paint': {
+			'line-color': getCssVariable('--color-background'),
+			'line-width': 9,
+		},
+	}, 'building');
+	map.addLayer({
+		'id': 'route-bike',
+		'type': 'line',
+		'source': 'route',
+		'filter': ['==', ['get', 'mode'], 'bike'],
+		'layout': {
+			'line-cap': 'round',
+			'line-join': 'round',
+		},
+		'paint': {
+			'line-color': getCssVariable('--color-primary'),
+			'line-width': 5,
+		},
+	}, 'building');
+	map.addLayer({
+		'id': 'route-foot',
+		'type': 'line',
+		'source': 'route',
+		'filter': ['==', ['get', 'mode'], 'foot'],
+		'layout': {
+			'line-cap': 'round',
+		},
+		'paint': {
+			'line-color': getCssVariable('--color-primary'),
+			'line-width': 5,
+			// round caps + short gaps render walking segments as a dotted line
+			'line-dasharray': [0.1, 1.8],
+		},
+	}, 'building');
+	map.addLayer({
+		'id': 'route-destination-outer',
+		'type': 'circle',
+		'source': 'route-destination',
+		'paint': {
+			'circle-radius': 9,
+			'circle-color': getCssVariable('--color-background'),
+		},
+	}, 'building');
+	map.addLayer({
+		'id': 'route-destination-inner',
+		'type': 'circle',
+		'source': 'route-destination',
+		'paint': {
+			'circle-radius': 5.5,
+			'circle-color': getCssVariable('--color-primary'),
 		},
 	}, 'building');
 	map.addLayer({
