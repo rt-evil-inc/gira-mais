@@ -50,6 +50,7 @@
 			const props = feature.properties as { serialNumber: string, name: string, bikes: number };
 			selectedStation.set(props.serialNumber);
 			routeDestination.set({
+				type: 'station',
 				lat: feature.geometry.coordinates[1],
 				lng: feature.geometry.coordinates[0],
 				name: props.name,
@@ -82,7 +83,7 @@
 				return;
 			}
 			// Tapping an empty spot on the map sets it as the routing destination
-			const destination = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
 			routeDestination.set(destination);
 			reverseGeocode(destination).then(name => {
 				const current = get(routeDestination);

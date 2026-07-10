@@ -57,7 +57,7 @@
 
 	function select(result: GeocodingResult) {
 		selectedStation.set(null);
-		routeDestination.set({ lat: result.lat, lng: result.lng, name: result.name });
+		routeDestination.set({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
 		input?.blur();
 	}
 
