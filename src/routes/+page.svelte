@@ -106,7 +106,9 @@
 	</Floating>
 
 	{#if $token !== null}
-		<div class="absolute right-[80px]" style:left="{tripStatusWidth + 16}px" style:top="{Math.max(tripStatusHeight + 20, $safeInsets.top)}px">
+		<!-- Keep the search UI above the live map, but below Map's z-10 loading
+			preview. This stacking context also contains SearchBar's internal z-10. -->
+		<div class="absolute right-[80px] z-[5]" style:left="{tripStatusWidth + 16}px" style:top="{Math.max(tripStatusHeight + 20, $safeInsets.top)}px">
 			<SearchBar />
 		</div>
 	{/if}
