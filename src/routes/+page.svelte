@@ -10,6 +10,9 @@
 	import TripRating from '$lib/components/TripRating.svelte';
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
+	import { routeDestination } from '$lib/routing';
+	import SearchBar from '$lib/components/SearchBar.svelte';
+	import { get } from 'svelte/store';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -53,6 +56,8 @@
 			if (!profileOpen) {
 				if ($selectedStation != null) {
 					$selectedStation = null;
+				} else if (get(routeDestination) != null) {
+					routeDestination.set(null);
 				} else {
 					App.exitApp();
 				}
@@ -75,7 +80,7 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && $networkStatus}
+		{#if $tripRating.currentRating != null && $networkStatus }
 			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
 	{/if}
@@ -96,9 +101,15 @@
 		<Compass />
 	</Floating>
 
-	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={20}>
+	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={84}>
 		<SupportButton />
 	</Floating>
+
+	{#if $token !== null}
+		<div class="absolute right-[80px]" style:left="{tripStatusWidth + 16}px" style:top="{Math.max(tripStatusHeight + 20, $safeInsets.top)}px">
+			<SearchBar />
+		</div>
+	{/if}
 
 	{#if profileOpen}
 		<Profile onclose={() => profileOpen = false}/>
