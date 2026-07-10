@@ -21,7 +21,7 @@ function okResponse(url: string) {
 }
 
 const origin = { lat: 38.7075, lng: -9.1440 };
-const dest = { lat: 38.7700, lng: -9.0950 };
+const dest = { type: 'location' as const, lat: 38.7700, lng: -9.0950 };
 
 describe('computeRoute against a failing routing server', () => {
 	beforeAll(() => {

@@ -2,14 +2,22 @@ import { get, writable } from 'svelte/store';
 import { currentPos } from '$lib/location';
 import { currentTrip } from '$lib/trip';
 import { stations, type StationInfo } from '$lib/map.svelte';
-import { ROUTING_API_URL } from '$lib/constants';
 import { distanceBetweenCoords } from '$lib/utils';
-import { CapacitorHttp } from '@capacitor/core';
 import { errorMessages } from '$lib/ui.svelte';
 import { t } from '$lib/translations';
+import { osrmRoute, osrmTable, type Coord, type OsrmRoute } from '$lib/osrm';
 
-export type Coord = { lat: number, lng: number };
-export type Destination = Coord & { name?: string, stationSerial?: string };
+export type { Coord } from '$lib/osrm';
+export type LocationDestination = Coord & {
+	type: 'location',
+	name?: string,
+};
+export type StationDestination = Coord & {
+	type: 'station',
+	name: string,
+	stationSerial: string,
+};
+export type Destination = LocationDestination|StationDestination;
 export type RouteLeg = {
 	mode: 'foot'|'bike',
 	coordinates: [number, number][], // [lng, lat]
@@ -33,184 +41,210 @@ export const routePending = writable(false);
 
 // Time overhead of picking up / docking a bike, used when comparing
 // walking-only routes with walk+bike+walk combinations
-const BIKE_PICKUP_OVERHEAD_s = 60;
-const BIKE_DOCK_OVERHEAD_s = 30;
+const BIKE_PICKUP_OVERHEAD_SECONDS = 60;
+const BIKE_DOCK_OVERHEAD_SECONDS = 30;
 const MAX_STATION_CANDIDATES = 3;
-const ARRIVAL_RADIUS_m = 40;
-const RECOMPUTE_MIN_MOVE_m = 30;
-const RECOMPUTE_MIN_INTERVAL_ms = 5000;
-
-type OsrmRoute = { distance: number, duration: number, geometry: { coordinates: [number, number][] } };
-
-const OSRM_ATTEMPTS = 3;
-
-/** GET an OSRM endpoint, retrying transient failures: network errors, timeouts
-  * and 5xx responses (e.g. a 502 while the routing server restarts). Throws if
-  * they persist, so a failed request is never mistaken for "no route exists".
-  * Legitimate routing errors (4xx, code !== 'Ok') are returned, not retried. */
-async function osrmGet(url: string): Promise<{ code?: string, routes?: OsrmRoute[], durations?: (number|null)[][] }> {
-	for (let attempt = 1; ; attempt++) {
-		try {
-			const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 5000));
-			const res = await Promise.race([
-				CapacitorHttp.get({ url, readTimeout: 5000, connectTimeout: 5000 }),
-				timeoutPromise,
-			]);
-			if (res.status >= 500) throw new Error(`Routing server error ${res.status}`);
-			return res.data;
-		} catch (e) {
-			if (attempt >= OSRM_ATTEMPTS) throw e;
-			console.warn(`Routing request failed (attempt ${attempt}/${OSRM_ATTEMPTS})`, e);
-			await new Promise(resolve => setTimeout(resolve, 300 * attempt));
-		}
-	}
-}
-
-async function osrmRoute(profile: 'foot'|'bike', from: Coord, to: Coord): Promise<OsrmRoute|null> {
-	const url = `${ROUTING_API_URL}/${profile}/route/v1/-/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=false&alternatives=false`;
-	const data = await osrmGet(url);
-	if (data?.code !== 'Ok' || !data.routes?.length) return null;
-	return data.routes[0];
-}
-
-/** Returns a matrix of durations in seconds, durations[source][destination] */
-async function osrmTable(profile: 'foot'|'bike', sources: Coord[], destinations: Coord[]): Promise<(number|null)[][]|null> {
-	const coords = [...sources, ...destinations].map(c => `${c.lng},${c.lat}`).join(';');
-	const sourceIdxs = sources.map((_, i) => i).join(';');
-	const destinationIdxs = destinations.map((_, i) => i + sources.length).join(';');
-	const url = `${ROUTING_API_URL}/${profile}/table/v1/-/${coords}?sources=${sourceIdxs}&destinations=${destinationIdxs}`;
-	const data = await osrmGet(url);
-	if (data?.code !== 'Ok' || !data.durations) return null;
-	return data.durations;
-}
+const ARRIVAL_RADIUS_METERS = 40;
+const RECOMPUTE_MIN_MOVE_METERS = 30;
+const RECOMPUTE_MIN_INTERVAL_MS = 5000;
 
 function stationCoord(s: StationInfo): Coord {
 	return { lat: s.latitude, lng: s.longitude };
 }
 
-function nearestStations(target: Coord, filter: (s: StationInfo) => boolean): StationInfo[] {
+function resolveDestinationStation(destination: Destination): StationInfo|undefined {
+	return destination.type === 'station' ?
+		stations.value.find(s => s.serialNumber === destination.stationSerial) :
+		undefined;
+}
+
+function hasAvailableBike(station: StationInfo): boolean {
+	return station.assetStatus === 'active' && station.bikes > 0;
+}
+
+function hasAvailableDock(station: StationInfo): boolean {
+	return station.assetStatus === 'active' && station.docks - station.bikes > 0;
+}
+
+function nearestStations(target: Coord, isEligible: (station: StationInfo) => boolean): StationInfo[] {
 	return stations.value
-		.filter(s => s.assetStatus === 'active' && filter(s))
+		.filter(isEligible)
 		.map(s => ({ s, d: distanceBetweenCoords(target.lat, target.lng, s.latitude, s.longitude) }))
 		.sort((a, b) => a.d - b.d)
 		.slice(0, MAX_STATION_CANDIDATES)
 		.map(x => x.s);
 }
 
-function footLeg(route: OsrmRoute): RouteLeg {
-	return { mode: 'foot', coordinates: route.geometry.coordinates, distance: route.distance, duration: route.duration };
+function routeLeg(mode: RouteLeg['mode'], route: OsrmRoute): RouteLeg {
+	return { mode, coordinates: route.geometry.coordinates, distance: route.distance, duration: route.duration };
 }
 
-function bikeLeg(route: OsrmRoute): RouteLeg {
-	return { mode: 'bike', coordinates: route.geometry.coordinates, distance: route.distance, duration: route.duration };
-}
+type BuildRouteOptions = {
+	origin: Coord,
+	destination: Destination,
+	legs: RouteLeg[],
+	pickupStationSerial: string|null,
+	dropoffStationSerial: string|null,
+};
 
-function buildRoute(origin: Coord, destination: Destination, legs: RouteLeg[], startStationSerial: string|null, endStationSerial: string|null): PlannedRoute {
+function buildRoute({ origin, destination, legs, pickupStationSerial, dropoffStationSerial }: BuildRouteOptions): PlannedRoute {
 	return {
 		legs,
 		totalDistance: legs.reduce((acc, l) => acc + l.distance, 0),
 		totalDuration: legs.reduce((acc, l) => acc + l.duration, 0),
-		startStationSerial,
-		endStationSerial,
+		startStationSerial: pickupStationSerial,
+		endStationSerial: dropoffStationSerial,
 		origin,
 		destination,
 		computedAt: Date.now(),
 	};
 }
 
-/** Best station to dock at + walk to the destination, or null if walking from
-  * a dock is impossible. Returns the station, bike duration and walk duration. */
-async function bestEndStation(from: Coord, destination: Destination, profileFrom: 'foot'|'bike'): Promise<{ station: StationInfo, toStation: number, toDestination: number }|null> {
-	const destStation = destination.stationSerial ? stations.value.find(s => s.serialNumber === destination.stationSerial) : undefined;
-	const candidates = destStation ? [destStation] : nearestStations(destination, s => s.docks - s.bikes > 0);
+type EndStationCandidate = {
+	station: StationInfo,
+	travelToStationDuration: number,
+	walkToDestinationDuration: number,
+};
+
+/** Finds the station that minimizes travel to the station plus the final walk. */
+async function findBestEndStation(from: Coord, destination: Destination, travelMode: 'foot'|'bike'): Promise<EndStationCandidate|null> {
+	const requestedStation = resolveDestinationStation(destination);
+	if (requestedStation) {
+		const travelDurations = await osrmTable(travelMode, [from], [stationCoord(requestedStation)]);
+		const travelToStationDuration = travelDurations?.[0][0];
+		return travelToStationDuration == null ? null : {
+			station: requestedStation,
+			travelToStationDuration,
+			walkToDestinationDuration: 0,
+		};
+	}
+
+	const candidates = nearestStations(destination, hasAvailableDock);
 	if (candidates.length === 0) return null;
+	const candidateCoordinates = candidates.map(stationCoord);
+	const [travelDurations, walkingDurations] = await Promise.all([
+		osrmTable(travelMode, [from], candidateCoordinates),
+		osrmTable('foot', candidateCoordinates, [destination]),
+	]);
+	if (!travelDurations || !walkingDurations) return null;
 
-	const toStations = await osrmTable(profileFrom, [from], candidates.map(stationCoord));
-	if (!toStations) return null;
-	// No walking leg needed when the destination is the station itself
-	const toDest = destStation ? [candidates.map(() => 0)] : await osrmTable('foot', candidates.map(stationCoord), [destination]);
-	if (!toDest) return null;
-
-	let best: { station: StationInfo, toStation: number, toDestination: number }|null = null;
+	let best: EndStationCandidate|null = null;
 	for (let i = 0; i < candidates.length; i++) {
-		const toStation = toStations[0][i];
-		const toDestination = destStation ? 0 : toDest[i][0];
-		if (toStation == null || toDestination == null) continue;
-		if (!best || toStation + toDestination < best.toStation + best.toDestination) {
-			best = { station: candidates[i], toStation, toDestination };
+		const travelToStationDuration = travelDurations[0][i];
+		const walkToDestinationDuration = walkingDurations[i][0];
+		if (travelToStationDuration == null || walkToDestinationDuration == null) continue;
+		if (!best || travelToStationDuration + walkToDestinationDuration < best.travelToStationDuration + best.walkToDestinationDuration) {
+			best = { station: candidates[i], travelToStationDuration, walkToDestinationDuration };
 		}
 	}
 	return best;
 }
 
-/** Compute the best route from origin to destination.
-  * With a bike (active trip): bike to the best dock near the destination, then walk.
-  * Without a bike: walk to a station with bikes, bike to a dock near the
-  * destination, walk to the destination — unless walking directly is faster. */
-export async function computeRoute(origin: Coord, destination: Destination, hasBike: boolean): Promise<PlannedRoute|null> {
-	if (hasBike) {
-		const best = await bestEndStation(origin, destination, 'bike');
-		if (!best) return null;
-		const bike = await osrmRoute('bike', origin, stationCoord(best.station));
-		if (!bike) return null;
-		const legs = [bikeLeg(bike)];
-		if (!destination.stationSerial) {
-			const walk = await osrmRoute('foot', stationCoord(best.station), destination);
-			if (walk) legs.push(footLeg(walk));
-		}
-		return buildRoute(origin, destination, legs, null, best.station.serialNumber);
-	}
+async function computeRouteWithBike(origin: Coord, destination: Destination): Promise<PlannedRoute|null> {
+	const destinationStation = resolveDestinationStation(destination);
+	const endStation = await findBestEndStation(origin, destination, 'bike');
+	if (!endStation) return null;
 
-	const startCandidates = nearestStations(origin, s => s.bikes > 0 && s.serialNumber !== destination.stationSerial);
-	const destStation = destination.stationSerial ? stations.value.find(s => s.serialNumber === destination.stationSerial) : undefined;
-	const endCandidates = destStation ? [destStation] : nearestStations(destination, s => s.docks - s.bikes > 0);
-	const useStations = startCandidates.length > 0 && endCandidates.length > 0;
-	// A single Promise.all so that one failing request never leaves the others
-	// dangling: either all results arrive or the whole computation throws
-	const [directWalk, walkTable, bikeTable, endTable] = await Promise.all([
+	const bikeRoute = await osrmRoute('bike', origin, stationCoord(endStation.station));
+	if (!bikeRoute) return null;
+	const legs = [routeLeg('bike', bikeRoute)];
+	if (!destinationStation) {
+		const finalWalkRoute = await osrmRoute('foot', stationCoord(endStation.station), destination);
+		if (finalWalkRoute) legs.push(routeLeg('foot', finalWalkRoute));
+	}
+	return buildRoute({
+		origin,
+		destination,
+		legs,
+		pickupStationSerial: null,
+		dropoffStationSerial: endStation.station.serialNumber,
+	});
+}
+
+type StationRouteCandidate = {
+	pickupStation: StationInfo,
+	dropoffStation: StationInfo,
+	walkToPickupDuration: number,
+	bikeDuration: number,
+	walkFromDropoffDuration: number,
+};
+
+async function computeRouteWithoutBike(origin: Coord, destination: Destination): Promise<PlannedRoute|null> {
+	const destinationStation = resolveDestinationStation(destination);
+	const pickupCandidates = nearestStations(origin, station => hasAvailableBike(station) && station.serialNumber !== destinationStation?.serialNumber);
+	const dropoffCandidates = destinationStation ? [destinationStation] : nearestStations(destination, hasAvailableDock);
+	const canUseStations = pickupCandidates.length > 0 && dropoffCandidates.length > 0;
+	const [directWalkRoute, walkToPickupDurations, bikeDurations, walkFromDropoffDurations] = await Promise.all([
 		osrmRoute('foot', origin, destination),
-		useStations ? osrmTable('foot', [origin], startCandidates.map(stationCoord)) : null,
-		useStations ? osrmTable('bike', startCandidates.map(stationCoord), endCandidates.map(stationCoord)) : null,
-		useStations ? destStation ? [endCandidates.map(() => 0)] : osrmTable('foot', endCandidates.map(stationCoord), [destination]) : null,
+		canUseStations ? osrmTable('foot', [origin], pickupCandidates.map(stationCoord)) : null,
+		canUseStations ? osrmTable('bike', pickupCandidates.map(stationCoord), dropoffCandidates.map(stationCoord)) : null,
+		canUseStations && !destinationStation ? osrmTable('foot', dropoffCandidates.map(stationCoord), [destination]) : null,
 	]);
 
-	let combo: { start: StationInfo, end: StationInfo, walk1: number, bike: number, walk2: number }|null = null;
-	if (walkTable && bikeTable && endTable) {
-		for (let i = 0; i < startCandidates.length; i++) {
-			for (let j = 0; j < endCandidates.length; j++) {
-				if (startCandidates[i].serialNumber === endCandidates[j].serialNumber) continue;
-				const walk1 = walkTable[0][i], bike = bikeTable[i][j];
-				const walk2 = destStation ? 0 : endTable[j][0];
-				if (walk1 == null || bike == null || walk2 == null) continue;
-				if (!combo || walk1 + bike + walk2 < combo.walk1 + combo.bike + combo.walk2) {
-					combo = { start: startCandidates[i], end: endCandidates[j], walk1, bike, walk2 };
+	let bestCandidate: StationRouteCandidate|null = null;
+	if (walkToPickupDurations && bikeDurations && (destinationStation || walkFromDropoffDurations)) {
+		for (let pickupIndex = 0; pickupIndex < pickupCandidates.length; pickupIndex++) {
+			for (let dropoffIndex = 0; dropoffIndex < dropoffCandidates.length; dropoffIndex++) {
+				const pickupStation = pickupCandidates[pickupIndex];
+				const dropoffStation = dropoffCandidates[dropoffIndex];
+
+				// Direct walking should always beat this combination. Exclude it anyway so
+				// inconsistent OSRM responses cannot produce a pointless same-station bike leg.
+				if (pickupStation.serialNumber === dropoffStation.serialNumber) continue;
+
+				const walkToPickupDuration = walkToPickupDurations[0][pickupIndex];
+				const bikeDuration = bikeDurations[pickupIndex][dropoffIndex];
+				const walkFromDropoffDuration = destinationStation ? 0 : walkFromDropoffDurations![dropoffIndex][0];
+				if (walkToPickupDuration == null || bikeDuration == null || walkFromDropoffDuration == null) continue;
+				const totalDuration = walkToPickupDuration + bikeDuration + walkFromDropoffDuration;
+				const bestDuration = bestCandidate ?
+					bestCandidate.walkToPickupDuration + bestCandidate.bikeDuration + bestCandidate.walkFromDropoffDuration :
+					Infinity;
+				if (totalDuration < bestDuration) {
+					bestCandidate = { pickupStation, dropoffStation, walkToPickupDuration, bikeDuration, walkFromDropoffDuration };
 				}
 			}
 		}
 	}
-	const comboDuration = combo ? combo.walk1 + BIKE_PICKUP_OVERHEAD_s + combo.bike + BIKE_DOCK_OVERHEAD_s + combo.walk2 : Infinity;
-	if (directWalk && directWalk.duration <= comboDuration) {
-		return buildRoute(origin, destination, [footLeg(directWalk)], null, null);
+	const stationRouteDuration = bestCandidate ?
+		bestCandidate.walkToPickupDuration + BIKE_PICKUP_OVERHEAD_SECONDS + bestCandidate.bikeDuration + BIKE_DOCK_OVERHEAD_SECONDS + bestCandidate.walkFromDropoffDuration :
+		Infinity;
+	if (directWalkRoute && directWalkRoute.duration <= stationRouteDuration) {
+		return buildRoute({ origin, destination, legs: [routeLeg('foot', directWalkRoute)], pickupStationSerial: null, dropoffStationSerial: null });
 	}
-	if (!combo) return null;
+	if (!bestCandidate) return null;
 
-	const [walk1, bike, walk2] = await Promise.all([
-		osrmRoute('foot', origin, stationCoord(combo.start)),
-		osrmRoute('bike', stationCoord(combo.start), stationCoord(combo.end)),
-		destination.stationSerial ? Promise.resolve(null) : osrmRoute('foot', stationCoord(combo.end), destination),
+	const [walkToPickupRoute, bikeRoute, walkFromDropoffRoute] = await Promise.all([
+		osrmRoute('foot', origin, stationCoord(bestCandidate.pickupStation)),
+		osrmRoute('bike', stationCoord(bestCandidate.pickupStation), stationCoord(bestCandidate.dropoffStation)),
+		destinationStation ? Promise.resolve(null) : osrmRoute('foot', stationCoord(bestCandidate.dropoffStation), destination),
 	]);
-	if (!bike) return null;
+	if (!bikeRoute) return null;
 	const legs: RouteLeg[] = [];
-	if (walk1) legs.push(footLeg(walk1));
-	legs.push(bikeLeg(bike));
-	if (walk2) legs.push(footLeg(walk2));
-	return buildRoute(origin, destination, legs, combo.start.serialNumber, combo.end.serialNumber);
+	if (walkToPickupRoute) legs.push(routeLeg('foot', walkToPickupRoute));
+	legs.push(routeLeg('bike', bikeRoute));
+	if (walkFromDropoffRoute) legs.push(routeLeg('foot', walkFromDropoffRoute));
+	return buildRoute({
+		origin,
+		destination,
+		legs,
+		pickupStationSerial: bestCandidate.pickupStation.serialNumber,
+		dropoffStationSerial: bestCandidate.dropoffStation.serialNumber,
+	});
+}
+
+/** Compute the best route from origin to destination using the rider's current bike state. */
+export async function computeRoute(origin: Coord, destination: Destination, hasBike: boolean): Promise<PlannedRoute|null> {
+	return hasBike ?
+		computeRouteWithBike(origin, destination) :
+		computeRouteWithoutBike(origin, destination);
 }
 
 /** Same place, ignoring metadata like the name (which e.g. reverse geocoding
   * fills in asynchronously after a pin is dropped) */
-function sameSpot(a: Destination|null, b: Destination|null) {
-	return a != null && b != null && a.lat === b.lat && a.lng === b.lng && a.stationSerial === b.stationSerial;
+function sameRoutingDestination(a: Destination|null, b: Destination|null) {
+	if (!a || !b || a.type !== b.type || a.lat !== b.lat || a.lng !== b.lng) return false;
+	return a.type === 'location' || (b.type === 'station' && a.stationSerial === b.stationSerial);
 }
 
 let computing: Destination|null = null;
@@ -222,7 +256,7 @@ async function recomputeRoute() {
 	if (!destination) return;
 	if (computing) {
 		// A computation for another spot is in flight; rerun when it finishes
-		if (!sameSpot(computing, destination)) recomputeQueued = true;
+		if (!sameRoutingDestination(computing, destination)) recomputeQueued = true;
 		return;
 	}
 	const pos = get(currentPos);
@@ -233,12 +267,12 @@ async function recomputeRoute() {
 		const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 		const route = await computeRoute(origin, destination, get(currentTrip) !== null);
 		const current = get(routeDestination);
-		if (!sameSpot(current, destination)) return; // destination changed meanwhile
+		if (!current || !sameRoutingDestination(current, destination)) return; // destination changed meanwhile
 		if (!route) {
 			lastFailedAt = Date.now();
 			errorMessages.add(get(t)('no_route_found'));
 		}
-		currentRoute.set(route ? { ...route, destination: current! } : null);
+		currentRoute.set(route ? { ...route, destination: current } : null);
 	} catch (e) {
 		// The routing server could not be reached; rather than showing a
 		// misleading partial result, keep an existing route to this destination
@@ -246,7 +280,7 @@ async function recomputeRoute() {
 		console.error('Route computation failed', e);
 		lastFailedAt = Date.now();
 		const existing = get(currentRoute);
-		if (!existing || !sameSpot(existing.destination, destination)) {
+		if (!existing || !sameRoutingDestination(existing.destination, destination)) {
 			currentRoute.set(null);
 			errorMessages.add(get(t)('route_computation_error'));
 		}
@@ -270,7 +304,7 @@ routeDestination.subscribe(destination => {
 		return;
 	}
 	const route = get(currentRoute);
-	if (route && sameSpot(route.destination, destination)) {
+	if (route && sameRoutingDestination(route.destination, destination)) {
 		// Same place, only metadata changed — no need to recompute
 		currentRoute.set({ ...route, destination });
 		return;
@@ -284,7 +318,7 @@ currentPos.subscribe(pos => {
 	if (!destination) return;
 
 	// Arrived at the destination
-	if (distanceBetweenCoords(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng) * 1000 < ARRIVAL_RADIUS_m && get(currentTrip) === null) {
+	if (distanceBetweenCoords(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng) * 1000 < ARRIVAL_RADIUS_METERS && get(currentTrip) === null) {
 		routeDestination.set(null);
 		return;
 	}
@@ -292,8 +326,8 @@ currentPos.subscribe(pos => {
 	const route = get(currentRoute);
 	if (route) {
 		const movedM = distanceBetweenCoords(pos.coords.latitude, pos.coords.longitude, route.origin.lat, route.origin.lng) * 1000;
-		if (movedM > RECOMPUTE_MIN_MOVE_m && Date.now() - route.computedAt > RECOMPUTE_MIN_INTERVAL_ms) recomputeRoute();
-	} else if (Date.now() - lastFailedAt > 3 * RECOMPUTE_MIN_INTERVAL_ms) {
+		if (movedM > RECOMPUTE_MIN_MOVE_METERS && Date.now() - route.computedAt > RECOMPUTE_MIN_INTERVAL_MS) recomputeRoute();
+	} else if (Date.now() - lastFailedAt > 3 * RECOMPUTE_MIN_INTERVAL_MS) {
 		recomputeRoute();
 	}
 });
