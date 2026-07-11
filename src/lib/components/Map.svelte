@@ -4,6 +4,7 @@
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
 	import { currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
+	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
@@ -33,6 +34,7 @@
 	let mapLoaded = $state(false);
 	let ready = $derived(mapLoaded && !loading && stations.value.length != 0);
 	let blurred = $state(true);
+	let routeClippingState: RouteClippingState = emptyRouteClippingState();
 
 	$effect(() => {
 		if (ready) setTimeout(() => blurred = false, 500);
@@ -131,15 +133,23 @@
 				});
 			}
 		}
+		applyRouteData(get(currentRoute), pos);
 	});
 
-	function applyRouteData(route: PlannedRoute|null) {
+	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
 		const destSrc = map.getSource<maplibregl.GeoJSONSource>('route-destination');
 		if (src == null || destSrc == null) return;
+		if (route && pos?.coords) {
+			routeClippingState = projectPositionOntoRoute(route, {
+				lat: pos.coords.latitude,
+				lng: pos.coords.longitude,
+			}, routeClippingState);
+		}
+		const displayLegs = route ? clipRouteAtProjection(route, routeClippingState.accepted) : [];
 		src.setData({
 			type: 'FeatureCollection',
-			features: route?.legs.map(leg => ({
+			features: displayLegs.map(leg => ({
 				type: 'Feature' as const,
 				properties: { mode: leg.mode },
 				geometry: {
@@ -204,6 +214,7 @@
 	// Zoom to the full route whenever a destination is picked, unless riding
 	// (keep following the user)
 	currentRoute.subscribe(route => {
+		routeClippingState = emptyRouteClippingState();
 		if (!mapLoaded) return;
 		applyRouteData(route);
 		if (!route) {
@@ -217,6 +228,7 @@
 	});
 
 	routeDestination.subscribe(destination => {
+		if (!destination) routeClippingState = emptyRouteClippingState();
 		if (!mapLoaded) {
 			pendingFit = destination != null;
 			return;

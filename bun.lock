@@ -26,6 +26,9 @@
         "@fontsource/roboto-mono": "^5.2.6",
         "@mauricewegner/capacitor-navigation-bar": "^2.0.3",
         "@tabler/icons-svelte": "^3.34.1",
+        "@turf/distance": "^7.3.5",
+        "@turf/helpers": "^7.3.5",
+        "@turf/nearest-point-on-line": "^7.3.5",
         "@types/suncalc": "^1.9.2",
         "capacitor-plugin-safe-area": "^2.0.6",
         "maplibre-gl": "^4.7.1",
@@ -302,6 +305,16 @@
     "@tabler/icons-svelte": ["@tabler/icons-svelte@3.35.0", "", { "dependencies": { "@tabler/icons": "3.35.0" }, "peerDependencies": { "svelte": ">=3 <6 || >=5.0.0-next.0" } }, "sha512-Y4J3RuKv7Ogs3Wk3Gc+Lm249QGHeTI9wjAIqGzszxiEkOyhKwXP54VIVQW2M0LRwDi589EHnMkKH+cXQjCulHg=="],
 
     "@tailwindcss/forms": ["@tailwindcss/forms@0.5.10", "", { "dependencies": { "mini-svg-data-uri": "^1.2.3" }, "peerDependencies": { "tailwindcss": ">=3.0.0 || >= 3.0.0-alpha.1 || >= 4.0.0-alpha.20 || >= 4.0.0-beta.1" } }, "sha512-utI1ONF6uf/pPNO68kmN1b8rEwNXv3czukalo8VtJH8ksIkZXr3Q3VYudZLkCsDd4Wku120uF02hYK25XGPorw=="],
+
+    "@turf/distance": ["@turf/distance@7.3.5", "", { "dependencies": { "@turf/helpers": "7.3.5", "@turf/invariant": "7.3.5", "@types/geojson": "^7946.0.10", "tslib": "^2.8.1" } }, "sha512-uQAC63zg/l91KUxzfhqio7Ii3+UXTrPOVJScIdRj6EO6+9XHI4kC+AdyIS4cPAv14sZfJLIBxzMnzcGrss+kEA=="],
+
+    "@turf/helpers": ["@turf/helpers@7.3.5", "", { "dependencies": { "@types/geojson": "^7946.0.10", "tslib": "^2.8.1" } }, "sha512-E/NMGV5MwbjjP7AJXBtsanC3yY8N2MQ87IGdIgkB2ji5AtBpwnH4L3gEqpYN4RlCJJWbLbzO91BbKv2waUd0eg=="],
+
+    "@turf/invariant": ["@turf/invariant@7.3.5", "", { "dependencies": { "@turf/helpers": "7.3.5", "@types/geojson": "^7946.0.10", "tslib": "^2.8.1" } }, "sha512-ZVIvsBvjr8lO7WxC5zYNjRsjSDvyGvWkJMjuWaJjTU8x+1tmfNnw3gDX/TI2Sit83gcRYLYkNo23lB/udqx/Hg=="],
+
+    "@turf/meta": ["@turf/meta@7.3.5", "", { "dependencies": { "@turf/helpers": "7.3.5", "@types/geojson": "^7946.0.10", "tslib": "^2.8.1" } }, "sha512-r+ohqxoyqeigFB0oFrQx/YEHIkOKqcKpCjvZkvZs7Tkv+IFco5MezAd2zd4rzK+0DfFgDP3KpJc7HqrYjvEjhg=="],
+
+    "@turf/nearest-point-on-line": ["@turf/nearest-point-on-line@7.3.5", "", { "dependencies": { "@turf/distance": "7.3.5", "@turf/helpers": "7.3.5", "@turf/invariant": "7.3.5", "@turf/meta": "7.3.5", "@types/geojson": "^7946.0.10", "tslib": "^2.8.1" } }, "sha512-MZn6OkEFZpjS6BNUANfqiHMIbQSivu7TNji3a+OAIrnPJ71vp8cbz0N2aVEa5M7I8ipvxoxAPIV3eqg3h280Vg=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
