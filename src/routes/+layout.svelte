@@ -19,6 +19,7 @@
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
+	import { startDebugControls } from '$lib/debug';
 	interface Props {
 		children?: import('svelte').Snippet;
 	}
@@ -35,6 +36,7 @@
 	}
 
 	onMount(() => {
+		const stopDebugControls = import.meta.env.DEV ? startDebugControls() : undefined;
 		loadUserCreds();
 		loadSettings().then(() => {
 			reportAppUsageEvent();
@@ -62,6 +64,7 @@
 		ScreenOrientation.lock({ orientation: 'portrait' });
 
 		return () => {
+			stopDebugControls?.();
 			App.removeAllListeners();
 		};
 	});

@@ -11,6 +11,15 @@ export const currentPos = writable<Position|null>(null);
 export const bearingNorth = writable<boolean>(false);
 export const bearing = writable<number>(0);
 
+let simulatedLocationActive = false;
+
+/** Publish a development-only position and prevent GPS callbacks replacing it. */
+export function setDebugPosition(position: Position) {
+	if (!import.meta.env.DEV) return;
+	simulatedLocationActive = true;
+	currentPos.set(position);
+}
+
 currentPos.subscribe(async v => {
 	if (!v) return;
 	currentTrip.update(trip => {
@@ -34,6 +43,7 @@ let watchId: string|null = null;
 let backgroundWatchId: string|null = null;
 
 export async function watchPosition() {
+	if (simulatedLocationActive) return;
 	const permission = (await Geolocation.checkPermissions()).location;
 	if (permission !== 'granted') return;
 
@@ -48,7 +58,7 @@ export async function watchPosition() {
 			backgroundTitle: 'Active Trip',
 			backgroundMessage: 'Tracking location in background',
 		}, position => {
-			if (position) {
+			if (position && !simulatedLocationActive) {
 				currentPos.set({ coords: { ...position, heading: position.bearing }, timestamp: position.time ?? Date.now() });
 			}
 			checkTripActive();
@@ -65,7 +75,7 @@ export async function watchPosition() {
 			timeout: 2000,
 			minimumUpdateInterval: 0,
 		}, position => {
-			if (position) {
+			if (position && !simulatedLocationActive) {
 				currentPos.set(position);
 			}
 		});

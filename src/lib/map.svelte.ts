@@ -132,7 +132,8 @@ export function addLayers(map: maplibregl.Map) {
 		},
 		'paint': {
 			'line-color': getCssVariable('--color-background'),
-			'line-width': 10,
+			'line-width': 8,
+			'line-opacity': 0.75,
 		},
 	}, 'building');
 	map.addLayer({
@@ -144,8 +145,9 @@ export function addLayers(map: maplibregl.Map) {
 			'line-join': 'round',
 		},
 		'paint': {
-			'line-color': getCssVariable('--color-primary'),
-			'line-width': 6,
+			'line-color': getCssVariable('--color-label'),
+			'line-width': 4,
+			'line-opacity': 0.75,
 		},
 	}, 'building');
 	map.addLayer({

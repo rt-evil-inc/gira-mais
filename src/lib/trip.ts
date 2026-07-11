@@ -2,7 +2,7 @@ import { LOCK_DISTANCE_m } from '$lib/constants';
 import { getTripHistory, getUnratedTrips, knownErrors, reserveBike, startTrip, tripPayWithPoints } from '$lib/gira-api/api';
 import type { ThrownError } from '$lib/gira-api/api-types';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
-import { currentPos, watchPosition } from '$lib/location';
+import { currentPos, setDebugPosition, watchPosition } from '$lib/location';
 import { appSettings } from '$lib/settings';
 import { errorMessages } from '$lib/ui.svelte';
 import { distanceBetweenCoords } from '$lib/utils';
@@ -42,6 +42,65 @@ export type TripRating = {
 export const currentTrip = writable<ActiveTrip|null>(null);
 export const tripRating = writable<TripRating>({ currentRating: null });
 
+export const DEBUG_TRIP_CODE = 'DEBUG-TRIP';
+export const DEBUG_START_POSITION = { lat: 38.744, lng: -9.15 } as const;
+
+export function startDebugTrip() {
+	if (!import.meta.env.DEV || get(currentTrip) !== null) return false;
+	let position = get(currentPos);
+	if (position === null) {
+		setDebugPosition({
+			coords: {
+				latitude: DEBUG_START_POSITION.lat,
+				longitude: DEBUG_START_POSITION.lng,
+				accuracy: 1,
+				altitude: null,
+				altitudeAccuracy: null,
+				heading: null,
+				speed: 0,
+			},
+			timestamp: Date.now(),
+		});
+		position = get(currentPos);
+	}
+	const startPos = position ? {
+		lat: position.coords.latitude,
+		lng: position.coords.longitude,
+	} : DEBUG_START_POSITION;
+	const now = new Date;
+	currentTrip.set({
+		code: DEBUG_TRIP_CODE,
+		bikePlate: 'DEBUG',
+		startPos: { ...startPos },
+		destination: null,
+		traveledDistanceKm: 0,
+		distanceLeft: null,
+		speed: 0,
+		startDate: now,
+		predictedEndDate: null,
+		arrivalTime: null,
+		finished: false,
+		confirmed: true,
+		pathTaken: [{ ...startPos, time: now }],
+		lastUpdate: now,
+	});
+	return true;
+}
+
+export function endDebugTrip() {
+	if (!import.meta.env.DEV || get(currentTrip)?.code !== DEBUG_TRIP_CODE) return false;
+	currentTrip.set(null);
+	return true;
+}
+
+export function toggleDebugTrip() {
+	const trip = get(currentTrip);
+	if (trip === null) return startDebugTrip();
+	if (trip.code === DEBUG_TRIP_CODE) return endDebugTrip();
+	console.warn('Cannot toggle a debug trip while a real trip is active.');
+	return false;
+}
+
 let updating = false;
 
 async function checkTripStarted(serial: string) {
@@ -54,10 +113,10 @@ async function checkTripStarted(serial: string) {
 }
 
 /**
- * 
+ *
  * @param id ID is the bike's plate, e.g. "E0001"
  * @param serial Serial is the bike's internal identifier, e.g. "41db86c6da"
- * @param station 
+ * @param station
  * @returns True if the trip was started successfully, false otherwise
  */
 export async function tryStartTrip(id: string, serial: string, station: StationInfo): Promise<boolean> {
