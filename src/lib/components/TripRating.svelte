@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/translations';
-	import { errorMessages, safeInsets } from '$lib/ui.svelte';
-
 	import { rateTrip } from '$lib/gira-api/api';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { tripRating } from '$lib/trip';
+	import { t } from '$lib/translations';
+	import { errorMessages, keyboard, safeInsets } from '$lib/ui.svelte';
+	import IconLoader2 from '@tabler/icons-svelte/icons/loader-2';
 	import IconMoodConfuzed from '@tabler/icons-svelte/icons/mood-confuzed';
 	import IconMoodConfuzedFilled from '@tabler/icons-svelte/icons/mood-confuzed-filled';
 	import IconMoodEmpty from '@tabler/icons-svelte/icons/mood-empty';
@@ -14,7 +14,8 @@
 	import IconMoodSmile from '@tabler/icons-svelte/icons/mood-smile';
 	import IconMoodSmileFilled from '@tabler/icons-svelte/icons/mood-smile-filled';
 	import IconMoodWrrr from '@tabler/icons-svelte/icons/mood-wrrr';
-	import { fade, fly } from 'svelte/transition';
+	import IconMoodWrrrFilled from '@tabler/icons-svelte/icons/mood-wrrr-filled';
+	import { fade, fly, slide } from 'svelte/transition';
 
 	interface Props {
 		tripCode: string;
@@ -23,78 +24,178 @@
 	}
 
 	let { tripCode, bikePlate, date }: Props = $props();
-	let rating:number|undefined = $state();
 
-	async function rate(tripCode: string, bikePlate:string, rating:number) {
-		postBikeRating(tripCode, bikePlate, rating, date?.toISOString());
-		return (await rateTrip(tripCode, rating)).rateTrip;
+	const ratingOptions = [
+		{ value: 1, icon: IconMoodWrrr, selectedIcon: IconMoodWrrrFilled, label: 'bike_rating_bad' },
+		{ value: 2, icon: IconMoodConfuzed, selectedIcon: IconMoodConfuzedFilled, label: 'bike_rating_poor' },
+		{ value: 3, icon: IconMoodEmpty, selectedIcon: IconMoodEmptyFilled, label: 'bike_rating_neutral' },
+		{ value: 4, icon: IconMoodSmile, selectedIcon: IconMoodSmileFilled, label: 'bike_rating_ok' },
+		{ value: 5, icon: IconMoodHappy, selectedIcon: IconMoodHappyFilled, label: 'bike_rating_good' },
+	] as const;
+
+	const issueOptions = [
+		{ code: 'motor', label: 'trip_feedback_issue_motor' },
+		{ code: 'pedals', label: 'trip_feedback_issue_pedals' },
+		{ code: 'seat', label: 'trip_feedback_issue_seat' },
+		{ code: 'tyre', label: 'trip_feedback_issue_tyre' },
+		{ code: 'brakes', label: 'trip_feedback_issue_brakes' },
+		{ code: 'handlebar', label: 'trip_feedback_issue_handlebar' },
+	] as const;
+
+	type IssueCode = typeof issueOptions[number]['code'];
+
+	let rating = $state<number|null>(null);
+	let selectedIssueCodes = $state<IssueCode[]>([]);
+	let otherSelected = $state(false);
+	let otherText = $state('');
+	let submitting = $state(false);
+
+	let showProblems = $derived(rating !== null && rating <= 3);
+
+	function selectRating(value: number) {
+		rating = value;
 	}
 
-	async function setRating(ratingValue: number) {
-		rating = ratingValue;
-		const result = await rate(tripCode, bikePlate, rating);
-		$tripRating.currentRating = null;
-		if (!result) {
+	function toggleIssue(issueCode: IssueCode) {
+		if (selectedIssueCodes.includes(issueCode)) {
+			selectedIssueCodes = selectedIssueCodes.filter(selectedIssueCode => selectedIssueCode !== issueCode);
+		} else {
+			selectedIssueCodes = [...selectedIssueCodes, issueCode];
+		}
+	}
+
+	function createFeedbackDescription() {
+		if (!showProblems) return '';
+
+		const descriptionParts = issueOptions
+			.filter(option => selectedIssueCodes.includes(option.code))
+			.map(option => $t(option.label));
+		const trimmedOtherText = otherSelected ? otherText.trim() : '';
+		if (trimmedOtherText) descriptionParts.push(trimmedOtherText);
+
+		return descriptionParts.join('; ');
+	}
+
+	async function sendFeedback() {
+		if (rating === null || submitting) return;
+
+		submitting = true;
+		const selectedRating = rating;
+		const description = createFeedbackDescription();
+		postBikeRating(tripCode, bikePlate, selectedRating, date?.toISOString()).catch(error => {
+			reportErrorEvent('bike_rating_post_error', error instanceof Error ? error.message : String(error));
+		});
+		try {
+			const response = await rateTrip(tripCode, selectedRating, description);
+			if (!response.rateTrip) {
+				errorMessages.add($t('rate_trip_error'));
+				reportErrorEvent('rate_trip_error');
+				return;
+			}
+
+			tripRating.set({ currentRating: null });
+		} catch (error) {
 			errorMessages.add($t('rate_trip_error'));
-			reportErrorEvent('rate_trip_error');
+			reportErrorEvent('rate_trip_error', error instanceof Error ? error.message : String(error));
+		} finally {
+			submitting = false;
 		}
 	}
 </script>
 
-<div transition:fly={{ y: -120 }} class="absolute left-1/2 -translate-x-1/2 flex flex-col items-center justify-center p-2 gap-1 bg-background rounded-2xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)" style:top="{Math.max(16, $safeInsets.top + 8)}px">
-	<span class="font-bold text-info text-sm mx-1 whitespace-nowrap">{$t('last_trip_question')}</span>
-	<div class="grid columns-5 gap-[3px]">
-		{#if rating === 1}
-			<div transition:fade={{ duration: 150 }} class="flex items-center justify-center w-[40px] h-[40px] col-start-1 col-end-1 row-start-1 row-end-1">
-				<svg class="w-[33.33px] h-[33.33px]" width="91" height="91" viewBox="0 0 91 91" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M45.14 86.28C39.7374 86.28 34.3877 85.2159 29.3964 83.1484C24.4051 81.0809 19.8698 78.0506 16.0496 74.2304C12.2294 70.4102 9.19908 65.8749 7.1316 60.8836C5.06412 55.8923 4 50.5426 4 45.14C4 39.7374 5.06412 34.3877 7.1316 29.3964C9.19908 24.4051 12.2294 19.8698 16.0496 16.0496C19.8698 12.2294 24.4051 9.19907 29.3964 7.1316C34.3877 5.06412 39.7374 4 45.14 4C56.051 4 66.5151 8.33438 74.2304 16.0496C81.9456 23.7649 86.28 34.229 86.28 45.14C86.28 56.051 81.9456 66.5151 74.2304 74.2304C66.5151 81.9456 56.051 86.28 45.14 86.28Z" class="fill-primary stroke-primary" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-					<path d="M27 63.2833L31.5711 58.7122L38.4278 63.2833L45.2844 58.7122L52.1411 63.2833L58.9978 58.7122L63.5689 63.2833M29.2856 42.7133L36.1422 35.8567L29.2856 29M61.2833 42.7133L54.4267 35.8567L61.2833 29" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-				</svg>
-			</div>
-		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" ontouchstart={() => setRating(1)}>
-				<IconMoodWrrr size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{/if}
-
-		{#if rating === 2}
-			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1">
-				<IconMoodConfuzedFilled size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" ontouchstart={() => setRating(2)}>
-				<IconMoodConfuzed size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{/if}
-
-		{#if rating === 3}
-			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1">
-				<IconMoodEmptyFilled size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" ontouchstart={() => setRating(3)}>
-				<IconMoodEmpty size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{/if}
-
-		{#if rating === 4}
-			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1">
-				<IconMoodSmileFilled size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" ontouchstart={() => setRating(4)}>
-				<IconMoodSmile size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{/if}
-
-		{#if rating === 5}
-			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1">
-				<IconMoodHappyFilled size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" ontouchstart={() => setRating(5)}>
-				<IconMoodHappy size={40} stroke={1.7} class="text-primary" />
-			</div>
-		{/if}
+<section
+	transition:fly={{ y: 180, duration: 200 }}
+	class="pointer-events-auto absolute inset-x-0 z-20 mx-auto w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[2rem] bg-background px-5 pt-2 text-info transition-[bottom] duration-300"
+	style:bottom="{keyboard.height}px"
+	style:padding-bottom="{Math.max($safeInsets.bottom, 20)}px"
+	style:max-height="calc(100vh - {keyboard.height + Math.max($safeInsets.top, 8)}px)"
+	style:box-shadow="0px -8px 24px 0px var(--color-shadow)"
+	aria-label={$t('last_trip_question')}
+>
+	<div class="mx-auto mb-3 h-1.5 w-16 rounded-full bg-background-tertiary"></div>
+	<div class="flex flex-col items-center gap-2">
+		<h2 class="text-sm font-bold">{$t('last_trip_question')}</h2>
+		<div class="flex items-center justify-center gap-1" role="group" aria-label={$t('last_trip_question')}>
+			{#each ratingOptions as option}
+				{@const RatingIcon = rating === option.value ? option.selectedIcon : option.icon}
+				<button
+					type="button"
+					class="flex h-11 w-11 items-center justify-center rounded-full text-primary transition-transform active:scale-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+					class:bg-background-secondary={rating === option.value}
+					disabled={submitting}
+					aria-label={$t(option.label)}
+					aria-pressed={rating === option.value}
+					onclick={() => selectRating(option.value)}
+				>
+					<RatingIcon size={38} stroke={1.8} />
+				</button>
+			{/each}
+		</div>
 	</div>
-</div>
+
+	{#if rating !== null}
+		<div transition:slide={{ duration: 180 }} class="mt-3 flex flex-col gap-4">
+			{#if showProblems}
+				<div transition:fade={{ duration: 150 }} class="flex flex-col gap-3">
+					<h3 class="text-center text-sm font-semibold text-label">{$t('trip_feedback_what_went_wrong')}</h3>
+					<div class="grid grid-cols-2 gap-2">
+						{#each issueOptions as issue}
+							<button
+								type="button"
+								class="min-h-9 rounded-lg bg-background-secondary px-3 py-2 text-xs font-semibold text-label transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								class:bg-primary={selectedIssueCodes.includes(issue.code)}
+								class:text-background={selectedIssueCodes.includes(issue.code)}
+								disabled={submitting}
+								aria-pressed={selectedIssueCodes.includes(issue.code)}
+								onclick={() => toggleIssue(issue.code)}
+							>
+								{$t(issue.label)}
+							</button>
+						{/each}
+					</div>
+					<button
+						type="button"
+						class="mx-auto rounded-lg bg-background-secondary px-4 py-2 text-xs font-semibold text-label transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						class:bg-primary={otherSelected}
+						class:text-background={otherSelected}
+						disabled={submitting}
+						aria-pressed={otherSelected}
+						onclick={() => otherSelected = !otherSelected}
+					>
+						+ {$t('trip_feedback_other')}
+					</button>
+
+					{#if otherSelected}
+						<label transition:slide={{ duration: 150 }} class="flex flex-col gap-1 text-xs font-semibold text-label">
+							{$t('trip_feedback_other_reason')}
+							<textarea
+								bind:value={otherText}
+								rows="3"
+								class="resize-none rounded-xl border border-background-tertiary bg-background-secondary p-3 text-sm font-medium text-info placeholder:text-label disabled:opacity-60 focus:border-primary focus:ring-primary"
+								disabled={submitting}
+								placeholder={$t('trip_feedback_other_placeholder')}
+							></textarea>
+						</label>
+					{/if}
+				</div>
+			{/if}
+
+			<button
+				type="button"
+				class="flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-background disabled:opacity-60"
+				disabled={submitting}
+				aria-label={$t('trip_feedback_send')}
+				aria-busy={submitting}
+				onclick={sendFeedback}
+			>
+				{#if submitting}
+					<span transition:fade={{ duration: 100 }} aria-hidden="true">
+						<IconLoader2 class="animate-spin" size={24} />
+					</span>
+				{:else}
+					{$t('trip_feedback_send')}
+				{/if}
+			</button>
+		</div>
+	{/if}
+</section>

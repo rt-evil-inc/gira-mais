@@ -77,6 +77,50 @@ const translations = {
 		en: 'How was your last trip?',
 		pt: 'Como foi a sua última viagem?',
 	},
+	trip_feedback_what_went_wrong: {
+		en: 'What went wrong?',
+		pt: 'O que correu mal?',
+	},
+	trip_feedback_issue_motor: {
+		en: 'Motor does not work',
+		pt: 'Motor não funciona',
+	},
+	trip_feedback_issue_pedals: {
+		en: 'Pedals do not turn',
+		pt: 'Pedais não rodam',
+	},
+	trip_feedback_issue_seat: {
+		en: 'Damaged seat',
+		pt: 'Selim danificado',
+	},
+	trip_feedback_issue_tyre: {
+		en: 'Tyre problem',
+		pt: 'Problema nos pneus',
+	},
+	trip_feedback_issue_brakes: {
+		en: 'Brake problem',
+		pt: 'Problema nos travões',
+	},
+	trip_feedback_issue_handlebar: {
+		en: 'Misaligned handlebar',
+		pt: 'Guiador desviado',
+	},
+	trip_feedback_other: {
+		en: 'Other',
+		pt: 'Outro',
+	},
+	trip_feedback_other_reason: {
+		en: 'Other reason',
+		pt: 'Outro motivo',
+	},
+	trip_feedback_other_placeholder: {
+		en: 'Describe what went wrong',
+		pt: 'Indique o que correu mal',
+	},
+	trip_feedback_send: {
+		en: 'Send',
+		pt: 'Enviar',
+	},
 	station_label: {
 		en: 'Station',
 		pt: 'Estação',
