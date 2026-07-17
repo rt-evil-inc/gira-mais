@@ -3,7 +3,7 @@
 	import { bearing, bearingNorth, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
-	import { currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
+	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
@@ -44,9 +44,25 @@
 		if ($bearingNorth) map.flyTo({ bearing: 0 });
 	});
 
+	// MapLibre recognizes the taps of one-finger zoom gestures (double-tap and
+	// double-tap-drag) up to 500ms apart, and 'click' fires on their first tap
+	// too. Deferring the pin drop for most of that window keeps those gestures
+	// from setting destinations, without making deliberate pin drops sluggish —
+	// at worst an unusually slow double-tap still drops a pin. The route is
+	// computed during the wait; only showing it is deferred
+	const PIN_DROP_DELAY_ms = 200;
+	let pendingPinDrop: ReturnType<typeof setTimeout>|null = null;
+	function cancelPendingPinDrop() {
+		if (pendingPinDrop != null) {
+			clearTimeout(pendingPinDrop);
+			pendingPinDrop = null;
+		}
+	}
+
 	function addEventListeners(map: maplibregl.Map) {
 		async function onStationClick(e: maplibregl.MapLayerMouseEvent) {
 			if (e.features === undefined) return;
+			cancelPendingPinDrop();
 			following.set(false);
 			const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
 			const props = feature.properties as { serialNumber: string, name: string, bikes: number };
@@ -96,16 +112,38 @@
 				selectedStation.set(null);
 				return;
 			}
-			// Tapping an empty spot on the map sets it as the routing destination
+			// Tapping an empty spot on the map sets it as the routing destination,
+			// deferred past the double-tap window and cancelled by zoom gestures
+			cancelPendingPinDrop();
 			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
-			routeDestination.set(destination);
-			reverseGeocode(destination).then(name => {
-				const current = get(routeDestination);
-				if (name && current && current.lat === destination.lat && current.lng === destination.lng) {
-					routeDestination.set({ ...destination, name });
-				}
-			});
+			// Compute the route right away so it's usually ready when the wait ends
+			const pos = get(currentPos);
+			let prefetchedRoute: PlannedRoute|null = null;
+			if (pos) {
+				computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
+					.then(route => prefetchedRoute = route)
+					.catch(() => {}); // if it failed, the recompute below will retry and report
+			}
+			pendingPinDrop = setTimeout(() => {
+				pendingPinDrop = null;
+				// Publishing a route for this destination first makes the destination
+				// subscription in routing.ts skip its recompute; if the prefetch isn't
+				// done yet, the normal recompute takes over
+				if (prefetchedRoute) currentRoute.set(prefetchedRoute);
+				routeDestination.set(destination);
+				reverseGeocode(destination).then(name => {
+					const current = get(routeDestination);
+					if (name && current && current.lat === destination.lat && current.lng === destination.lng) {
+						routeDestination.set({ ...destination, name });
+					}
+				});
+			}, PIN_DROP_DELAY_ms);
 		});
+		map.on('dblclick', cancelPendingPinDrop);
+		map.on('zoomstart', cancelPendingPinDrop);
+		map.on('dragstart', cancelPendingPinDrop);
+		map.on('rotatestart', cancelPendingPinDrop);
+		map.on('pitchstart', cancelPendingPinDrop);
 		map.on('rotate', () => {
 			bearing.set(map.getBearing());
 			bearingNorth.set(false);
