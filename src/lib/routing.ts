@@ -1,7 +1,8 @@
 import { get, writable } from 'svelte/store';
 import { currentPos } from '$lib/location';
 import { currentTrip } from '$lib/trip';
-import { stations, type StationInfo } from '$lib/map.svelte';
+import { LOCK_DISTANCE_m } from '$lib/constants';
+import { selectedStation, stations, type StationInfo } from '$lib/map.svelte';
 import { distanceBetweenCoords } from '$lib/utils';
 import { errorMessages } from '$lib/ui.svelte';
 import { t } from '$lib/translations';
@@ -298,7 +299,29 @@ export function clearRouteDestination() {
 	routeDestination.set(null);
 }
 
+/** The station the route heads to for picking up a bike — the pickup station,
+  * or a station destination itself when walking straight to one */
+export function routePickupStationSerial(route: PlannedRoute|null): string|null {
+	if (!route) return null;
+	return route.startStationSerial ?? (route.destination.type === 'station' ? route.destination.stationSerial : null);
+}
+
+// Open the station menu automatically when the user reaches the station where
+// they will pick up a bike, so they don't need to tap it to unlock one
+let autoOpenedStation: string|null = null;
+function autoOpenStationMenu(pos: Coord) {
+	if (get(currentTrip) !== null) return;
+	const serial = routePickupStationSerial(get(currentRoute));
+	if (!serial || autoOpenedStation === serial) return;
+	const station = stations.value.find(s => s.serialNumber === serial);
+	if (!station) return;
+	if (distanceBetweenCoords(pos.lat, pos.lng, station.latitude, station.longitude) * 1000 > LOCK_DISTANCE_m) return;
+	autoOpenedStation = serial; // only once per approach, so dismissing it sticks
+	if (get(selectedStation) == null) selectedStation.set(serial);
+}
+
 routeDestination.subscribe(destination => {
+	autoOpenedStation = null;
 	if (!destination) {
 		currentRoute.set(null);
 		return;
@@ -322,6 +345,8 @@ currentPos.subscribe(pos => {
 		routeDestination.set(null);
 		return;
 	}
+
+	autoOpenStationMenu({ lat: pos.coords.latitude, lng: pos.coords.longitude });
 
 	const route = get(currentRoute);
 	if (route) {

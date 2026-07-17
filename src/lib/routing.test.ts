@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { computeRoute, currentRoute, routeDestination } from '$lib/routing';
 import { currentPos } from '$lib/location';
-import { stations } from '$lib/map.svelte';
+import { selectedStation, stations } from '$lib/map.svelte';
 import { ROUTING_API_URL } from '$lib/constants';
 import { get } from 'svelte/store';
 
@@ -81,5 +81,23 @@ describe.skipIf(!serverReachable)('computeRoute', () => {
 		expect(route).not.toBeNull();
 		expect(route!.legs[route!.legs.length - 1].mode).toBe('bike');
 		expect(route!.endStationSerial).toBe('marques');
+	});
+
+	it('should open the station menu when reaching the pickup station', async () => {
+		selectedStation.set(null);
+		currentPos.set({ coords: { latitude: 38.7075, longitude: -9.1440, accuracy: 5, altitude: null, altitudeAccuracy: null, speed: null, heading: null }, timestamp: Date.now() });
+		routeDestination.set({ type: 'location', lat: 38.7700, lng: -9.0950, name: 'Parque das Nações' });
+		await vi.waitFor(() => expect(get(currentRoute)?.startStationSerial).toBe('sodre'), { timeout: 15000 });
+		expect(get(selectedStation)).toBeNull();
+
+		// Walk up to the pickup station
+		currentPos.set({ coords: { latitude: 38.7064, longitude: -9.1450, accuracy: 5, altitude: null, altitudeAccuracy: null, speed: null, heading: null }, timestamp: Date.now() });
+		expect(get(selectedStation)).toBe('sodre');
+
+		// Dismissing it sticks: another position update nearby must not reopen it
+		selectedStation.set(null);
+		currentPos.set({ coords: { latitude: 38.7065, longitude: -9.1449, accuracy: 5, altitude: null, altitudeAccuracy: null, speed: null, heading: null }, timestamp: Date.now() });
+		expect(get(selectedStation)).toBeNull();
+		routeDestination.set(null);
 	});
 });

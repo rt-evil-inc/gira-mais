@@ -51,19 +51,31 @@
 			const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
 			const props = feature.properties as { serialNumber: string, name: string, bikes: number };
 			selectedStation.set(props.serialNumber);
-			routeDestination.set({
-				type: 'station',
-				lat: feature.geometry.coordinates[1],
-				lng: feature.geometry.coordinates[0],
-				name: props.name,
-				stationSerial: props.serialNumber,
-			});
+			// Tapping a station that's already part of the route (e.g. to unlock a
+			// bike at the pickup station) only opens its menu — it must not replace
+			// the route with a route to that station
+			const route = get(currentRoute);
+			const partOfRoute = route != null && (
+				route.startStationSerial === props.serialNumber ||
+				route.endStationSerial === props.serialNumber ||
+				(route.destination.type === 'station' && route.destination.stationSerial === props.serialNumber)
+			);
+			if (!partOfRoute) {
+				routeDestination.set({
+					type: 'station',
+					lat: feature.geometry.coordinates[1],
+					lng: feature.geometry.coordinates[0],
+					name: props.name,
+					stationSerial: props.serialNumber,
+				});
+			}
 			await tick();
 			await tick();
 			// With no active trip the camera moves once, when the computed route is
-			// fit to the view; during a trip (or without a location, when no route
-			// can be computed) no fit happens, so center the station instead
-			if (get(currentTrip) !== null || get(currentPos) === null) {
+			// fit to the view; during a trip, without a location (when no route can
+			// be computed) or when the route is kept, no fit happens, so center the
+			// station instead
+			if (get(currentTrip) !== null || get(currentPos) === null || partOfRoute) {
 				map.flyTo({
 					center: feature.geometry.coordinates as [number, number],
 					padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
