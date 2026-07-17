@@ -75,10 +75,23 @@ function closestProjection(position: Coord, segments: Segment[], minOrder = 0, m
 	return best;
 }
 
-/** Match a GPS position to a route while retaining enough state to avoid noisy jumps. */
-export function projectPositionOntoRoute(route: PlannedRoute, position: Coord, state: RouteClippingState): RouteClippingState {
+/** Match a GPS position to a route while retaining enough state to avoid noisy jumps.
+  * Matching is restricted to the legs the user can currently be traversing: the
+  * leg of their current progress plus consecutive legs of their current travel
+  * mode. Walking across a later bike leg on the way to the pickup station (or
+  * riding across a later walking leg) must not advance the clipping. */
+export function projectPositionOntoRoute(route: PlannedRoute, position: Coord, state: RouteClippingState, mode: RouteLeg['mode']): RouteClippingState {
 	const segments = routeSegments(route);
-	const global = closestProjection(position, segments);
+	const firstLegIndex = state.accepted?.legIndex ?? segments[0]?.legIndex;
+	if (firstLegIndex == null || route.legs[firstLegIndex].mode !== mode) return state;
+	let lastLegIndex = firstLegIndex;
+	while (lastLegIndex + 1 < route.legs.length && route.legs[lastLegIndex + 1].mode === mode) lastLegIndex++;
+	const eligible = segments.filter(s => s.legIndex >= firstLegIndex && s.legIndex <= lastLegIndex);
+	if (eligible.length === 0) return state;
+	const minOrder = eligible[0].segmentOrder;
+	const maxOrder = eligible[eligible.length - 1].segmentOrder;
+
+	const global = closestProjection(position, segments, minOrder, maxOrder);
 	if (!global || global.distanceFromRoute > ROUTE_OFF_ROUTE_METERS) {
 		return { ...state, pendingSegmentOrder: null, pendingReadings: 0 };
 	}
@@ -87,7 +100,7 @@ export function projectPositionOntoRoute(route: PlannedRoute, position: Coord, s
 	let pendingSegmentOrder: number|null = null;
 	let pendingReadings = 0;
 	if (state.accepted) {
-		const local = closestProjection(position, segments, state.accepted.segmentOrder - ROUTE_LOCAL_SEARCH_SEGMENTS, state.accepted.segmentOrder + ROUTE_LOCAL_SEARCH_SEGMENTS);
+		const local = closestProjection(position, segments, Math.max(minOrder, state.accepted.segmentOrder - ROUTE_LOCAL_SEARCH_SEGMENTS), Math.min(maxOrder, state.accepted.segmentOrder + ROUTE_LOCAL_SEARCH_SEGMENTS));
 		if (local && Math.abs(global.segmentOrder - state.accepted.segmentOrder) > ROUTE_LOCAL_SEARCH_SEGMENTS) {
 			if (global.distanceFromRoute + ROUTE_GLOBAL_REMATCH_ADVANTAGE_METERS < local.distanceFromRoute) {
 				pendingSegmentOrder = global.segmentOrder;

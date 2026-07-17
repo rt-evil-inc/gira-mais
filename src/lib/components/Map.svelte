@@ -156,7 +156,7 @@
 			routeClippingState = projectPositionOntoRoute(route, {
 				lat: pos.coords.latitude,
 				lng: pos.coords.longitude,
-			}, routeClippingState);
+			}, routeClippingState, get(currentTrip) !== null ? 'bike' : 'foot');
 		}
 		const displayLegs = route ? clipRouteAtProjection(route, routeClippingState.accepted) : [];
 		src.setData({
