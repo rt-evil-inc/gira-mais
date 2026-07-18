@@ -123,6 +123,33 @@
 		select({ name: entry.name, detail: '', lat: entry.lat, lng: entry.lng });
 	}
 
+	// The keyboard's search key selects the first visible row: the top station
+	// match if any, else the top geocoder result — fetched right away when the
+	// debounced search hasn't returned yet
+	async function submit() {
+		if (stationResults.length > 0) {
+			selectStation(stationResults[0]);
+			return;
+		}
+		if (results != null && results.length > 0) {
+			select(results[0]);
+			return;
+		}
+		clearTimeout(debounce);
+		const q = query.trim();
+		if (q.length < 2) return;
+		try {
+			const pos = get(currentPos);
+			const found = await searchLocations(q, pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null);
+			if (q !== query.trim()) return;
+			results = found;
+			if (found.length > 0) select(found[0]);
+		} catch (e) {
+			console.error('Location search failed', e);
+			results = [];
+		}
+	}
+
 	function clear() {
 		clearTimeout(debounce);
 		// The subscription below also does this, but only when a destination was
@@ -185,6 +212,7 @@
 				bind:this={input}
 				bind:value={query}
 				oninput={onInput}
+				onkeydown={e => e.key === 'Enter' && submit()}
 				onfocus={() => focused = true}
 				onblur={() => setTimeout(() => focused = false, 150)}
 				type="text"
