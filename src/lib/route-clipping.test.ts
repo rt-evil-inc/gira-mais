@@ -3,6 +3,7 @@ import {
 	clipRouteAtProjection,
 	emptyRouteClippingState,
 	projectPositionOntoRoute,
+	remainingRoute,
 	ROUTE_GLOBAL_REMATCH_READINGS,
 } from '$lib/route-clipping';
 import type { PlannedRoute, RouteLeg } from '$lib/routing';
@@ -122,6 +123,20 @@ describe('route clipping', () => {
 		}
 		state = projectPositionOntoRoute(planned, { lng: 0.0002, lat: 0.0003 }, state, 'bike');
 		expect(state.accepted!.segmentOrder).toBeGreaterThan(20);
+	});
+
+	it('reports the distance and duration remaining ahead of the projection', () => {
+		const planned = route([
+			{ ...leg('foot', [[0, 0], [0.01, 0]]), duration: 300 },
+			{ ...leg('bike', [[0.01, 0], [0.02, 0]]), duration: 600 },
+		]);
+		const full = remainingRoute(planned, null);
+		expect(full.duration).toBe(900);
+		// halfway through the walking leg: half its duration plus the whole ride
+		const state = projectPositionOntoRoute(planned, { lng: 0.005, lat: 0 }, emptyRouteClippingState(), 'foot');
+		const remaining = remainingRoute(planned, state.accepted);
+		expect(remaining.distance / full.distance).toBeCloseTo(0.75, 1);
+		expect(remaining.duration).toBeCloseTo(750, 0);
 	});
 
 	it('ignores degenerate geometry and never returns invalid lines', () => {

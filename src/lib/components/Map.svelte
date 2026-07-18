@@ -4,7 +4,7 @@
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
-	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, type RouteClippingState } from '$lib/route-clipping';
+	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
@@ -195,6 +195,13 @@
 				lat: pos.coords.latitude,
 				lng: pos.coords.longitude,
 			}, routeClippingState, get(currentTrip) !== null ? 'bike' : 'foot');
+		}
+		// Refine the trip HUD's distance-left and arrival time with the progress
+		// along the route, which route recomputes alone would only track every ~30m
+		if (route && routeClippingState.accepted && get(currentTrip) !== null) {
+			const remaining = remainingRoute(route, routeClippingState.accepted);
+			const arrivalTime = new Date(Date.now() + remaining.duration * 1000);
+			currentTrip.update(trip => trip ? { ...trip, distanceLeft: remaining.distance / 1000, arrivalTime, predictedEndDate: arrivalTime } : trip);
 		}
 		const displayLegs = route ? clipRouteAtProjection(route, routeClippingState.accepted) : [];
 		src.setData({

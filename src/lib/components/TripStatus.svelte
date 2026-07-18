@@ -67,6 +67,14 @@
 	function formatTime(date: Date) {
 		return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 	}
+
+	/** "<1min", "26min" or "1h26min", as value/unit pairs for Metric */
+	function formatDurationMinutes(ms: number): { value: string, unit: string, secondValue?: string, secondUnit?: string } {
+		const minutes = Math.round(ms / 60000);
+		if (minutes < 1) return { value: '<1', unit: 'min' };
+		if (minutes < 60) return { value: minutes.toString(), unit: 'min' };
+		return { value: Math.floor(minutes / 60).toString(), unit: 'h', secondValue: (minutes % 60).toString().padStart(2, '0'), secondUnit: 'min' };
+	}
 </script>
 
 <div transition:fly={portrait ? { y: -172 } : { x: -172 }} class="absolute bg-background top-0 left-0 transition-all" style:height={portrait ? `${height}px` : '100%'} style:width={portrait ? '100%' : `${width}px`} style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
@@ -89,14 +97,14 @@
 			{#if $trip.destination}
 				<div transition:fly={{ x: 64, duration: 150, easing: cubicInOut }} class="absolute transition-all {portrait ? 'top-[92px] right-12' : 'top-[150px] left-4'}">
 					{#if $trip.distanceLeft != null}
-						<Metric value={$trip.distanceLeft} unit="km" label={$t('distance_left')} />
+						<Metric value={$trip.distanceLeft >= 1 ? $trip.distanceLeft : Math.round($trip.distanceLeft * 1000)} unit={$trip.distanceLeft >= 1 ? 'km' : 'm'} label={$t('distance_left')} />
 					{/if}
 				</div>
 				<div transition:fade={{ duration: 150 }}>
 					<div class="absolute top-[150px] transition-all {portrait ? 'left-24' : 'right-4'}">
 						{#if $trip.arrivalTime}
-							{@const timeLeft = $trip.arrivalTime.getTime() - Date.now()}
-							<Metric value={msToMinuteSeconds(timeLeft)} unit="min" label={$t('time_left')} />
+							{@const timeLeft = formatDurationMinutes($trip.arrivalTime.getTime() - Date.now())}
+							<Metric value={timeLeft.value} unit={timeLeft.unit} secondValue={timeLeft.secondValue} secondUnit={timeLeft.secondUnit} label={$t('time_left')} />
 						{/if}
 					</div>
 					<div class="absolute transition-all {portrait ? 'top-[150px] right-24' : 'top-[208px] right-1/2 translate-x-1/2'}">

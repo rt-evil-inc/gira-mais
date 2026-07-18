@@ -124,6 +124,32 @@ export function projectPositionOntoRoute(route: PlannedRoute, position: Coord, s
 	return { accepted: candidate, pendingSegmentOrder, pendingReadings };
 }
 
+/** Distance (meters) and duration (seconds) of the route remaining ahead of
+  * the projection. The projected leg contributes its geometric remaining
+  * fraction of the leg duration. */
+export function remainingRoute(route: PlannedRoute, projection: RouteProjection|null): { distance: number, duration: number } {
+	const segments = routeSegments(route);
+	if (segments.length === 0) return { distance: 0, duration: 0 };
+	const last = segments[segments.length - 1];
+	const total = last.startDistance + distance(last.coordinates[0], last.coordinates[1], { units: 'meters' });
+	const along = projection?.distanceAlongRoute ?? 0;
+
+	let duration = 0;
+	for (let legIndex = projection?.legIndex ?? 0; legIndex < route.legs.length; legIndex++) {
+		if (!projection || legIndex > projection.legIndex) {
+			duration += route.legs[legIndex].duration;
+			continue;
+		}
+		const legSegments = segments.filter(s => s.legIndex === legIndex);
+		if (legSegments.length === 0) continue;
+		const legLast = legSegments[legSegments.length - 1];
+		const legEnd = legLast.startDistance + distance(legLast.coordinates[0], legLast.coordinates[1], { units: 'meters' });
+		const legLength = legEnd - legSegments[0].startDistance;
+		if (legLength > 0) duration += route.legs[legIndex].duration * Math.max(0, legEnd - along) / legLength;
+	}
+	return { distance: Math.max(0, total - along), duration };
+}
+
 /** Return display-only legs starting precisely at the accepted route projection. */
 export function clipRouteAtProjection(route: PlannedRoute, projection: RouteProjection|null): DisplayRouteLeg[] {
 	if (!projection) return route.legs
