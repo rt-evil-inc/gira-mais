@@ -125,6 +125,11 @@
 
 	function clear() {
 		clearTimeout(debounce);
+		// The subscription below also does this, but only when a destination was
+		// set — clearing an unsubmitted query must not depend on it
+		query = '';
+		results = null;
+		stationResults = [];
 		routeDestination.set(null);
 	}
 
