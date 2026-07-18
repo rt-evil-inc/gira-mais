@@ -1,12 +1,24 @@
+<script lang="ts" module>
+	let dismiss: (() => boolean)|null = null;
+
+	/** Unfocus the search bar, closing its results; true if it was focused */
+	export function dismissSearchBar(): boolean {
+		return dismiss?.() ?? false;
+	}
+</script>
+
 <script lang="ts">
 	import { searchLocations, type GeocodingResult } from '$lib/geocoding';
 	import { searchStations } from '$lib/station-search';
+	import { addToSearchHistory, searchHistory, type SearchHistoryEntry } from '$lib/search-history';
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations, type StationInfo } from '$lib/map.svelte';
 	import { currentRoute, routeDestination, routePending, type PlannedRoute } from '$lib/routing';
 	import { currentTrip } from '$lib/trip';
 	import { t } from '$lib/translations';
-	import { IconBike, IconChevronRight, IconMapPin, IconSearch, IconWalk, IconX } from '@tabler/icons-svelte';
+	import { Keyboard } from '@capacitor/keyboard';
+	import { onMount } from 'svelte';
+	import { IconBike, IconChevronRight, IconHistory, IconMapPin, IconSearch, IconWalk, IconX } from '@tabler/icons-svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { get } from 'svelte/store';
 
@@ -16,7 +28,8 @@
 	let focused = $state(false);
 	let input: HTMLInputElement|undefined = $state();
 	let contentHeight = $state<number|null>(null);
-	const showingResults = $derived(focused && (results != null || stationResults.length > 0));
+	const showingHistory = $derived(focused && query.trim().length < 2 && $searchHistory.length > 0);
+	const showingResults = $derived(focused && (results != null || stationResults.length > 0 || showingHistory));
 	let debounce: ReturnType<typeof setTimeout>;
 
 	// Delay showing the summary slightly after a route arrives, so that when a
@@ -30,6 +43,25 @@
 			return () => clearTimeout(timeout);
 		}
 		showSummary = false;
+	});
+
+	dismiss = () => {
+		const wasFocused = focused;
+		focused = false;
+		input?.blur();
+		return wasFocused;
+	};
+
+	// Dismissing the keyboard (Android back press, done key or a swipe down)
+	// also closes the search. Android consumes that back press before the app
+	// sees it, so the backButton handler alone would take two presses. Using
+	// the native event — not an effect on the keyboard state — so that focusing
+	// the bar can never re-trigger it
+	onMount(() => {
+		const listener = Keyboard.addListener('keyboardWillHide', () => dismiss?.()).catch(() => null); // not implemented on web
+		return () => {
+			listener.then(l => l?.remove());
+		};
 	});
 
 	// Keep the input in sync with destinations set elsewhere (map tap, station tap)
@@ -67,6 +99,7 @@
 	function select(result: GeocodingResult) {
 		selectedStation.set(null);
 		routeDestination.set({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
+		addToSearchHistory({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
 		input?.blur();
 	}
 
@@ -75,7 +108,19 @@
 		// station, and its menu opens
 		selectedStation.set(station.serialNumber);
 		routeDestination.set({ type: 'station', lat: station.latitude, lng: station.longitude, name: station.name, stationSerial: station.serialNumber });
+		addToSearchHistory({ type: 'station', lat: station.latitude, lng: station.longitude, name: station.name, stationSerial: station.serialNumber });
 		input?.blur();
+	}
+
+	function selectHistoryEntry(entry: SearchHistoryEntry) {
+		if (entry.type === 'station') {
+			const station = stations.value.find(s => s.serialNumber === entry.stationSerial && s.assetStatus === 'active');
+			if (station) {
+				selectStation(station);
+				return;
+			}
+		}
+		select({ name: entry.name, detail: '', lat: entry.lat, lng: entry.lng });
 	}
 
 	function clear() {
@@ -165,6 +210,14 @@
 						<div bind:clientHeight={contentHeight}>
 							{#if showingResults}
 								<div class="max-h-[40vh] overflow-y-auto py-2">
+									{#if showingHistory}
+										{#each $searchHistory as entry}
+											<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectHistoryEntry(entry)}>
+												<IconHistory class="text-label shrink-0" size="20" stroke="2" />
+												<span class="text-info font-semibold text-sm truncate">{entry.name}</span>
+											</button>
+										{/each}
+									{/if}
 									{#each stationResults as station}
 										<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectStation(station)}>
 											<IconBike class="text-label shrink-0" size="20" stroke="2" />

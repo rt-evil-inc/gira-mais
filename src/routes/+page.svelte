@@ -11,7 +11,7 @@
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
 	import { routeDestination } from '$lib/routing';
-	import SearchBar from '$lib/components/SearchBar.svelte';
+	import SearchBar, { dismissSearchBar } from '$lib/components/SearchBar.svelte';
 	import { get } from 'svelte/store';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
@@ -54,7 +54,9 @@
 
 		App.addListener('backButton', () => {
 			if (!profileOpen) {
-				if ($selectedStation != null) {
+				if (dismissSearchBar()) {
+				// just unfocus the search bar
+				} else if ($selectedStation != null) {
 					$selectedStation = null;
 				} else if (get(routeDestination) != null) {
 					routeDestination.set(null);
