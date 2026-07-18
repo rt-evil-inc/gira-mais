@@ -85,6 +85,10 @@ const translations = {
 		en: 'No results found',
 		pt: 'Sem resultados',
 	},
+	station_availability: {
+		en: '{{bikes}} bikes · {{docks}} free docks',
+		pt: '{{bikes}} bicicletas · {{docks}} docas livres',
+	},
 	selected_location: {
 		en: 'Selected location',
 		pt: 'Local selecionado',

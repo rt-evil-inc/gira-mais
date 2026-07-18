@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { searchLocations, type GeocodingResult } from '$lib/geocoding';
+	import { searchStations } from '$lib/station-search';
 	import { currentPos } from '$lib/location';
-	import { selectedStation } from '$lib/map.svelte';
+	import { selectedStation, stations, type StationInfo } from '$lib/map.svelte';
 	import { currentRoute, routeDestination, routePending, type PlannedRoute } from '$lib/routing';
 	import { currentTrip } from '$lib/trip';
 	import { t } from '$lib/translations';
@@ -11,9 +12,11 @@
 
 	let query = $state('');
 	let results = $state<GeocodingResult[]|null>(null);
+	let stationResults = $state<StationInfo[]>([]);
 	let focused = $state(false);
 	let input: HTMLInputElement|undefined = $state();
 	let contentHeight = $state<number|null>(null);
+	const showingResults = $derived(focused && (results != null || stationResults.length > 0));
 	let debounce: ReturnType<typeof setTimeout>;
 
 	// Delay showing the summary slightly after a route arrives, so that when a
@@ -33,6 +36,7 @@
 	routeDestination.subscribe(destination => {
 		clearTimeout(debounce);
 		results = null;
+		stationResults = [];
 		query = destination ? destination.name ?? get(t)('selected_location') : '';
 	});
 
@@ -41,12 +45,17 @@
 		const q = query.trim();
 		if (q.length < 2) {
 			results = null;
+			stationResults = [];
 			return;
 		}
+		const pos = get(currentPos);
+		const bias = pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
+		// Stations are matched locally and shown right away, while the geocoder
+		// results follow when they arrive
+		stationResults = searchStations(stations.value, q, bias);
 		debounce = setTimeout(async () => {
 			try {
-				const pos = get(currentPos);
-				const found = await searchLocations(q, pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null);
+				const found = await searchLocations(q, bias);
 				if (q === query.trim()) results = found;
 			} catch (e) {
 				console.error('Location search failed', e);
@@ -58,6 +67,14 @@
 	function select(result: GeocodingResult) {
 		selectedStation.set(null);
 		routeDestination.set({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
+		input?.blur();
+	}
+
+	function selectStation(station: StationInfo) {
+		// Same path as tapping the station on the map: the route ends at the
+		// station, and its menu opens
+		selectedStation.set(station.serialNumber);
+		routeDestination.set({ type: 'station', lat: station.latitude, lng: station.longitude, name: station.name, stationSerial: station.serialNumber });
 		input?.blur();
 	}
 
@@ -133,22 +150,31 @@
 		</div>
 		<!-- one extension surface behind the pill: the search results while typing,
 			the route summary otherwise, animating its height between the two -->
-		{#if (focused && results != null) || (lastRoute != null && showSummary)}
+		{#if showingResults || (lastRoute != null && showSummary)}
 			<!-- the wrapper clips the extension at the bar's midline (where the pill
 				is full-width), so it can never peek out above the bar while sliding;
 				the padding, cancelled by negative margins, keeps the shadow visible.
 				pointer-events-none so the widened wrapper never eats taps beside the
 				bar — re-enabled on the surface itself -->
 			<div class="relative -mt-6 -mx-8 -mb-8 px-8 pb-8 overflow-hidden pointer-events-none">
-				<div transition:drawer use:resetContentHeight class="pointer-events-auto pt-6 rounded-b-[24px] bg-background-secondary dark:bg-background {$routePending && !(focused && results != null) ? 'animate-pulse' : ''}" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
+				<div transition:drawer use:resetContentHeight class="pointer-events-auto pt-6 rounded-b-[24px] bg-background-secondary dark:bg-background {$routePending && !showingResults ? 'animate-pulse' : ''}" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
 					<!-- the summary height (h-10) is set synchronously with the mode
 						switch — only the variable-height results list relies on the
 						measured (and thus one-frame-stale) contentHeight -->
-					<div class="transition-[height] duration-150 overflow-hidden" style:height={focused && results != null ? contentHeight != null ? contentHeight + 'px' : 'auto' : '40px'}>
+					<div class="transition-[height] duration-150 overflow-hidden" style:height={showingResults ? contentHeight != null ? contentHeight + 'px' : 'auto' : '40px'}>
 						<div bind:clientHeight={contentHeight}>
-							{#if focused && results != null}
+							{#if showingResults}
 								<div class="max-h-[40vh] overflow-y-auto py-2">
-									{#each results as result}
+									{#each stationResults as station}
+										<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectStation(station)}>
+											<IconBike class="text-label shrink-0" size="20" stroke="2" />
+											<div class="flex flex-col min-w-0">
+												<span class="text-info font-semibold text-sm truncate">{station.name}</span>
+												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: Math.max(station.docks - station.bikes, 0).toString() })}</span>
+											</div>
+										</button>
+									{/each}
+									{#each results ?? [] as result}
 										<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => select(result)}>
 											<IconMapPin class="text-label shrink-0" size="20" stroke="2" />
 											<div class="flex flex-col min-w-0">
@@ -159,7 +185,9 @@
 											</div>
 										</button>
 									{:else}
-										<span class="block px-4 py-2 text-sm text-label">{$t('no_results_found')}</span>
+										{#if stationResults.length === 0 && results != null}
+											<span class="block px-4 py-2 text-sm text-label">{$t('no_results_found')}</span>
+										{/if}
 									{/each}
 								</div>
 							{:else if lastRoute}
