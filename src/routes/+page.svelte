@@ -103,16 +103,17 @@
 		<Compass />
 	</Floating>
 
-	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={84}>
+	<!-- follows the search bar's anchor so the top inset can't squeeze their gap -->
+	<Floating left={tripStatusWidth + 20} y={Math.max(tripStatusHeight + 12, $safeInsets.top)} offset={68}>
 		<SupportButton />
 	</Floating>
 
 	{#if $token !== null}
-		<!-- Keep the search UI above the live map, but below Map's z-10 loading
-			preview. This stacking context also contains SearchBar's internal z-10. -->
-		<div class="absolute right-[80px] z-[5]" style:left="{tripStatusWidth + 16}px" style:top="{Math.max(tripStatusHeight + 20, $safeInsets.top)}px">
-			<SearchBar />
-		</div>
+		<!-- in landscape trips the HUD already claims the left edge, so the bar
+			collapses into a button to keep the map visible -->
+		<Floating left={tripStatusWidth + 16} right={80} y={Math.max(tripStatusHeight + 16, $safeInsets.top)} offset={4} class="z-[5] pointer-events-none">
+			<SearchBar collapsible={tripStatusWidth > 0} />
+		</Floating>
 	{/if}
 
 	{#if profileOpen}

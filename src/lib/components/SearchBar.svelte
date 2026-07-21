@@ -22,12 +22,27 @@
 	import { cubicOut } from 'svelte/easing';
 	import { get } from 'svelte/store';
 
+	interface Props {
+		/** Collapse into a round search button until tapped (landscape trips,
+		  * where the map space is scarce and the HUD already shows the trip) */
+		collapsible?: boolean;
+	}
+
+	let { collapsible = false }: Props = $props();
+
 	let query = $state('');
 	let results = $state<GeocodingResult[]|null>(null);
 	let stationResults = $state<StationInfo[]>([]);
 	let focused = $state(false);
+	let expanded = $state(false);
 	let input: HTMLInputElement|undefined = $state();
 	let contentHeight = $state<number|null>(null);
+	const collapsed = $derived(collapsible && !expanded);
+
+	function expand() {
+		expanded = true;
+		input?.focus();
+	}
 	const showingHistory = $derived(focused && query.trim().length < 2 && $searchHistory.length > 0);
 	const showingResults = $derived(focused && (results != null || stationResults.length > 0 || showingHistory));
 	let debounce: ReturnType<typeof setTimeout>;
@@ -48,6 +63,7 @@
 	dismiss = () => {
 		const wasFocused = focused;
 		focused = false;
+		expanded = false;
 		input?.blur();
 		return wasFocused;
 	};
@@ -158,6 +174,9 @@
 		results = null;
 		stationResults = [];
 		routeDestination.set(null);
+		// Unfocus in the same batch as emptying the query — waiting for the blur
+		// timeout would flash the history list into the emptied bar
+		dismiss?.();
 	}
 
 	// Snapshot of the last non-null route, so the summary still has content to
@@ -202,28 +221,39 @@
 	}
 </script>
 
-<div class="flex flex-col items-start gap-2">
+<div class="flex flex-col items-start gap-2 pointer-events-none">
 	<div class="flex flex-col w-full">
 		<!-- the pill keeps its full rounding; the route summary strip slides out
-			from behind it (z-below), reading as a second attached layer -->
-		<div class="relative z-10 flex items-center gap-2 w-full h-12 px-4 bg-background dark:bg-background-secondary rounded-full" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
-			<IconSearch class="text-label shrink-0" size="20" stroke="2" />
+		from behind it (z-below), reading as a second attached layer. Collapsed,
+		it morphs into a round button aligned with the other floating ones. The
+		icon grows via a scale transform — animating its width/height re-layouts
+		every frame and stutters -->
+		<div class="pointer-events-auto relative z-10 flex items-center gap-2 h-12 overflow-hidden bg-background dark:bg-background-secondary rounded-full transition-all duration-200 {collapsed ? 'w-12 ml-1 px-3.5' : 'w-full px-4'}" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
+			<IconSearch class="text-label shrink-0 transition-transform duration-200 {collapsed ? 'scale-[1.4]' : ''}" size="20" stroke="2.2" />
 			<input
 				bind:this={input}
 				bind:value={query}
 				oninput={onInput}
 				onkeydown={e => e.key === 'Enter' && submit()}
 				onfocus={() => focused = true}
-				onblur={() => setTimeout(() => focused = false, 150)}
+				onblur={() => setTimeout(() => {
+					focused = false;
+					expanded = false;
+				}, 150)}
 				type="text"
 				enterkeyhint="search"
 				placeholder={$t('search_placeholder')}
-				class="grow min-w-0 bg-transparent border-none focus:ring-0 p-0 text-info placeholder-label font-medium"
+				class="grow min-w-0 bg-transparent border-none focus:ring-0 p-0 text-info placeholder-label font-medium transition-opacity duration-200 {collapsed ? 'opacity-0' : ''}"
 			/>
 			{#if query.length > 0 || $routeDestination != null}
 				<button onclick={clear} aria-label="Clear destination">
 					<IconX class="text-label shrink-0" size="20" stroke="2" />
 				</button>
+			{/if}
+			{#if collapsed}
+				<!-- invisible tap target over the whole button — the input can't be
+				the target, since tapping it would pop the keyboard mid-expansion -->
+				<button class="absolute inset-0" onclick={expand} aria-label={$t('search_placeholder')}></button>
 			{/if}
 		</div>
 		<!-- one extension surface behind the pill: the search results while typing,
