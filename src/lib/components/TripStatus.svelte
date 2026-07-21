@@ -3,7 +3,7 @@
 	import Metric from '$lib/components/Metric.svelte';
 	import { following } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
-	import { currentTrip as trip } from '$lib/trip';
+	import { currentTrip as trip, type ActiveTrip } from '$lib/trip';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { KeepAwake } from '@capacitor-community/keep-awake';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
@@ -19,19 +19,27 @@
 
 	let { height = $bindable(), width = $bindable(), lockOrientation = $bindable(false) }: Props = $props();
 
-	let portrait = $state(true);
-	trip.subscribe(trip => {
+	// Seeded from the window aspect so the very first render already reserves
+	// the right edge — the async orientation plugin only confirms it later
+	let portrait = $state(window.innerHeight > window.innerWidth);
+
+	// Reserve the screen edge the HUD occupies. Driven by a plain subscription
+	// because effects in this component are paused the moment the trip-end
+	// outro starts, so an effect alone would never free the space; the effect
+	// below re-applies it when the device rotates or the insets change mid-trip
+	function reserve(trip: ActiveTrip|null) {
 		if (trip) {
 			height = portrait ? (trip.destination ? 216 : 160) + Math.max(12, $safeInsets.top) : 0;
-			console.log(trip);
-			width = portrait ? 0 : (trip.destination ? 238 : 190) + $safeInsets.top;
+			width = portrait ? 0 : (trip.destination ? 238 : 190) + $safeInsets.left;
 			lockOrientation = false;
 		} else {
 			height = 0;
 			width = 0;
 			lockOrientation = true;
 		}
-	});
+	}
+	trip.subscribe(reserve);
+	$effect(() => reserve($trip));
 
 	$effect(() => {
 		if (lockOrientation) {
@@ -54,6 +62,10 @@
 			clearInterval(inter);
 			KeepAwake.allowSleep();
 			ScreenOrientation.removeAllListeners();
+			// The lock effect above is paused as soon as the trip-end outro
+			// starts, so it never sees lockOrientation flip back — re-lock here,
+			// once the HUD is actually gone
+			if (lockOrientation) ScreenOrientation.lock({ orientation: 'portrait' });
 		};
 	});
 
@@ -81,7 +93,7 @@
 	{#if $trip != null}
 		<!-- + seconds - seconds is on purpose so that it refreshes every second -->
 		{@const deltaSeconds = Date.now() - $trip.startDate.getTime() + seconds - seconds}
-		<div class="flex flex-col items-center gap-2 relative {$trip.destination ? 'h-64' : 'h-52'} {portrait ? '' : 'top-1/2 -translate-y-1/2'}" style={`margin-${portrait ? 'top' : 'left'}: ${portrait ? Math.max(12, $safeInsets.top) : $safeInsets.top}px`}>
+		<div class="flex flex-col items-center gap-2 relative {$trip.destination ? 'h-64' : 'h-52'} {portrait ? '' : 'top-1/2 -translate-y-1/2'}" style={`margin-${portrait ? 'top' : 'left'}: ${portrait ? Math.max(12, $safeInsets.top) : $safeInsets.left}px`}>
 			{#if $trip.bikePlate}
 				<span class="font-semibold text-label text-lg">{$trip.bikePlate}</span>
 			{:else}
