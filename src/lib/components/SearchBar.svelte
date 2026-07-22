@@ -85,7 +85,7 @@
 		clearTimeout(debounce);
 		results = null;
 		stationResults = [];
-		query = destination ? destination.name ?? get(t)('selected_location') : '';
+		query = destination?.name ?? '';
 	});
 
 	function onInput() {

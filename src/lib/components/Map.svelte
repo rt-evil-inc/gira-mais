@@ -7,6 +7,7 @@
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
+	import { t } from '$lib/translations';
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
@@ -116,7 +117,8 @@
 			// deferred past the double-tap window and cancelled by zoom gestures
 			cancelPendingPinDrop();
 			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
-			// Compute the route right away so it's usually ready when the wait ends
+			// Compute the route and name right away so both are usually ready when
+			// the wait ends
 			const pos = get(currentPos);
 			let prefetchedRoute: PlannedRoute|null = null;
 			if (pos) {
@@ -124,6 +126,7 @@
 					.then(route => prefetchedRoute = route)
 					.catch(() => {}); // if it failed, the recompute below will retry and report
 			}
+			const geocoded = reverseGeocode(destination);
 			pendingPinDrop = setTimeout(() => {
 				pendingPinDrop = null;
 				// Publishing a route for this destination first makes the destination
@@ -131,10 +134,12 @@
 				// done yet, the normal recompute takes over
 				if (prefetchedRoute) currentRoute.set(prefetchedRoute);
 				routeDestination.set(destination);
-				reverseGeocode(destination).then(name => {
+				geocoded.then(name => {
 					const current = get(routeDestination);
-					if (name && current && current.lat === destination.lat && current.lng === destination.lng) {
-						routeDestination.set({ ...destination, name });
+					if (current && current.lat === destination.lat && current.lng === destination.lng) {
+						// The generic fallback is only shown once the lookup concluded
+						// without a name — not while it's still pending
+						routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
 					}
 				});
 			}, PIN_DROP_DELAY_ms);
