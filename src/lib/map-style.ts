@@ -1,5 +1,6 @@
 // import oldStyle from '../../static/assets/old-style.json'
 import type { DataDrivenPropertyValueSpecification } from 'maplibre-gl';
+import { TILES_URL } from './constants';
 
 export function getMapStyle(style:'dark'|'light'): maplibregl.StyleSpecification {
 	const cLight = {
@@ -202,11 +203,15 @@ export function getMapStyle(style:'dark'|'light'): maplibregl.StyleSpecification
 		'sources': {
 			'openmaptiles': {
 				'type': 'vector',
-				'url': 'https://tiles2.intermodal.pt/data/v3.json',
+				'url': `${TILES_URL}/data/v3.json`,
+			},
+			'bikeways': {
+				'type': 'vector',
+				'url': `${TILES_URL}/data/bikeways.json`,
 			},
 		},
-		'sprite': 'https://tiles2.intermodal.pt/styles/iml/sprite',
-		'glyphs': 'https://tiles2.intermodal.pt/fonts/{fontstack}/{range}.pbf',
+		'sprite': `${TILES_URL}/styles/iml/sprite`,
+		'glyphs': `${TILES_URL}/fonts/{fontstack}/{range}.pbf`,
 		'layers': [
 			{
 				'id': 'background',
@@ -1663,16 +1668,11 @@ export function getMapStyle(style:'dark'|'light'): maplibregl.StyleSpecification
 			{
 				'id': 'path_cycleway_casing',
 				'type': 'line',
-				'source': 'openmaptiles',
-				'source-layer': 'transportation',
-				'minzoom': 14,
+				'source': 'bikeways',
+				'source-layer': 'bikeways',
+				'minzoom': 11,
 				'maxzoom': 24,
-				'filter': [
-					'all',
-					['==', ['geometry-type'], 'LineString'],
-					['match', ['get', 'class'], ['path', 'track'], true, false],
-					['==', ['get', 'subclass'], 'cycleway'],
-				],
+				'filter': ['match', ['get', 'kind'], ['cycleway', 'shared'], true, false],
 				'layout': {
 					'line-cap': 'round',
 					'line-join': 'round',
@@ -1684,28 +1684,25 @@ export function getMapStyle(style:'dark'|'light'): maplibregl.StyleSpecification
 						'interpolate',
 						['exponential', 1.2],
 						['zoom'],
+						11,
+						1.5,
 						14,
 						4,
 						20,
 						20,
 					],
 					'line-color': colors.cycleway.casing,
-					'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 1],
+					'line-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1],
 				},
 			},
 			{
 				'id': 'path_cycleway',
 				'type': 'line',
-				'source': 'openmaptiles',
-				'source-layer': 'transportation',
-				'minzoom': 14,
+				'source': 'bikeways',
+				'source-layer': 'bikeways',
+				'minzoom': 11,
 				'maxzoom': 24,
-				'filter': [
-					'all',
-					['==', ['geometry-type'], 'LineString'],
-					['match', ['get', 'class'], ['path', 'track'], true, false],
-					['==', ['get', 'subclass'], 'cycleway'],
-				],
+				'filter': ['match', ['get', 'kind'], ['cycleway', 'shared'], true, false],
 				'layout': {
 					'line-cap': 'round',
 					'line-join': 'round',
@@ -1713,17 +1710,49 @@ export function getMapStyle(style:'dark'|'light'): maplibregl.StyleSpecification
 					'line-round-limit': 0,
 				},
 				'paint': {
-					'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 1],
+					'line-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1],
 					'line-width': [
 						'interpolate',
 						['exponential', 1.2],
 						['zoom'],
+						11,
+						0.75,
 						14,
 						2,
 						20,
 						16,
 					],
 					'line-color': colors.cycleway.inner,
+				},
+			},
+			{
+				'id': 'bikeway_lane',
+				'type': 'line',
+				'source': 'bikeways',
+				'source-layer': 'bikeways',
+				'minzoom': 11,
+				'maxzoom': 24,
+				'filter': ['==', ['get', 'kind'], 'lane'],
+				'layout': {
+					'line-cap': 'butt',
+					'line-join': 'round',
+					'visibility': 'visible',
+				},
+				'paint': {
+					'line-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1],
+					'line-width': [
+						'interpolate',
+						['exponential', 1.2],
+						['zoom'],
+						11,
+						0.6,
+						14,
+						1.5,
+						20,
+						10,
+					],
+					'line-color': colors.cycleway.inner,
+					'line-dasharray': [2, 1.5],
 				},
 			},
 			{
