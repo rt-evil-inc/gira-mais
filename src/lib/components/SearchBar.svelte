@@ -221,7 +221,7 @@
 	}
 </script>
 
-<div class="flex flex-col items-start gap-2 pointer-events-none">
+<div class="flex flex-col items-start gap-2 pointer-events-none max-w-md">
 	<div class="flex flex-col w-full">
 		<!-- the pill keeps its full rounding; the route summary strip slides out
 		from behind it (z-below), reading as a second attached layer. Collapsed,
