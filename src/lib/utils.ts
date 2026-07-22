@@ -22,6 +22,14 @@ export function distanceBetweenCoords(lat1:number, lon1:number, lat2:number, lon
 	return d;
 }
 
+/** Initial bearing in degrees (0-360, clockwise from north) from point 1 to point 2. */
+export function bearingBetweenCoords(lat1:number, lon1:number, lat2:number, lon2:number) {
+	const y = Math.sin(deg2rad(lon2 - lon1)) * Math.cos(deg2rad(lat2));
+	const x = Math.cos(deg2rad(lat1)) * Math.sin(deg2rad(lat2)) -
+		Math.sin(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.cos(deg2rad(lon2 - lon1));
+	return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 export function formatDistance(distance:number) {
 	if (distance < 1) return `${(distance * 1000).toFixed(0)}m`;
 	return `${distance.toLocaleString(undefined, { maximumFractionDigits: 2, useGrouping: false })}km`;

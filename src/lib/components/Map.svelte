@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { token } from '$lib/account';
-	import { bearing, bearingNorth, currentPos } from '$lib/location';
+	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
+	import { addLayers, following, loadImages, selectedStation, setSourceData, stations, viewMode } from '$lib/map.svelte';
+	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
@@ -43,6 +44,118 @@
 
 	$effect(() => {
 		if ($bearingNorth) map.flyTo({ bearing: 0 });
+	});
+
+	const NAV_PITCH = 60;
+	const NAV_ZOOM = 17;
+	const NAV_TRANSITION_ms = 1400;
+
+	// While the camera eases into or out of the navigation view, the per-fix
+	// re-centering (and the per-frame follow) would cancel the animation
+	// half-way, leaving the pitch stuck in between — hold them off until it ends
+	let cameraTransition = false;
+	let cameraTransitionTimeout: ReturnType<typeof setTimeout>;
+	function beginCameraTransition(duration: number) {
+		cameraTransition = true;
+		clearTimeout(cameraTransitionTimeout);
+		cameraTransitionTimeout = setTimeout(() => cameraTransition = false, duration + 100);
+	}
+
+	// Glides the location marker between GPS fixes instead of teleporting it;
+	// in the navigation view the camera is pinned to the gliding marker
+	const marker = createMarkerAnimator(state => {
+		renderUserMarker(state);
+		if (mapLoaded && !cameraTransition && get(following) && get(viewMode) === 'heading') {
+			map.jumpTo({ center: [state.lng, state.lat], bearing: state.heading });
+		}
+	});
+
+	// The animator only starts tracking once the map has loaded, so fall back to
+	// the raw position for anything that needs a location before then
+	function markerState(): MarkerState|null {
+		const state = marker.displayed();
+		if (state) return state;
+		const pos = get(currentPos);
+		if (!pos) return null;
+		return { lng: pos.coords.longitude, lat: pos.coords.latitude, heading: get(currentHeading) ?? 0 };
+	}
+
+	function renderUserMarker(state: MarkerState|null = markerState()) {
+		if (!mapLoaded || !state) return;
+		const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
+		if (src == null) return;
+		src.setData({
+			type: 'FeatureCollection',
+			features: [{
+				type: 'Feature',
+				properties: { nav: get(currentTrip) !== null, heading: state.heading },
+				geometry: {
+					type: 'Point',
+					coordinates: [state.lng, state.lat],
+				},
+			}],
+		});
+	}
+
+	// Extra top padding keeps the marker in the lower part of the view, showing
+	// the road ahead rather than what's behind
+	function navPadding() {
+		return {
+			top: topPadding + window.innerHeight * 0.35,
+			bottom: 0,
+			left: leftPadding,
+		};
+	}
+
+	function standardPadding() {
+		return { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding };
+	}
+
+	function enterNavView() {
+		const state = markerState();
+		if (!state) return;
+		beginCameraTransition(NAV_TRANSITION_ms);
+		map.easeTo({
+			center: [state.lng, state.lat],
+			bearing: state.heading,
+			pitch: NAV_PITCH,
+			zoom: NAV_ZOOM,
+			padding: navPadding(),
+			duration: NAV_TRANSITION_ms,
+		});
+	}
+
+	function exitNavView() {
+		const state = markerState();
+		beginCameraTransition(1000);
+		if (get(following) && state) {
+			map.easeTo({
+				center: [state.lng, state.lat],
+				bearing: 0,
+				pitch: 0,
+				zoom: 16,
+				padding: standardPadding(),
+				duration: 1000,
+			});
+		} else {
+			map.easeTo({ bearing: 0, pitch: 0, duration: 1000 });
+		}
+	}
+
+	// Ease into the navigation view whenever it becomes active (trip start,
+	// re-following during a trip, toggling back from the north view)
+	let navWasActive = false;
+	$effect(() => {
+		const active = mapLoaded && !blurred && $following && $viewMode === 'heading' && $currentPos !== null;
+		if (active && !navWasActive) enterNavView();
+		navWasActive = active;
+	});
+
+	let lastViewMode = get(viewMode);
+	viewMode.subscribe(mode => {
+		if (mode === lastViewMode) return;
+		lastViewMode = mode;
+		if (mode === 'north' && mapLoaded) exitNavView();
 	});
 
 	// MapLibre recognizes the taps of one-finger zoom gestures (double-tap and
@@ -145,10 +258,23 @@
 			}, PIN_DROP_DELAY_ms);
 		});
 		map.on('dblclick', cancelPendingPinDrop);
-		map.on('zoomstart', cancelPendingPinDrop);
 		map.on('dragstart', cancelPendingPinDrop);
-		map.on('rotatestart', cancelPendingPinDrop);
-		map.on('pitchstart', cancelPendingPinDrop);
+		// The navigation view moves the camera programmatically all the time, so
+		// only user gestures (which carry the original DOM event) may cancel a
+		// pending pin drop
+		map.on('zoomstart', e => {
+			if (e.originalEvent) cancelPendingPinDrop();
+		});
+		map.on('pitchstart', e => {
+			if (e.originalEvent) cancelPendingPinDrop();
+		});
+		map.on('rotatestart', e => {
+			if (!e.originalEvent) return;
+			cancelPendingPinDrop();
+			// Manually rotating the map takes over from the heading-aligned camera,
+			// like dragging takes over from the centering
+			if (get(viewMode) === 'heading') following.set(false);
+		});
 		map.on('rotate', () => {
 			bearing.set(map.getBearing());
 			bearingNorth.set(false);
@@ -156,9 +282,10 @@
 	}
 
 	function centerMap(pos: Position) {
+		if (cameraTransition) return;
 		map.flyTo({
 			center: [pos.coords.longitude, pos.coords.latitude],
-			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
+			padding: standardPadding(),
 			zoom: 16,
 		});
 	}
@@ -166,27 +293,12 @@
 	currentPos.subscribe((pos: Position|null) => {
 		if (!mapLoaded) return;
 		if (pos && pos.coords) {
-			if ($following && !blurred) centerMap(pos);
-			const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
-			const data:GeoJSON = {
-				'type': 'FeatureCollection',
-				'features': [{
-					type: 'Feature',
-					properties: {},
-					geometry: {
-						type: 'Point',
-						coordinates: [pos.coords.longitude, pos.coords.latitude],
-					},
-				}],
-			};
-			if (src != null) {
-				src.setData(data);
-			} else {
-				map.addSource('user-location', {
-					'type': 'geojson',
-					'data': data,
-				});
-			}
+			if ($following && !blurred && get(viewMode) === 'north') centerMap(pos);
+			marker.setTarget({
+				lng: pos.coords.longitude,
+				lat: pos.coords.latitude,
+				heading: get(currentHeading),
+			});
 		}
 		applyRouteData(get(currentRoute), pos);
 	});
@@ -356,10 +468,12 @@
 			mapLoaded = true;
 			setSourceData(map);
 			addLayers(map);
+			renderUserMarker();
 			applyRouteData(get(currentRoute));
 			addEventListeners(map);
 		});
 		return () => {
+			marker.stop();
 			map.remove();
 		};
 	});
@@ -371,6 +485,7 @@
 				loadImages(map);
 				setSourceData(map);
 				addLayers(map);
+				renderUserMarker();
 				applyRouteData(get(currentRoute));
 				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
@@ -378,7 +493,21 @@
 		}
 	});
 
+	let wasOnTrip = get(currentTrip) !== null;
 	currentTrip.subscribe(trip => {
+		const onTrip = trip !== null;
+		if (onTrip !== wasOnTrip) {
+			wasOnTrip = onTrip;
+			if (onTrip) {
+				// starting a trip pulls the camera into the navigation view
+				viewMode.set('heading');
+				following.set(true);
+			} else {
+				viewMode.set('north');
+			}
+			// swap the location marker between the dot and the heading arrow
+			renderUserMarker();
+		}
 		if (mapLoaded) {
 			map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
 			map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
@@ -395,7 +524,7 @@
 	});
 
 	$effect(() => {
-		if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
+		if ($following && !blurred && $currentPos && $viewMode === 'north' && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
 	});
 
 	$effect(() => {

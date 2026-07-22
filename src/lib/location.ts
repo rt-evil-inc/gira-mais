@@ -3,13 +3,36 @@ import { get, writable } from 'svelte/store';
 import { type Position, Geolocation } from '@capacitor/geolocation';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
 import { checkTripActive, currentTrip } from '$lib/trip';
-import { distanceBetweenCoords } from '$lib/utils';
+import { bearingBetweenCoords, distanceBetweenCoords } from '$lib/utils';
 import { MIN_TRAVEL_DISTANCE_m } from '$lib/constants';
 import { appSettings } from './settings';
 
 export const currentPos = writable<Position|null>(null);
 export const bearingNorth = writable<boolean>(false);
 export const bearing = writable<number>(0);
+/** Last known traveling direction in degrees clockwise from north. */
+export const currentHeading = writable<number|null>(null);
+
+// The GPS course is meaningless while standing still (it drifts or freezes at
+// arbitrary values), so it's only trusted above a minimum speed; positions too
+// close together are likewise just accuracy noise, so the fallback bearing is
+// only computed once the anchor point is far enough behind
+const HEADING_MIN_SPEED_mps = 0.5;
+const HEADING_MIN_DISTANCE_m = 5;
+let headingAnchor: {lat: number, lng: number}|null = null;
+
+currentPos.subscribe(pos => {
+	if (!pos) return;
+	const { latitude, longitude, heading, speed } = pos.coords;
+	let course = typeof heading === 'number' && Number.isFinite(heading) && heading >= 0 &&
+		(speed == null || speed >= HEADING_MIN_SPEED_mps) ? heading % 360 : null;
+	const moved = headingAnchor ? distanceBetweenCoords(headingAnchor.lat, headingAnchor.lng, latitude, longitude) * 1000 : 0;
+	if (headingAnchor && moved >= HEADING_MIN_DISTANCE_m && course === null) {
+		course = bearingBetweenCoords(headingAnchor.lat, headingAnchor.lng, latitude, longitude);
+	}
+	if (!headingAnchor || moved >= HEADING_MIN_DISTANCE_m) headingAnchor = { lat: latitude, lng: longitude };
+	if (course !== null) currentHeading.set(course);
+});
 
 let simulatedLocationActive = false;
 

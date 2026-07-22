@@ -1,6 +1,35 @@
 import type { StyleImageInterface } from 'maplibre-gl';
 import { getCssVariable } from '$lib/utils';
 
+/**
+ * The trip heading indicator: a navigation chevron in the same visual language
+ * as the pulsing dot (primary fill, white outline, soft shadow). Drawn pointing
+ * north; the map layer rotates it to the traveling direction.
+ */
+export function navigationMarker(size = 100): ImageData {
+	const canvas = document.createElement('canvas');
+	canvas.width = size;
+	canvas.height = size;
+	const context = canvas.getContext('2d')!;
+	const s = size / 100;
+	const arrow = new Path2D;
+	arrow.moveTo(50 * s, 14 * s); // tip
+	arrow.lineTo(80 * s, 84 * s); // right wing
+	arrow.lineTo(50 * s, 66 * s); // tail notch
+	arrow.lineTo(20 * s, 84 * s); // left wing
+	arrow.closePath();
+	context.lineJoin = 'round';
+	context.strokeStyle = 'white';
+	context.lineWidth = 6 * s;
+	context.shadowColor = 'rgba(0, 0, 0, 0.35)';
+	context.shadowBlur = 6 * s;
+	context.stroke(arrow);
+	context.shadowBlur = 0;
+	context.fillStyle = getCssVariable('--color-primary');
+	context.fill(arrow);
+	return context.getImageData(0, 0, size, size);
+}
+
 // This implements `StyleImageInterface`
 // to draw a pulsing dot icon on the map.
 export function pulsingDot(map: maplibregl.Map, size = 100, animationDuration = 1500) : StyleImageInterface {

@@ -1,5 +1,5 @@
 import { get, writable } from 'svelte/store';
-import { pulsingDot } from '$lib/pulsing-dot';
+import { navigationMarker, pulsingDot } from '$lib/pulsing-dot';
 import type { GeoJSON } from 'geojson';
 import { getCssVariable } from '$lib/utils';
 import { theme } from '$lib/theme';
@@ -21,6 +21,9 @@ export type StationInfo ={
 export const stations = $state<{value:StationInfo[]}>({ value: [] });
 export const selectedStation = writable<string|null>(null);
 export const following = writable<boolean>(false);
+/** While following: 'north' is the classic top-down view, 'heading' the tilted
+ * navigation view that rotates with the traveling direction (trips only). */
+export const viewMode = writable<'north'|'heading'>('north');
 
 export function setSourceData(map: maplibregl.Map) {
 	const src = map.getSource('points');
@@ -267,7 +270,13 @@ export function addLayers(map: maplibregl.Map) {
 		'type': 'symbol',
 		'source': 'user-location',
 		'layout': {
-			'icon-image': 'pulsing-dot',
+			'icon-image': ['case', ['to-boolean', ['get', 'nav']], 'nav-marker', 'pulsing-dot'],
+			'icon-rotate': ['case', ['to-boolean', ['get', 'nav']], ['coalesce', ['get', 'heading'], 0], 0],
+			// rotate with the map and lie flat on it when tilted, like the route line
+			'icon-rotation-alignment': 'map',
+			'icon-pitch-alignment': 'map',
+			'icon-allow-overlap': true,
+			'icon-ignore-placement': true,
 		},
 	});
 }
@@ -290,6 +299,7 @@ export async function loadImages(map: maplibregl.Map) {
 	}
 
 	addOrReplace('pulsing-dot', pulsingDot(map), { pixelRatio: 2 });
+	addOrReplace('nav-marker', navigationMarker(), { pixelRatio: 2 });
 	addOrReplace('bike_inactive', await loadSvg('./assets/bike_marker_inactive.svg', replaces));
 	addOrReplace('bike_inactive_selected', await loadSvg('./assets/bike_marker_inactive_selected.svg', replaces));
 	addOrReplace('dock_inactive', await loadSvg('./assets/dock_marker_inactive.svg', replaces));
