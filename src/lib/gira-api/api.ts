@@ -1,9 +1,9 @@
 import { dev } from '$app/environment';
 import { get } from 'svelte/store';
-import { Preferences } from '@capacitor/preferences';
 import type { M, Q } from '$lib/gira-api/api-types';
 import type { Mutation, Query } from '$lib/gira-api/api-types';
 import { encryptedFirebaseToken, token } from '$lib/account';
+import { appSettings } from '$lib/settings';
 import { GIRA_API_URL, GIRA_WS_URL } from '$lib/constants';
 import { httpRequestWithRetry } from '$lib/utils';
 import type { Translations } from '$lib/translations';
@@ -112,7 +112,7 @@ export function getStationInfo(stationId: string): Promise<Q<['getBikes', 'getDo
 // }
 
 export async function reserveBike(serialNumber: string) {
-	if (dev && (await Preferences.get({ key: 'settings/mockUnlock' })).value === 'true') {
+	if (dev && get(appSettings).mockUnlock) {
 		console.debug('mock reserveBike');
 		return { reserveBike: true };
 	} else {
@@ -133,7 +133,7 @@ export async function cancelBikeReserve() {
 }
 
 export async function startTrip() {
-	if (dev && (await Preferences.get({ key: 'settings/mockUnlock' })).value === 'true') {
+	if (dev && get(appSettings).mockUnlock) {
 		console.debug('mock startTrip');
 		await new Promise(resolve => setTimeout(resolve, 2000));
 		return { startTrip: true };
