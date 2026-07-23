@@ -142,6 +142,15 @@
 		}
 	}
 
+	// The chevron lies flat on the map, so tilting foreshortens it — it's drawn
+	// big enough for the tilted view and scaled down as the map flattens out,
+	// where the full size would look oversized. The dot is unaffected
+	function updateMarkerScale() {
+		if (!mapLoaded || map.getLayer('user-location') == null) return;
+		const t = Math.min(map.getPitch() / NAV_PITCH, 1);
+		map.setLayoutProperty('user-location', 'icon-size', ['case', ['to-boolean', ['get', 'nav']], 0.8 + 0.2 * t, 1]);
+	}
+
 	// Ease into the navigation view whenever it becomes active (trip start,
 	// re-following during a trip, toggling back from the north view)
 	let navWasActive = false;
@@ -279,6 +288,7 @@
 			bearing.set(map.getBearing());
 			bearingNorth.set(false);
 		});
+		map.on('pitch', updateMarkerScale);
 	}
 
 	function centerMap(pos: Position) {
@@ -469,6 +479,7 @@
 			setSourceData(map);
 			addLayers(map);
 			renderUserMarker();
+			updateMarkerScale();
 			applyRouteData(get(currentRoute));
 			addEventListeners(map);
 		});
@@ -486,6 +497,7 @@
 				setSourceData(map);
 				addLayers(map);
 				renderUserMarker();
+				updateMarkerScale();
 				applyRouteData(get(currentRoute));
 				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
