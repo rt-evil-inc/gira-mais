@@ -3,6 +3,7 @@ import { get, writable } from 'svelte/store';
 import { type Position, Geolocation } from '@capacitor/geolocation';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
 import { checkTripActive, currentTrip } from '$lib/trip';
+import { compassHeading } from '$lib/compass';
 import { bearingBetweenCoords, distanceBetweenCoords } from '$lib/utils';
 import { MIN_TRAVEL_DISTANCE_m } from '$lib/constants';
 import { appSettings } from './settings';
@@ -20,6 +21,7 @@ export const currentHeading = writable<number|null>(null);
 const HEADING_MIN_SPEED_mps = 0.5;
 const HEADING_MIN_DISTANCE_m = 5;
 let headingAnchor: {lat: number, lng: number}|null = null;
+let lastCourseTime = 0;
 
 currentPos.subscribe(pos => {
 	if (!pos) return;
@@ -31,7 +33,20 @@ currentPos.subscribe(pos => {
 		course = bearingBetweenCoords(headingAnchor.lat, headingAnchor.lng, latitude, longitude);
 	}
 	if (!headingAnchor || moved >= HEADING_MIN_DISTANCE_m) headingAnchor = { lat: latitude, lng: longitude };
-	if (course !== null) currentHeading.set(course);
+	if (course !== null) {
+		currentHeading.set(course);
+		lastCourseTime = Date.now();
+	}
+});
+
+// The GPS course wins while it's fresh (i.e. while moving); the compass takes
+// over when standing still, where the course is unavailable or stale
+const COMPASS_TAKEOVER_ms = 3000;
+
+compassHeading.subscribe(heading => {
+	if (heading === null) return;
+	if (Date.now() - lastCourseTime < COMPASS_TAKEOVER_ms) return;
+	currentHeading.set(heading);
 });
 
 let simulatedLocationActive = false;

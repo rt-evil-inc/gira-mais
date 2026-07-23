@@ -313,6 +313,12 @@
 		applyRouteData(get(currentRoute), pos);
 	});
 
+	// Compass-driven heading changes arrive between GPS fixes (e.g. turning on
+	// the spot) — rotate the marker without disturbing the position glide
+	currentHeading.subscribe(heading => {
+		if (heading !== null) marker.setHeading(heading);
+	});
+
 	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
 		const destSrc = map.getSource<maplibregl.GeoJSONSource>('route-destination');

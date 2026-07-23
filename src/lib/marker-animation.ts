@@ -12,6 +12,7 @@ export function shortestAngleDelta(from: number, to: number): number {
 // is a relocation (first fix, GPS jump), not movement worth animating
 const MIN_GLIDE_ms = 200;
 const MAX_GLIDE_ms = 1500;
+const HEADING_GLIDE_ms = 300;
 const SNAP_DISTANCE_deg = 0.005; // ~500 m
 
 /**
@@ -68,10 +69,21 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		}
 	}
 
+	/** Retarget only the heading (e.g. from the compass while standing still),
+	 * keeping any in-flight position glide aimed at its current target. */
+	function setHeading(heading: number) {
+		if (!displayed || !target) return;
+		from = displayed;
+		target = { ...target, heading };
+		startTime = performance.now();
+		duration = HEADING_GLIDE_ms;
+		if (frame === null) frame = requestAnimationFrame(step);
+	}
+
 	function stop() {
 		if (frame !== null) cancelAnimationFrame(frame);
 		frame = null;
 	}
 
-	return { setTarget, stop, displayed: () => displayed };
+	return { setTarget, setHeading, stop, displayed: () => displayed };
 }

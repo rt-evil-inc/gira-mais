@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { startCompass } from '$lib/compass';
 	import { bearing, bearingNorth } from '$lib/location';
 	import { viewMode } from '$lib/map.svelte';
 	import { fade } from 'svelte/transition';
@@ -6,6 +7,7 @@
 	// In the heading-aligned navigation view the camera re-rotates on every
 	// frame, so pointing north requires leaving that view first
 	function reorient() {
+		startCompass();
 		if ($viewMode === 'heading') $viewMode = 'north';
 		else bearingNorth.set(true);
 	}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { startCompass } from '$lib/compass';
 	import { currentPos, watchPosition } from '$lib/location';
 	import { following, viewMode } from '$lib/map.svelte';
 	import { currentTrip } from '$lib/trip';
@@ -15,6 +16,9 @@
 
 <button class="bg-background dark:bg-background-secondary p-2 rounded-full grid grid-cols-1 grid-rows-1 w-12 h-12 active:bg-background dark:active:bg-background-tertiary transition-colors" style:box-shadow="0px 0px 20px 0px var(--color-shadow)"
 	onclick={() => {
+		// iOS only exposes the compass after a permission prompt triggered from a
+		// tap, and this button is the natural one
+		startCompass();
 		if (locationPermission) {
 			if (!$following) {
 				$following = true;
