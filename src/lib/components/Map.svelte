@@ -151,6 +151,33 @@
 		map.setLayoutProperty('user-location', 'icon-size', ['case', ['to-boolean', ['get', 'nav']], 0.8 + 0.2 * t, 1]);
 	}
 
+	// The per-frame follow reuses the padding left behind by enterNavView, so
+	// when the viewport or the HUD layout changes (e.g. rotating the device)
+	// the padded center silently moves — re-apply it with the fresh layout
+	function realignNavCamera() {
+		if (!mapLoaded || blurred || !get(following) || get(viewMode) !== 'heading') return;
+		if (cameraTransition) {
+			// still easing into the view — restart the transition with the new layout
+			enterNavView();
+			return;
+		}
+		const state = markerState();
+		if (!state) return;
+		beginCameraTransition(600);
+		map.easeTo({
+			center: [state.lng, state.lat],
+			bearing: state.heading,
+			padding: navPadding(),
+			duration: 600,
+		});
+	}
+
+	$effect(() => {
+		void topPadding;
+		void leftPadding;
+		realignNavCamera();
+	});
+
 	// Ease into the navigation view whenever it becomes active (trip start,
 	// re-following during a trip, toggling back from the north view)
 	let navWasActive = false;
@@ -289,6 +316,7 @@
 			bearingNorth.set(false);
 		});
 		map.on('pitch', updateMarkerScale);
+		map.on('resize', realignNavCamera);
 	}
 
 	function centerMap(pos: Position) {
