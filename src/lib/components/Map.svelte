@@ -46,7 +46,7 @@
 		if ($bearingNorth) map.flyTo({ bearing: 0 });
 	});
 
-	const NAV_PITCH = 60;
+	const NAV_PITCH = 50;
 	const NAV_ZOOM = 17;
 	const NAV_TRANSITION_ms = 1400;
 
@@ -511,6 +511,10 @@
 		if (mapLoaded) {
 			map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
 			map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
+			// while riding, the route has to stay legible at a glance, so thicken it
+			map.setPaintProperty('route-outline', 'line-width', trip ? 12 : 9);
+			map.setPaintProperty('route-bike', 'line-width', trip ? 8 : 5);
+			map.setPaintProperty('route-foot', 'line-width', trip ? 8 : 5);
 		}
 	});
 

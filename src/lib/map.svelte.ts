@@ -299,7 +299,7 @@ export async function loadImages(map: maplibregl.Map) {
 	}
 
 	addOrReplace('pulsing-dot', pulsingDot(map), { pixelRatio: 2 });
-	addOrReplace('nav-marker', navigationMarker(), { pixelRatio: 2 });
+	addOrReplace('nav-marker', navigationMarker(150), { pixelRatio: 2 });
 	addOrReplace('bike_inactive', await loadSvg('./assets/bike_marker_inactive.svg', replaces));
 	addOrReplace('bike_inactive_selected', await loadSvg('./assets/bike_marker_inactive_selected.svg', replaces));
 	addOrReplace('dock_inactive', await loadSvg('./assets/dock_marker_inactive.svg', replaces));
