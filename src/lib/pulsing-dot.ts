@@ -12,11 +12,20 @@ export function navigationMarker(size = 100): ImageData {
 	canvas.height = size;
 	const context = canvas.getContext('2d')!;
 	const s = size / 100;
+	// Each corner is filleted with arcTo, entering and leaving through the edge
+	// midpoints; the tip is kept a touch sharper so the arrow stays directional
+	const corners = [
+		{ x: 50, y: 14, r: 4 }, // tip
+		{ x: 80, y: 84, r: 5 }, // right wing
+		{ x: 50, y: 66, r: 5 }, // tail notch
+		{ x: 20, y: 84, r: 5 }, // left wing
+	];
 	const arrow = new Path2D;
-	arrow.moveTo(50 * s, 14 * s); // tip
-	arrow.lineTo(80 * s, 84 * s); // right wing
-	arrow.lineTo(50 * s, 66 * s); // tail notch
-	arrow.lineTo(20 * s, 84 * s); // left wing
+	arrow.moveTo((corners[3].x + corners[0].x) / 2 * s, (corners[3].y + corners[0].y) / 2 * s);
+	corners.forEach((corner, i) => {
+		const next = corners[(i + 1) % corners.length];
+		arrow.arcTo(corner.x * s, corner.y * s, (corner.x + next.x) / 2 * s, (corner.y + next.y) / 2 * s, corner.r * s);
+	});
 	arrow.closePath();
 	context.lineJoin = 'round';
 	context.strokeStyle = 'white';
