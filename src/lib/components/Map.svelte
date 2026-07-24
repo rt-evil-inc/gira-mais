@@ -62,11 +62,15 @@
 	}
 
 	// Glides the location marker between GPS fixes instead of teleporting it;
-	// in the navigation view the camera is pinned to the gliding marker
+	// while following, the camera is pinned to the gliding marker rather than
+	// re-centered on each raw fix, so the map travels as smoothly as the marker
 	const marker = createMarkerAnimator(state => {
 		renderUserMarker(state);
-		if (mapLoaded && !cameraTransition && get(following) && get(viewMode) === 'heading') {
+		if (!mapLoaded || blurred || cameraTransition || !get(following)) return;
+		if (get(viewMode) === 'heading') {
 			map.jumpTo({ center: [state.lng, state.lat], bearing: state.heading });
+		} else {
+			map.jumpTo({ center: [state.lng, state.lat] });
 		}
 	});
 
@@ -172,10 +176,20 @@
 		});
 	}
 
+	// Both follows reuse the padding left behind by their last camera move, so a
+	// layout change silently shifts the padded center — re-apply it. Only the
+	// top-down view is padded at the bottom (the station menu)
 	$effect(() => {
 		void topPadding;
 		void leftPadding;
 		realignNavCamera();
+	});
+
+	$effect(() => {
+		void topPadding;
+		void bottomPadding;
+		void leftPadding;
+		recenterNorthView();
 	});
 
 	// Ease into the navigation view whenever it becomes active (trip start,
@@ -319,19 +333,25 @@
 		map.on('resize', realignNavCamera);
 	}
 
-	function centerMap(pos: Position) {
-		if (cameraTransition) return;
+	// Pulls the top-down view back onto the marker: the deliberate move made when
+	// the follow starts or the padded center shifts, not a per-fix correction
+	const RECENTER_ms = 800;
+	function recenterNorthView() {
+		if (!mapLoaded || blurred || cameraTransition || !get(following) || get(viewMode) !== 'north') return;
+		const state = markerState();
+		if (!state) return;
+		beginCameraTransition(RECENTER_ms);
 		map.flyTo({
-			center: [pos.coords.longitude, pos.coords.latitude],
+			center: [state.lng, state.lat],
 			padding: standardPadding(),
 			zoom: 16,
+			duration: RECENTER_ms,
 		});
 	}
 
 	currentPos.subscribe((pos: Position|null) => {
 		if (!mapLoaded) return;
 		if (pos && pos.coords) {
-			if ($following && !blurred && get(viewMode) === 'north') centerMap(pos);
 			marker.setTarget({
 				lng: pos.coords.longitude,
 				lat: pos.coords.latitude,
@@ -573,8 +593,13 @@
 		}
 	});
 
+	// Like the navigation view, the top-down follow centers once when it becomes
+	// active; in between, the per-frame follow keeps the camera on the marker
+	let northWasActive = false;
 	$effect(() => {
-		if ($following && !blurred && $currentPos && $viewMode === 'north' && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
+		const active = mapLoaded && !blurred && $following && $viewMode === 'north' && $currentPos !== null;
+		if (active && !northWasActive) recenterNorthView();
+		northWasActive = active;
 	});
 
 	$effect(() => {

@@ -87,7 +87,11 @@ describe('createMarkerAnimator', () => {
 		animator.setHeading(90);
 		runFrame(300);
 		expect(applied.at(-1)?.heading).toBe(90);
-		expect(applied.at(-1)?.lng).toBe(0.001); // the glide still reaches its target
+		// the position keeps its own timing: 800ms into a 1000ms glide, not rushed
+		// to the target by the heading change
+		expect(applied.at(-1)?.lng).toBeCloseTo(0.0008, 10);
+		runFrame(200);
+		expect(applied.at(-1)?.lng).toBe(0.001); // and still reaches it on time
 	});
 
 	it('snaps instead of gliding across large jumps', () => {

@@ -8,9 +8,11 @@ export function shortestAngleDelta(from: number, to: number): number {
 
 // GPS fixes land roughly once per second; gliding towards each one over the
 // time since the previous fix keeps the marker moving at a steady pace. The
-// clamp guards against bursts and long gaps, and anything past SNAP_DISTANCE
-// is a relocation (first fix, GPS jump), not movement worth animating
-const MIN_GLIDE_ms = 200;
+// clamp guards against long gaps, and anything past SNAP_DISTANCE is a
+// relocation (first fix, GPS jump), not movement worth animating.
+// There is deliberately no lower bound: updates can also arrive per frame (the
+// debug controls, a high-rate fix stream), and gliding those over a floor well
+// above their own interval would leave the marker permanently behind
 const MAX_GLIDE_ms = 1500;
 const HEADING_GLIDE_ms = 300;
 const SNAP_DISTANCE_deg = 0.005; // ~500 m
@@ -22,23 +24,45 @@ const SNAP_DISTANCE_deg = 0.005; // ~500 m
  */
 export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	let displayed: MarkerState|null = null;
-	let from: MarkerState|null = null;
-	let target: MarkerState|null = null;
-	let startTime = 0;
-	let duration = 0;
+	// Position and heading glide on independent tracks: a compass heading can
+	// arrive mid-glide (and Svelte defers a store set made inside another store's
+	// notification, so even a fix's own heading lands after its position), and
+	// re-timing the position from those would cut the glide short and leave the
+	// marker sprinting between fixes and then stalling
+	let posFrom: { lng: number, lat: number }|null = null;
+	let posTarget: { lng: number, lat: number }|null = null;
+	let posStart = 0;
+	let posDuration = 0;
+	let headFrom = 0;
+	let headTarget = 0;
+	let headStart = 0;
+	let headDuration = 0;
 	let lastTargetTime: number|null = null;
 	let frame: number|null = null;
 
-	function step(time: number) {
+	/** Progress along a track, clamped to the segment it interpolates. */
+	function progress(start: number, duration: number, now: number) {
+		if (duration <= 0) return 1;
+		return Math.min(Math.max((now - start) / duration, 0), 1);
+	}
+
+	// Progress is measured with performance.now() rather than the frame timestamp
+	// handed to the callback: that timestamp marks the start of the frame, while
+	// the start times are taken when a target arrives, which on a busy frame (or
+	// a high refresh rate) is already past the next frame's timestamp — mixing
+	// the two makes progress negative and walks the marker backwards
+	function step() {
 		frame = null;
-		if (!from || !target) return;
-		const t = duration <= 0 ? 1 : Math.min((time - startTime) / duration, 1);
+		if (!posFrom || !posTarget) return;
+		const now = performance.now();
+		const tp = progress(posStart, posDuration, now);
+		const th = progress(headStart, headDuration, now);
 		displayed = {
-			lng: from.lng + (target.lng - from.lng) * t,
-			lat: from.lat + (target.lat - from.lat) * t,
-			heading: (from.heading + shortestAngleDelta(from.heading, target.heading) * t + 360) % 360,
+			lng: posFrom.lng + (posTarget.lng - posFrom.lng) * tp,
+			lat: posFrom.lat + (posTarget.lat - posFrom.lat) * tp,
+			heading: (headFrom + shortestAngleDelta(headFrom, headTarget) * th + 360) % 360,
 		};
-		if (t < 1) frame = requestAnimationFrame(step);
+		if (tp < 1 || th < 1) frame = requestAnimationFrame(step);
 		apply(displayed);
 	}
 
@@ -46,24 +70,32 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		const time = performance.now();
 		// While the heading is unknown (stationary, first fixes) keep pointing
 		// the way we were last known to be going
-		const heading = next.heading ?? target?.heading ?? 0;
+		const heading = next.heading ?? headTarget;
 		const jumped = displayed !== null && (
 			Math.abs(next.lat - displayed.lat) > SNAP_DISTANCE_deg ||
 			Math.abs(next.lng - displayed.lng) > SNAP_DISTANCE_deg
 		);
-		target = { lng: next.lng, lat: next.lat, heading };
+		posTarget = { lng: next.lng, lat: next.lat };
 		if (displayed === null || jumped) {
-			from = target;
-			duration = 0;
+			posFrom = posTarget;
+			posDuration = 0;
+			headFrom = heading;
+			headDuration = 0;
 		} else {
-			from = displayed;
-			duration = Math.min(Math.max(lastTargetTime === null ? 0 : time - lastTargetTime, MIN_GLIDE_ms), MAX_GLIDE_ms);
+			posFrom = { lng: displayed.lng, lat: displayed.lat };
+			posDuration = Math.min(lastTargetTime === null ? 0 : time - lastTargetTime, MAX_GLIDE_ms);
+			// Turn across the same interval, so the marker rotates as steadily as
+			// it travels instead of snapping round on arrival
+			headFrom = displayed.heading;
+			headDuration = posDuration;
 		}
+		headTarget = heading;
 		lastTargetTime = time;
-		startTime = time;
-		if (duration <= 0) {
+		posStart = time;
+		headStart = time;
+		if (posDuration <= 0 && headDuration <= 0) {
 			if (frame !== null) cancelAnimationFrame(frame);
-			step(time);
+			step();
 		} else if (frame === null) {
 			frame = requestAnimationFrame(step);
 		}
@@ -72,11 +104,11 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	/** Retarget only the heading (e.g. from the compass while standing still),
 	 * keeping any in-flight position glide aimed at its current target. */
 	function setHeading(heading: number) {
-		if (!displayed || !target) return;
-		from = displayed;
-		target = { ...target, heading };
-		startTime = performance.now();
-		duration = HEADING_GLIDE_ms;
+		if (!displayed || !posTarget) return;
+		headFrom = displayed.heading;
+		headTarget = heading;
+		headStart = performance.now();
+		headDuration = HEADING_GLIDE_ms;
 		if (frame === null) frame = requestAnimationFrame(step);
 	}
 
