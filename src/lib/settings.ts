@@ -10,6 +10,9 @@ export type AppSettings = {
 	theme: 'light'|'dark'|'system'|'daylight';
 	locale: 'pt'|'en'|'system';
 	updateWarning: boolean;
+	/** Development only: glide the location marker and the camera between fixes
+	 * instead of placing them straight onto each one. */
+	markerSmoothing: boolean;
 }
 
 export const appSettings = writable<AppSettings>();
@@ -23,7 +26,8 @@ export async function loadSettings() {
 	const theme = ((await Preferences.get({ key: 'settings/theme' })).value || 'system') as 'light'|'dark'|'system'|'daylight';
 	const locale = ((await Preferences.get({ key: 'settings/locale' })).value || 'system') as 'pt'|'en'|'system';
 	const updateWarning = (await Preferences.get({ key: 'settings/updateWarning' })).value !== 'false';
-	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings });
+	const markerSmoothing = (await Preferences.get({ key: 'settings/markerSmoothing' })).value !== 'false';
+	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings, markerSmoothing });
 
 	// Track previous values to only save changed settings
 	let prev: AppSettings | undefined;
@@ -41,6 +45,7 @@ export async function loadSettings() {
 		if (v.theme !== prev.theme) Preferences.set({ key: 'settings/theme', value: v.theme });
 		if (v.locale !== prev.locale) Preferences.set({ key: 'settings/locale', value: v.locale });
 		if (v.updateWarning !== prev.updateWarning) Preferences.set({ key: 'settings/updateWarning', value: v.updateWarning.toString() });
+		if (v.markerSmoothing !== prev.markerSmoothing) Preferences.set({ key: 'settings/markerSmoothing', value: v.markerSmoothing.toString() });
 		prev = { ...v };
 	});
 }

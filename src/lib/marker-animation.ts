@@ -39,11 +39,28 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	let headDuration = 0;
 	let lastTargetTime: number|null = null;
 	let frame: number|null = null;
+	let smoothing = true;
 
 	/** Progress along a track, clamped to the segment it interpolates. */
 	function progress(start: number, duration: number, now: number) {
 		if (duration <= 0) return 1;
 		return Math.min(Math.max((now - start) / duration, 0), 1);
+	}
+
+	/** How long a track may take, which is no time at all without smoothing. */
+	function glide(duration: number) {
+		return smoothing ? duration : 0;
+	}
+
+	/** Render straight away once nothing is left to animate, otherwise keep the
+	 * animation loop running. */
+	function advance(settled: boolean) {
+		if (settled) {
+			if (frame !== null) cancelAnimationFrame(frame);
+			step();
+		} else if (frame === null) {
+			frame = requestAnimationFrame(step);
+		}
 	}
 
 	// Progress is measured with performance.now() rather than the frame timestamp
@@ -83,7 +100,7 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 			headDuration = 0;
 		} else {
 			posFrom = { lng: displayed.lng, lat: displayed.lat };
-			posDuration = Math.min(lastTargetTime === null ? 0 : time - lastTargetTime, MAX_GLIDE_ms);
+			posDuration = glide(Math.min(lastTargetTime === null ? 0 : time - lastTargetTime, MAX_GLIDE_ms));
 			// Turn across the same interval, so the marker rotates as steadily as
 			// it travels instead of snapping round on arrival
 			headFrom = displayed.heading;
@@ -93,12 +110,7 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		lastTargetTime = time;
 		posStart = time;
 		headStart = time;
-		if (posDuration <= 0 && headDuration <= 0) {
-			if (frame !== null) cancelAnimationFrame(frame);
-			step();
-		} else if (frame === null) {
-			frame = requestAnimationFrame(step);
-		}
+		advance(posDuration <= 0 && headDuration <= 0);
 	}
 
 	/** Retarget only the heading (e.g. from the compass while standing still),
@@ -108,8 +120,19 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		headFrom = displayed.heading;
 		headTarget = heading;
 		headStart = performance.now();
-		headDuration = HEADING_GLIDE_ms;
-		if (frame === null) frame = requestAnimationFrame(step);
+		headDuration = glide(HEADING_GLIDE_ms);
+		advance(headDuration <= 0);
+	}
+
+	/** Turning smoothing off drops the marker straight onto every update from
+	 * then on, and settles any glide already in flight. */
+	function setSmoothing(enabled: boolean) {
+		if (smoothing === enabled) return;
+		smoothing = enabled;
+		if (enabled || !posTarget) return;
+		posDuration = 0;
+		headDuration = 0;
+		advance(true);
 	}
 
 	function stop() {
@@ -117,5 +140,5 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		frame = null;
 	}
 
-	return { setTarget, setHeading, stop, displayed: () => displayed };
+	return { setTarget, setHeading, setSmoothing, stop, displayed: () => displayed };
 }

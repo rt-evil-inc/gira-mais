@@ -3,6 +3,7 @@
 	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations, viewMode } from '$lib/map.svelte';
+	import { appSettings } from '$lib/settings';
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
@@ -366,6 +367,10 @@
 	currentHeading.subscribe(heading => {
 		if (heading !== null) marker.setHeading(heading);
 	});
+
+	// Smoothing can be turned off from the development settings to compare the
+	// glide against the raw fix stream
+	appSettings.subscribe(settings => marker.setSmoothing(settings?.markerSmoothing ?? true));
 
 	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
