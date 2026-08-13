@@ -56,10 +56,29 @@
 	// half-way, leaving the pitch stuck in between — hold them off until it ends
 	let cameraTransition = false;
 	let cameraTransitionTimeout: ReturnType<typeof setTimeout>;
-	function beginCameraTransition(duration: number) {
+	// Each transition gets an id so a stale release (the moveend of a
+	// transition that was superseded mid-flight) can't cut a newer one short
+	let cameraTransitionId = 0;
+	function beginCameraTransition(duration?: number) {
 		cameraTransition = true;
 		clearTimeout(cameraTransitionTimeout);
-		cameraTransitionTimeout = setTimeout(() => cameraTransition = false, duration + 100);
+		const id = ++cameraTransitionId;
+		const release = () => {
+			if (id === cameraTransitionId) cameraTransition = false;
+		};
+		if (duration !== undefined) cameraTransitionTimeout = setTimeout(release, duration + 100);
+		return release;
+	}
+
+	// jumpTo stops the camera, and stopping the camera resets every gesture
+	// handler — a pan that has just touched down is wiped before its first
+	// move (the one that fires dragstart and breaks the follow), leaving the
+	// map immovable while the marker glides. Hold the per-frame follow off
+	// while a pointer is on the map or a gesture-driven animation (pinch,
+	// wheel zoom, double-tap) is still running
+	const pointersDown = new Set<number>;
+	function gestureInProgress() {
+		return pointersDown.size > 0 || map.isMoving();
 	}
 
 	// Glides the location marker between GPS fixes instead of teleporting it;
@@ -67,7 +86,7 @@
 	// re-centered on each raw fix, so the map travels as smoothly as the marker
 	const marker = createMarkerAnimator(state => {
 		renderUserMarker(state);
-		if (!mapLoaded || blurred || cameraTransition || !get(following)) return;
+		if (!mapLoaded || blurred || cameraTransition || !get(following) || gestureInProgress()) return;
 		if (get(viewMode) === 'heading') {
 			map.jumpTo({ center: [state.lng, state.lat], bearing: state.heading });
 		} else {
@@ -335,19 +354,24 @@
 	}
 
 	// Pulls the top-down view back onto the marker: the deliberate move made when
-	// the follow starts or the padded center shifts, not a per-fix correction
-	const RECENTER_ms = 800;
+	// the follow starts or the padded center shifts, not a per-fix correction.
+	// flyTo picks its duration from the distance (the first centering after
+	// launch crosses the whole city, a padding shift barely moves), so the
+	// hold-off is released by the movement ending rather than by a timer
 	function recenterNorthView() {
 		if (!mapLoaded || blurred || cameraTransition || !get(following) || get(viewMode) !== 'north') return;
 		const state = markerState();
 		if (!state) return;
-		beginCameraTransition(RECENTER_ms);
+		const release = beginCameraTransition();
 		map.flyTo({
 			center: [state.lng, state.lat],
 			padding: standardPadding(),
 			zoom: 16,
-			duration: RECENTER_ms,
 		});
+		// registered only after the flyTo call: its stop() synchronously fires
+		// the moveend of any ease it interrupts, which must not release this hold
+		if (map.isMoving()) map.once('moveend', release);
+		else release();
 	}
 
 	currentPos.subscribe((pos: Position|null) => {
@@ -531,6 +555,13 @@
 			attributionControl: false,
 		});
 		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
+		// pointers can lift outside the map (or the app), so track the releases
+		// window-wide to never leave the follow stuck paused
+		const trackPointer = (e: PointerEvent) => pointersDown.add(e.pointerId);
+		const releasePointer = (e: PointerEvent) => pointersDown.delete(e.pointerId);
+		map.getCanvasContainer().addEventListener('pointerdown', trackPointer);
+		window.addEventListener('pointerup', releasePointer);
+		window.addEventListener('pointercancel', releasePointer);
 		map.once('load', async () => {
 			console.debug('Map loaded');
 			await loadImages(map);
@@ -543,6 +574,8 @@
 			addEventListeners(map);
 		});
 		return () => {
+			window.removeEventListener('pointerup', releasePointer);
+			window.removeEventListener('pointercancel', releasePointer);
 			marker.stop();
 			map.remove();
 		};
