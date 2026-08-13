@@ -243,6 +243,57 @@
 		}
 	}
 
+	// Sets a spot as the routing destination, deferred past the double-tap
+	// window and cancelled by zoom gestures
+	function schedulePinDrop(lngLat: { lat: number, lng: number }) {
+		cancelPendingPinDrop();
+		const destination = { type: 'location' as const, lat: lngLat.lat, lng: lngLat.lng };
+		// Compute the route and name right away so both are usually ready when
+		// the wait ends
+		const pos = get(currentPos);
+		let prefetchedRoute: PlannedRoute|null = null;
+		if (pos) {
+			computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
+				.then(route => prefetchedRoute = route)
+				.catch(() => {}); // if it failed, the recompute below will retry and report
+		}
+		const geocoded = reverseGeocode(destination);
+		pendingPinDrop = setTimeout(() => {
+			pendingPinDrop = null;
+			// Publishing a route for this destination first makes the destination
+			// subscription in routing.ts skip its recompute; if the prefetch isn't
+			// done yet, the normal recompute takes over
+			if (prefetchedRoute) currentRoute.set(prefetchedRoute);
+			routeDestination.set(destination);
+			geocoded.then(name => {
+				const current = get(routeDestination);
+				if (current && current.lat === destination.lat && current.lng === destination.lng) {
+					// The generic fallback is only shown once the lookup concluded
+					// without a name — not while it's still pending
+					routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
+				}
+			});
+		}, PIN_DROP_DELAY_ms);
+	}
+
+	// While riding, a stray tap on the map must not re-route — changing the
+	// destination takes a deliberate hold instead. Detected from the pointer
+	// tracking rather than from clicks, because mobile webviews don't reliably
+	// emit a click for a long press
+	const TRIP_PIN_HOLD_ms = 400;
+	const TRIP_PIN_HOLD_TOLERANCE_px = 10;
+	let press: { id: number, x: number, y: number, time: number }|null = null;
+
+	function tripHoldPinDrop(e: PointerEvent) {
+		if (!mapLoaded || get(currentTrip) === null) return;
+		if (get(selectedStation) != null) return; // the tap closes the menu instead
+		const rect = map.getCanvasContainer().getBoundingClientRect();
+		const point: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
+		// releases over a dock open its menu through the regular click path
+		if (map.queryRenderedFeatures(point, { layers: ['points', 'docks'] }).length > 0) return;
+		schedulePinDrop(map.unproject(point));
+	}
+
 	function addEventListeners(map: maplibregl.Map) {
 		async function onStationClick(e: maplibregl.MapLayerMouseEvent) {
 			if (e.features === undefined) return;
@@ -296,36 +347,10 @@
 				selectedStation.set(null);
 				return;
 			}
-			// Tapping an empty spot on the map sets it as the routing destination,
-			// deferred past the double-tap window and cancelled by zoom gestures
-			cancelPendingPinDrop();
-			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
-			// Compute the route and name right away so both are usually ready when
-			// the wait ends
-			const pos = get(currentPos);
-			let prefetchedRoute: PlannedRoute|null = null;
-			if (pos) {
-				computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
-					.then(route => prefetchedRoute = route)
-					.catch(() => {}); // if it failed, the recompute below will retry and report
-			}
-			const geocoded = reverseGeocode(destination);
-			pendingPinDrop = setTimeout(() => {
-				pendingPinDrop = null;
-				// Publishing a route for this destination first makes the destination
-				// subscription in routing.ts skip its recompute; if the prefetch isn't
-				// done yet, the normal recompute takes over
-				if (prefetchedRoute) currentRoute.set(prefetchedRoute);
-				routeDestination.set(destination);
-				geocoded.then(name => {
-					const current = get(routeDestination);
-					if (current && current.lat === destination.lat && current.lng === destination.lng) {
-						// The generic fallback is only shown once the lookup concluded
-						// without a name — not while it's still pending
-						routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
-					}
-				});
-			}, PIN_DROP_DELAY_ms);
+			// While riding, quick taps are too easy to land by accident —
+			// re-routing takes the deliberate hold handled by the pointer tracking
+			if (get(currentTrip) !== null) return;
+			schedulePinDrop(e.lngLat);
 		});
 		map.on('dblclick', cancelPendingPinDrop);
 		map.on('dragstart', cancelPendingPinDrop);
@@ -557,8 +582,19 @@
 		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
 		// pointers can lift outside the map (or the app), so track the releases
 		// window-wide to never leave the follow stuck paused
-		const trackPointer = (e: PointerEvent) => pointersDown.add(e.pointerId);
-		const releasePointer = (e: PointerEvent) => pointersDown.delete(e.pointerId);
+		const trackPointer = (e: PointerEvent) => {
+			// a hold only counts while it's the lone pointer from start to finish
+			press = pointersDown.size === 0 ? { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now() } : null;
+			pointersDown.add(e.pointerId);
+		};
+		const releasePointer = (e: PointerEvent) => {
+			pointersDown.delete(e.pointerId);
+			if (!press || press.id !== e.pointerId) return;
+			const held = performance.now() - press.time;
+			const moved = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+			press = null;
+			if (e.type === 'pointerup' && held >= TRIP_PIN_HOLD_ms && moved <= TRIP_PIN_HOLD_TOLERANCE_px) tripHoldPinDrop(e);
+		};
 		map.getCanvasContainer().addEventListener('pointerdown', trackPointer);
 		window.addEventListener('pointerup', releasePointer);
 		window.addEventListener('pointercancel', releasePointer);
