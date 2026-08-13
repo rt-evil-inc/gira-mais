@@ -371,6 +371,10 @@ currentTrip.subscribe(trip => {
 currentRoute.subscribe(route => {
 	const trip = get(currentTrip);
 	if (!trip) return;
+	// A transiently failed recompute clears the route while the destination is
+	// still set — keep the last known metrics rather than collapsing the trip
+	// HUD (and shuffling everything anchored to it) until the next one lands
+	if (!route && get(routeDestination) !== null) return;
 	const destination = route ? { lat: route.destination.lat, lng: route.destination.lng } : null;
 	const distanceLeft = route ? route.totalDistance / 1000 : null;
 	const arrivalTime = route ? new Date(Date.now() + route.totalDuration * 1000) : null;
