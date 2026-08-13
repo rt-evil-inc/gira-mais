@@ -117,6 +117,10 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	 * keeping any in-flight position glide aimed at its current target. */
 	function setHeading(heading: number) {
 		if (!displayed || !posTarget) return;
+		// A fix's own heading is announced again after its position (the store
+		// notification is deferred) — re-timing the turn already in flight would
+		// compress every turn into the short compass glide
+		if (heading === headTarget) return;
 		headFrom = displayed.heading;
 		headTarget = heading;
 		headStart = performance.now();

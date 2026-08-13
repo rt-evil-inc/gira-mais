@@ -94,6 +94,19 @@ describe('createMarkerAnimator', () => {
 		expect(applied.at(-1)?.lng).toBe(0.001); // and still reaches it on time
 	});
 
+	it('keeps the turn pacing when the heading is already the target', () => {
+		const applied: MarkerState[] = [];
+		const animator = createMarkerAnimator(state => applied.push(state));
+		animator.setTarget({ lng: 0, lat: 0, heading: 0 });
+		now += 1000;
+		animator.setTarget({ lng: 0.001, lat: 0, heading: 90 });
+		runFrame(500);
+		animator.setHeading(90); // the fix's own heading, notified late
+		runFrame(250);
+		// 750ms into the 1000ms turn — not re-timed into a 300ms sprint
+		expect(applied.at(-1)?.heading).toBe(67.5);
+	});
+
 	it('snaps instead of gliding across large jumps', () => {
 		const applied: MarkerState[] = [];
 		const animator = createMarkerAnimator(state => applied.push(state));
