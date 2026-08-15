@@ -365,6 +365,14 @@ const translations = {
 		en: 'Simulate reservation and unlocking of bicycles in development mode',
 		pt: 'Simular a reserva e desbloqueio de bicicletas em modo de desenvolvimento',
 	},
+	marker_smoothing_setting_label: {
+		en: 'Smooth location marker',
+		pt: 'Suavizar marcador de localização',
+	},
+	marker_smoothing_setting_description: {
+		en: 'Glide the marker and the map between location updates instead of placing them straight onto each one',
+		pt: 'Deslizar o marcador e o mapa entre atualizações de localização em vez de os colocar diretamente em cada uma',
+	},
 	report_ratings_setting_label: {
 		en: 'Share trip ratings',
 		pt: 'Partilhar avaliações de viagens',

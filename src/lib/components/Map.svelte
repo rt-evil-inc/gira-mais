@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { token } from '$lib/account';
-	import { bearing, bearingNorth, currentPos } from '$lib/location';
+	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
+	import { addLayers, following, loadImages, selectedStation, setSourceData, stations, viewMode } from '$lib/map.svelte';
+	import { appSettings } from '$lib/settings';
+	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
@@ -45,6 +47,187 @@
 		if ($bearingNorth) map.flyTo({ bearing: 0 });
 	});
 
+	const NAV_PITCH = 50;
+	const NAV_ZOOM = 17;
+	const NAV_TRANSITION_ms = 1400;
+
+	// While the camera eases into or out of the navigation view, the per-fix
+	// re-centering (and the per-frame follow) would cancel the animation
+	// half-way, leaving the pitch stuck in between — hold them off until it ends
+	let cameraTransition = false;
+	let cameraTransitionTimeout: ReturnType<typeof setTimeout>;
+	// Each transition gets an id so a stale release (the moveend of a
+	// transition that was superseded mid-flight) can't cut a newer one short
+	let cameraTransitionId = 0;
+	function beginCameraTransition(duration?: number) {
+		cameraTransition = true;
+		clearTimeout(cameraTransitionTimeout);
+		const id = ++cameraTransitionId;
+		const release = () => {
+			if (id === cameraTransitionId) cameraTransition = false;
+		};
+		if (duration !== undefined) cameraTransitionTimeout = setTimeout(release, duration + 100);
+		return release;
+	}
+
+	// jumpTo stops the camera, and stopping the camera resets every gesture
+	// handler — a pan that has just touched down is wiped before its first
+	// move (the one that fires dragstart and breaks the follow), leaving the
+	// map immovable while the marker glides. Hold the per-frame follow off
+	// while a pointer is on the map or a gesture-driven animation (pinch,
+	// wheel zoom, double-tap) is still running
+	const pointersDown = new Set<number>;
+	function gestureInProgress() {
+		return pointersDown.size > 0 || map.isMoving();
+	}
+
+	// Glides the location marker between GPS fixes instead of teleporting it;
+	// while following, the camera is pinned to the gliding marker rather than
+	// re-centered on each raw fix, so the map travels as smoothly as the marker
+	const marker = createMarkerAnimator(state => {
+		renderUserMarker(state);
+		if (!mapLoaded || blurred || cameraTransition || !get(following) || gestureInProgress()) return;
+		if (get(viewMode) === 'heading') {
+			map.jumpTo({ center: [state.lng, state.lat], bearing: state.heading });
+		} else {
+			map.jumpTo({ center: [state.lng, state.lat] });
+		}
+	});
+
+	// The animator only starts tracking once the map has loaded, so fall back to
+	// the raw position for anything that needs a location before then
+	function markerState(): MarkerState|null {
+		const state = marker.displayed();
+		if (state) return state;
+		const pos = get(currentPos);
+		if (!pos) return null;
+		return { lng: pos.coords.longitude, lat: pos.coords.latitude, heading: get(currentHeading) ?? 0 };
+	}
+
+	function renderUserMarker(state: MarkerState|null = markerState()) {
+		if (!mapLoaded || !state) return;
+		const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
+		if (src == null) return;
+		src.setData({
+			type: 'FeatureCollection',
+			features: [{
+				type: 'Feature',
+				properties: { nav: get(currentTrip) !== null, heading: state.heading },
+				geometry: {
+					type: 'Point',
+					coordinates: [state.lng, state.lat],
+				},
+			}],
+		});
+	}
+
+	// Extra top padding keeps the marker in the lower part of the view, showing
+	// the road ahead rather than what's behind
+	function navPadding() {
+		return {
+			top: topPadding + window.innerHeight * 0.35,
+			bottom: 0,
+			left: leftPadding,
+		};
+	}
+
+	function standardPadding() {
+		return { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding };
+	}
+
+	function enterNavView() {
+		const state = markerState();
+		if (!state) return;
+		beginCameraTransition(NAV_TRANSITION_ms);
+		map.easeTo({
+			center: [state.lng, state.lat],
+			bearing: state.heading,
+			pitch: NAV_PITCH,
+			zoom: NAV_ZOOM,
+			padding: navPadding(),
+			duration: NAV_TRANSITION_ms,
+		});
+	}
+
+	function exitNavView() {
+		const state = markerState();
+		beginCameraTransition(1000);
+		if (get(following) && state) {
+			map.easeTo({
+				center: [state.lng, state.lat],
+				bearing: 0,
+				pitch: 0,
+				zoom: 16,
+				padding: standardPadding(),
+				duration: 1000,
+			});
+		} else {
+			map.easeTo({ bearing: 0, pitch: 0, duration: 1000 });
+		}
+	}
+
+	// The chevron lies flat on the map, so tilting foreshortens it — it's drawn
+	// big enough for the tilted view and scaled down as the map flattens out,
+	// where the full size would look oversized. The dot is unaffected
+	function updateMarkerScale() {
+		if (!mapLoaded || map.getLayer('user-location') == null) return;
+		const t = Math.min(map.getPitch() / NAV_PITCH, 1);
+		map.setLayoutProperty('user-location', 'icon-size', ['case', ['to-boolean', ['get', 'nav']], 0.8 + 0.2 * t, 1]);
+	}
+
+	// The per-frame follow reuses the padding left behind by enterNavView, so
+	// when the viewport or the HUD layout changes (e.g. rotating the device)
+	// the padded center silently moves — re-apply it with the fresh layout
+	function realignNavCamera() {
+		if (!mapLoaded || blurred || !get(following) || get(viewMode) !== 'heading') return;
+		if (cameraTransition) {
+			// still easing into the view — restart the transition with the new layout
+			enterNavView();
+			return;
+		}
+		const state = markerState();
+		if (!state) return;
+		beginCameraTransition(600);
+		map.easeTo({
+			center: [state.lng, state.lat],
+			bearing: state.heading,
+			padding: navPadding(),
+			duration: 600,
+		});
+	}
+
+	// Both follows reuse the padding left behind by their last camera move, so a
+	// layout change silently shifts the padded center — re-apply it. Only the
+	// top-down view is padded at the bottom (the station menu)
+	$effect(() => {
+		void topPadding;
+		void leftPadding;
+		realignNavCamera();
+	});
+
+	$effect(() => {
+		void topPadding;
+		void bottomPadding;
+		void leftPadding;
+		recenterNorthView();
+	});
+
+	// Ease into the navigation view whenever it becomes active (trip start,
+	// re-following during a trip, toggling back from the north view)
+	let navWasActive = false;
+	$effect(() => {
+		const active = mapLoaded && !blurred && $following && $viewMode === 'heading' && $currentPos !== null;
+		if (active && !navWasActive) enterNavView();
+		navWasActive = active;
+	});
+
+	let lastViewMode = get(viewMode);
+	viewMode.subscribe(mode => {
+		if (mode === lastViewMode) return;
+		lastViewMode = mode;
+		if (mode === 'north' && mapLoaded) exitNavView();
+	});
+
 	// MapLibre recognizes the taps of one-finger zoom gestures (double-tap and
 	// double-tap-drag) up to 500ms apart, and 'click' fires on their first tap
 	// too. Deferring the pin drop for most of that window keeps those gestures
@@ -58,6 +241,57 @@
 			clearTimeout(pendingPinDrop);
 			pendingPinDrop = null;
 		}
+	}
+
+	// Sets a spot as the routing destination, deferred past the double-tap
+	// window and cancelled by zoom gestures
+	function schedulePinDrop(lngLat: { lat: number, lng: number }) {
+		cancelPendingPinDrop();
+		const destination = { type: 'location' as const, lat: lngLat.lat, lng: lngLat.lng };
+		// Compute the route and name right away so both are usually ready when
+		// the wait ends
+		const pos = get(currentPos);
+		let prefetchedRoute: PlannedRoute|null = null;
+		if (pos) {
+			computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
+				.then(route => prefetchedRoute = route)
+				.catch(() => {}); // if it failed, the recompute below will retry and report
+		}
+		const geocoded = reverseGeocode(destination);
+		pendingPinDrop = setTimeout(() => {
+			pendingPinDrop = null;
+			// Publishing a route for this destination first makes the destination
+			// subscription in routing.ts skip its recompute; if the prefetch isn't
+			// done yet, the normal recompute takes over
+			if (prefetchedRoute) currentRoute.set(prefetchedRoute);
+			routeDestination.set(destination);
+			geocoded.then(name => {
+				const current = get(routeDestination);
+				if (current && current.lat === destination.lat && current.lng === destination.lng) {
+					// The generic fallback is only shown once the lookup concluded
+					// without a name — not while it's still pending
+					routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
+				}
+			});
+		}, PIN_DROP_DELAY_ms);
+	}
+
+	// While riding, a stray tap on the map must not re-route — changing the
+	// destination takes a deliberate hold instead. Detected from the pointer
+	// tracking rather than from clicks, because mobile webviews don't reliably
+	// emit a click for a long press
+	const TRIP_PIN_HOLD_ms = 400;
+	const TRIP_PIN_HOLD_TOLERANCE_px = 10;
+	let press: { id: number, x: number, y: number, time: number }|null = null;
+
+	function tripHoldPinDrop(e: PointerEvent) {
+		if (!mapLoaded || get(currentTrip) === null) return;
+		if (get(selectedStation) != null) return; // the tap closes the menu instead
+		const rect = map.getCanvasContainer().getBoundingClientRect();
+		const point: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
+		// releases over a dock open its menu through the regular click path
+		if (map.queryRenderedFeatures(point, { layers: ['points', 'docks'] }).length > 0) return;
+		schedulePinDrop(map.unproject(point));
 	}
 
 	function addEventListeners(map: maplibregl.Map) {
@@ -113,83 +347,79 @@
 				selectedStation.set(null);
 				return;
 			}
-			// Tapping an empty spot on the map sets it as the routing destination,
-			// deferred past the double-tap window and cancelled by zoom gestures
-			cancelPendingPinDrop();
-			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
-			// Compute the route and name right away so both are usually ready when
-			// the wait ends
-			const pos = get(currentPos);
-			let prefetchedRoute: PlannedRoute|null = null;
-			if (pos) {
-				computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
-					.then(route => prefetchedRoute = route)
-					.catch(() => {}); // if it failed, the recompute below will retry and report
-			}
-			const geocoded = reverseGeocode(destination);
-			pendingPinDrop = setTimeout(() => {
-				pendingPinDrop = null;
-				// Publishing a route for this destination first makes the destination
-				// subscription in routing.ts skip its recompute; if the prefetch isn't
-				// done yet, the normal recompute takes over
-				if (prefetchedRoute) currentRoute.set(prefetchedRoute);
-				routeDestination.set(destination);
-				geocoded.then(name => {
-					const current = get(routeDestination);
-					if (current && current.lat === destination.lat && current.lng === destination.lng) {
-						// The generic fallback is only shown once the lookup concluded
-						// without a name — not while it's still pending
-						routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
-					}
-				});
-			}, PIN_DROP_DELAY_ms);
+			// While riding, quick taps are too easy to land by accident —
+			// re-routing takes the deliberate hold handled by the pointer tracking
+			if (get(currentTrip) !== null) return;
+			schedulePinDrop(e.lngLat);
 		});
 		map.on('dblclick', cancelPendingPinDrop);
-		map.on('zoomstart', cancelPendingPinDrop);
 		map.on('dragstart', cancelPendingPinDrop);
-		map.on('rotatestart', cancelPendingPinDrop);
-		map.on('pitchstart', cancelPendingPinDrop);
+		// The navigation view moves the camera programmatically all the time, so
+		// only user gestures (which carry the original DOM event) may cancel a
+		// pending pin drop
+		map.on('zoomstart', e => {
+			if (e.originalEvent) cancelPendingPinDrop();
+		});
+		map.on('pitchstart', e => {
+			if (e.originalEvent) cancelPendingPinDrop();
+		});
+		map.on('rotatestart', e => {
+			if (!e.originalEvent) return;
+			cancelPendingPinDrop();
+			// Manually rotating the map takes over from the heading-aligned camera,
+			// like dragging takes over from the centering
+			if (get(viewMode) === 'heading') following.set(false);
+		});
 		map.on('rotate', () => {
 			bearing.set(map.getBearing());
 			bearingNorth.set(false);
 		});
+		map.on('pitch', updateMarkerScale);
+		map.on('resize', realignNavCamera);
 	}
 
-	function centerMap(pos: Position) {
+	// Pulls the top-down view back onto the marker: the deliberate move made when
+	// the follow starts or the padded center shifts, not a per-fix correction.
+	// flyTo picks its duration from the distance (the first centering after
+	// launch crosses the whole city, a padding shift barely moves), so the
+	// hold-off is released by the movement ending rather than by a timer
+	function recenterNorthView() {
+		if (!mapLoaded || blurred || cameraTransition || !get(following) || get(viewMode) !== 'north') return;
+		const state = markerState();
+		if (!state) return;
+		const release = beginCameraTransition();
 		map.flyTo({
-			center: [pos.coords.longitude, pos.coords.latitude],
-			padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
+			center: [state.lng, state.lat],
+			padding: standardPadding(),
 			zoom: 16,
 		});
+		// registered only after the flyTo call: its stop() synchronously fires
+		// the moveend of any ease it interrupts, which must not release this hold
+		if (map.isMoving()) map.once('moveend', release);
+		else release();
 	}
 
 	currentPos.subscribe((pos: Position|null) => {
 		if (!mapLoaded) return;
 		if (pos && pos.coords) {
-			if ($following && !blurred) centerMap(pos);
-			const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
-			const data:GeoJSON = {
-				'type': 'FeatureCollection',
-				'features': [{
-					type: 'Feature',
-					properties: {},
-					geometry: {
-						type: 'Point',
-						coordinates: [pos.coords.longitude, pos.coords.latitude],
-					},
-				}],
-			};
-			if (src != null) {
-				src.setData(data);
-			} else {
-				map.addSource('user-location', {
-					'type': 'geojson',
-					'data': data,
-				});
-			}
+			marker.setTarget({
+				lng: pos.coords.longitude,
+				lat: pos.coords.latitude,
+				heading: get(currentHeading),
+			});
 		}
 		applyRouteData(get(currentRoute), pos);
 	});
+
+	// Compass-driven heading changes arrive between GPS fixes (e.g. turning on
+	// the spot) — rotate the marker without disturbing the position glide
+	currentHeading.subscribe(heading => {
+		if (heading !== null) marker.setHeading(heading);
+	});
+
+	// Smoothing can be turned off from the development settings to compare the
+	// glide against the raw fix stream
+	appSettings.subscribe(settings => marker.setSmoothing(settings?.markerSmoothing ?? true));
 
 	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
@@ -350,16 +580,39 @@
 			attributionControl: false,
 		});
 		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
+		// pointers can lift outside the map (or the app), so track the releases
+		// window-wide to never leave the follow stuck paused
+		const trackPointer = (e: PointerEvent) => {
+			// a hold only counts while it's the lone pointer from start to finish
+			press = pointersDown.size === 0 ? { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now() } : null;
+			pointersDown.add(e.pointerId);
+		};
+		const releasePointer = (e: PointerEvent) => {
+			pointersDown.delete(e.pointerId);
+			if (!press || press.id !== e.pointerId) return;
+			const held = performance.now() - press.time;
+			const moved = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+			press = null;
+			if (e.type === 'pointerup' && held >= TRIP_PIN_HOLD_ms && moved <= TRIP_PIN_HOLD_TOLERANCE_px) tripHoldPinDrop(e);
+		};
+		map.getCanvasContainer().addEventListener('pointerdown', trackPointer);
+		window.addEventListener('pointerup', releasePointer);
+		window.addEventListener('pointercancel', releasePointer);
 		map.once('load', async () => {
 			console.debug('Map loaded');
 			await loadImages(map);
 			mapLoaded = true;
 			setSourceData(map);
 			addLayers(map);
+			renderUserMarker();
+			updateMarkerScale();
 			applyRouteData(get(currentRoute));
 			addEventListeners(map);
 		});
 		return () => {
+			window.removeEventListener('pointerup', releasePointer);
+			window.removeEventListener('pointercancel', releasePointer);
+			marker.stop();
 			map.remove();
 		};
 	});
@@ -371,6 +624,8 @@
 				loadImages(map);
 				setSourceData(map);
 				addLayers(map);
+				renderUserMarker();
+				updateMarkerScale();
 				applyRouteData(get(currentRoute));
 				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
@@ -378,10 +633,28 @@
 		}
 	});
 
+	let wasOnTrip = get(currentTrip) !== null;
 	currentTrip.subscribe(trip => {
+		const onTrip = trip !== null;
+		if (onTrip !== wasOnTrip) {
+			wasOnTrip = onTrip;
+			if (onTrip) {
+				// starting a trip pulls the camera into the navigation view
+				viewMode.set('heading');
+				following.set(true);
+			} else {
+				viewMode.set('north');
+			}
+			// swap the location marker between the dot and the heading arrow
+			renderUserMarker();
+		}
 		if (mapLoaded) {
 			map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
 			map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
+			// while riding, the route has to stay legible at a glance, so thicken it
+			map.setPaintProperty('route-outline', 'line-width', trip ? 12 : 9);
+			map.setPaintProperty('route-bike', 'line-width', trip ? 8 : 5);
+			map.setPaintProperty('route-foot', 'line-width', trip ? 8 : 5);
 		}
 	});
 
@@ -394,8 +667,13 @@
 		}
 	});
 
+	// Like the navigation view, the top-down follow centers once when it becomes
+	// active; in between, the per-frame follow keeps the camera on the marker
+	let northWasActive = false;
 	$effect(() => {
-		if ($following && !blurred && $currentPos && topPadding !== null && bottomPadding !== null && leftPadding !== null) centerMap($currentPos);
+		const active = mapLoaded && !blurred && $following && $viewMode === 'north' && $currentPos !== null;
+		if (active && !northWasActive) recenterNorthView();
+		northWasActive = active;
 	});
 
 	$effect(() => {

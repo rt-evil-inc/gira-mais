@@ -28,17 +28,26 @@
 	let x = $state<{ left: number|undefined, right: number|undefined }>({ left: undefined, right: undefined });
 
 	let show = $state(true);
+	let showTimeout: ReturnType<typeof setTimeout>;
 	$effect(() => {
-		show = false;
-		x = { left, right };
-		if (y !== undefined) {
-			if (bottom) {
-				pos = Math.max((innerHeight - y) + offset, $safeInsets.bottom);
-			} else {
-				pos = Math.max(y + offset, $safeInsets.top);
-			}
-			setTimeout(() => show = true, 150);
+		// The right inset (notch side in landscape-secondary) is applied here;
+		// left-anchored floats already ride the trip HUD's width, which reserves
+		// the left inset itself
+		const next = { left, right: right === undefined ? undefined : right + $safeInsets.right };
+		const movedX = next.left !== x.left || next.right !== x.right;
+		if (movedX) x = next;
+		if (y === undefined) {
+			show = false;
+			return;
 		}
+		const nextPos = bottom ? Math.max((innerHeight - y) + offset, $safeInsets.bottom) : Math.max(y + offset, $safeInsets.top);
+		// Anchors get re-pushed without actually moving (a trip update re-reserving
+		// the same HUD height, an inset refetch) — blink only for a real move
+		if (!movedX && nextPos === pos && show) return;
+		pos = nextPos;
+		show = false;
+		clearTimeout(showTimeout);
+		showTimeout = setTimeout(() => show = true, 150);
 	});
 </script>
 

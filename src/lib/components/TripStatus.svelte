@@ -56,8 +56,8 @@
 		inter = setInterval(() => seconds++, 1000);
 		$following = true;
 		KeepAwake.keepAwake();
-		ScreenOrientation.orientation().then(o => portrait = o.type === 'portrait-primary');
-		ScreenOrientation.addListener('screenOrientationChange', o => portrait = o.type === 'portrait-primary');
+		ScreenOrientation.orientation().then(o => portrait = o.type.startsWith('portrait'));
+		ScreenOrientation.addListener('screenOrientationChange', o => portrait = o.type.startsWith('portrait'));
 		return () => {
 			clearInterval(inter);
 			KeepAwake.allowSleep();

@@ -31,6 +31,7 @@
 	import Dialog from '$lib/components/Dialog.svelte';
 
 	let backListener: PluginListenerHandle;
+	let innerHeight = $state(0);
 	let menuHeight = $state(0);
 	let stationMenuPos:number|undefined = $state(0);
 	let tripStatusHeight:number = $state(0);
@@ -70,6 +71,8 @@
 	});
 </script>
 
+<svelte:window bind:innerHeight />
+
 <div class="h-full w-full relative overflow-hidden">
 	{#if $token === null}
 		<div transition:fade={{ duration: 150 }} class="absolute w-full h-full z-20 flex items-center justify-center">
@@ -91,7 +94,9 @@
 		<NetworkWarning {tripStatusHeight} {tripStatusWidth} />
 	{/if}
 
-	<Floating right={20} y={stationMenuPos} bottom offset={20}>
+	<!-- during a trip the station menu is unmounted and its position is a stale
+		snapshot of the previous orientation — anchor to the window bottom instead -->
+	<Floating right={20} y={$currentTrip !== null ? innerHeight : stationMenuPos} bottom offset={20}>
 		<LocationButton bind:locationPermission />
 	</Floating>
 

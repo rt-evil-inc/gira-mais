@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { startCompass } from '$lib/compass';
 	import { currentPos, watchPosition } from '$lib/location';
-	import { following } from '$lib/map.svelte';
+	import { following, viewMode } from '$lib/map.svelte';
+	import { currentTrip } from '$lib/trip';
 	import { Capacitor } from '@capacitor/core';
 	import { Geolocation } from '@capacitor/geolocation';
 	import { draw } from 'svelte/transition';
@@ -14,9 +16,20 @@
 
 <button class="bg-background dark:bg-background-secondary p-2 rounded-full grid grid-cols-1 grid-rows-1 w-12 h-12 active:bg-background dark:active:bg-background-tertiary transition-colors" style:box-shadow="0px 0px 20px 0px var(--color-shadow)"
 	onclick={() => {
+		// iOS only exposes the compass after a permission prompt triggered from a
+		// tap, and this button is the natural one
+		startCompass();
 		if (locationPermission) {
-			$following = !$following;
-			if ($following) watchPosition();
+			if (!$following) {
+				$following = true;
+				watchPosition();
+			} else if ($currentTrip !== null) {
+				// while riding, tapping again toggles between the heading-aligned
+				// navigation view and the north-oriented top-down view
+				$viewMode = $viewMode === 'heading' ? 'north' : 'heading';
+			} else {
+				$following = false;
+			}
 		} else {
 			if (Capacitor.getPlatform() !== 'web') {
 				Geolocation.requestPermissions().then(({ location }) => {
@@ -32,18 +45,28 @@
 		}
 	}} >
 	{#if locationPermission}
-		<div style="grid-row: 1;grid-column: 1;" >
-			<svg
-				xmlns="http://www.w3.org/2000/svg" class="transition-all {$currentPos ? '' : 'animate-[spin_3s_linear_infinite]'} {$following ? 'text-primary' : 'text-label'}" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-				<path transition:draw={{ duration: 150 }} stroke="none" d="M0 0h24v24H0z" fill="none"/>
-				<path transition:draw={{ duration: 150 }} class:animate-searching={!$currentPos} d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
-				<path transition:draw={{ duration: 150 }} d="M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" />
-				<path d="M12 4l0 -2" />
-				<path d="M12 20l0 2" />
-				<path d="M20 12h2" />
-				<path d="M4 12l-2 0" />
-			</svg>
-		</div>
+		{#if $following && $viewMode === 'heading'}
+			<div style="grid-row: 1;grid-column: 1;" >
+				<svg
+					xmlns="http://www.w3.org/2000/svg" class="text-primary" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+					<path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+					<path transition:draw={{ duration: 150 }} d="M12 16.5l7.5 3.5l-7.5 -18l-7.5 18l7.5 -3.5z" />
+				</svg>
+			</div>
+		{:else}
+			<div style="grid-row: 1;grid-column: 1;" >
+				<svg
+					xmlns="http://www.w3.org/2000/svg" class="transition-all {$currentPos ? '' : 'animate-[spin_3s_linear_infinite]'} {$following ? 'text-primary' : 'text-label'}" width="32" height="32" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+					<path transition:draw={{ duration: 150 }} stroke="none" d="M0 0h24v24H0z" fill="none"/>
+					<path transition:draw={{ duration: 150 }} class:animate-searching={!$currentPos} d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+					<path transition:draw={{ duration: 150 }} d="M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0 -16 0" />
+					<path d="M12 4l0 -2" />
+					<path d="M12 20l0 2" />
+					<path d="M20 12h2" />
+					<path d="M4 12l-2 0" />
+				</svg>
+			</div>
+		{/if}
 	{:else}
 		<div style="grid-row: 1;grid-column: 1;" >
 			<svg
