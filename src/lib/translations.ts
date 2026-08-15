@@ -69,6 +69,30 @@ const translations = {
 		en: 'Arrival Time',
 		pt: 'Hora de Chegada',
 	},
+	no_route_found: {
+		en: 'No route found',
+		pt: 'Nenhuma rota encontrada',
+	},
+	route_computation_error: {
+		en: 'Failed to calculate route',
+		pt: 'Erro ao calcular a rota',
+	},
+	search_placeholder: {
+		en: 'Search destination',
+		pt: 'Pesquisar destino',
+	},
+	no_results_found: {
+		en: 'No results found',
+		pt: 'Sem resultados',
+	},
+	station_availability: {
+		en: '{{bikes}} bikes · {{docks}} free docks',
+		pt: '{{bikes}} bicicletas · {{docks}} docas livres',
+	},
+	selected_location: {
+		en: 'Selected location',
+		pt: 'Local selecionado',
+	},
 	rate_trip_error: {
 		en: 'Error rating trip',
 		pt: 'Erro ao avaliar viagem',

@@ -19,6 +19,7 @@
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
+	import { startDebugControls } from '$lib/debug';
 	interface Props {
 		children?: import('svelte').Snippet;
 	}
@@ -26,15 +27,35 @@
 	let { children }: Props = $props();
 	import { theme } from '$lib/theme';
 
+	function updateInsets() {
+		SafeArea.getSafeAreaInsets().then(({ insets }) => {
+			// Keep the old object when nothing changed, so subscribers (Floating
+			// fades, TripStatus sizing) don't re-trigger on every keyboard resize
+			safeInsets.update(cur => cur.top === insets.top && cur.bottom === insets.bottom && cur.left === insets.left && cur.right === insets.right ? cur : insets);
+		});
+	}
+
 	if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
 		StatusBar.setOverlaysWebView({ overlay: true });
 		NavigationBar.setTransparency({ isTransparent: true });
-		SafeArea.getSafeAreaInsets().then(ins => {
-			safeInsets.set(ins.insets);
+		updateInsets();
+		// Insets change with orientation. The plugin's safeAreaChanged event is
+		// sensor-driven and often samples the insets before the window re-lays
+		// out, delivering stale values at random — refetching when the webview
+		// has actually resized reads them settled. Only width changes count:
+		// the keyboard resizes the height and shifts the bottom inset, and
+		// reacting to that would blink the floating UI and unfocus the search
+		// bar under the user's fingers
+		let lastWidth = window.innerWidth;
+		window.addEventListener('resize', () => {
+			if (window.innerWidth === lastWidth) return;
+			lastWidth = window.innerWidth;
+			updateInsets();
 		});
 	}
 
 	onMount(() => {
+		const stopDebugControls = import.meta.env.DEV ? startDebugControls() : undefined;
 		loadUserCreds();
 		loadSettings().then(() => {
 			reportAppUsageEvent();
@@ -62,6 +83,7 @@
 		ScreenOrientation.lock({ orientation: 'portrait' });
 
 		return () => {
+			stopDebugControls?.();
 			App.removeAllListeners();
 		};
 	});

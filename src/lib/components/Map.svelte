@@ -3,7 +3,11 @@
 	import { bearing, bearingNorth, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, selectedStation, setSourceData, stations } from '$lib/map.svelte';
+	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
+	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
+	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
+	import { t } from '$lib/translations';
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
@@ -31,6 +35,7 @@
 	let mapLoaded = $state(false);
 	let ready = $derived(mapLoaded && !loading && stations.value.length != 0);
 	let blurred = $state(true);
+	let routeClippingState: RouteClippingState = emptyRouteClippingState();
 
 	$effect(() => {
 		if (ready) setTimeout(() => blurred = false, 500);
@@ -40,31 +45,110 @@
 		if ($bearingNorth) map.flyTo({ bearing: 0 });
 	});
 
+	// MapLibre recognizes the taps of one-finger zoom gestures (double-tap and
+	// double-tap-drag) up to 500ms apart, and 'click' fires on their first tap
+	// too. Deferring the pin drop for most of that window keeps those gestures
+	// from setting destinations, without making deliberate pin drops sluggish —
+	// at worst an unusually slow double-tap still drops a pin. The route is
+	// computed during the wait; only showing it is deferred
+	const PIN_DROP_DELAY_ms = 200;
+	let pendingPinDrop: ReturnType<typeof setTimeout>|null = null;
+	function cancelPendingPinDrop() {
+		if (pendingPinDrop != null) {
+			clearTimeout(pendingPinDrop);
+			pendingPinDrop = null;
+		}
+	}
+
 	function addEventListeners(map: maplibregl.Map) {
-		map.on('click', 'points', async function (e) {
+		async function onStationClick(e: maplibregl.MapLayerMouseEvent) {
 			if (e.features === undefined) return;
+			cancelPendingPinDrop();
 			following.set(false);
 			const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
 			const props = feature.properties as { serialNumber: string, name: string, bikes: number };
 			selectedStation.set(props.serialNumber);
+			// Tapping a station that's already part of the route (e.g. to unlock a
+			// bike at the pickup station) only opens its menu — it must not replace
+			// the route with a route to that station
+			const route = get(currentRoute);
+			const partOfRoute = route != null && (
+				route.startStationSerial === props.serialNumber ||
+				route.endStationSerial === props.serialNumber ||
+				(route.destination.type === 'station' && route.destination.stationSerial === props.serialNumber)
+			);
+			if (!partOfRoute) {
+				routeDestination.set({
+					type: 'station',
+					lat: feature.geometry.coordinates[1],
+					lng: feature.geometry.coordinates[0],
+					name: props.name,
+					stationSerial: props.serialNumber,
+				});
+			}
 			await tick();
 			await tick();
-			map.flyTo({
-				center: feature.geometry.coordinates as [number, number],
-				padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
-				curve: 0,
-			});
-		});
+			// With no active trip the camera moves once, when the computed route is
+			// fit to the view; during a trip, without a location (when no route can
+			// be computed) or when the route is kept, no fit happens, so center the
+			// station instead
+			if (get(currentTrip) !== null || get(currentPos) === null || partOfRoute) {
+				map.flyTo({
+					center: feature.geometry.coordinates as [number, number],
+					padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
+					curve: 0,
+				});
+			}
+		}
+		map.on('click', 'points', onStationClick);
+		map.on('click', 'docks', onStationClick);
 		// on dragging map, remove user tracking
 		map.on('dragstart', () => {
 			following.set(false);
 		});
 		map.on('click', e => {
-			const features = map.queryRenderedFeatures(e.point, { layers: ['points'] });
-			if (features.length == 0) {
+			const features = map.queryRenderedFeatures(e.point, { layers: ['points', 'docks'] });
+			if (features.length > 0) return;
+			if (get(selectedStation) != null) {
 				selectedStation.set(null);
+				return;
 			}
+			// Tapping an empty spot on the map sets it as the routing destination,
+			// deferred past the double-tap window and cancelled by zoom gestures
+			cancelPendingPinDrop();
+			const destination = { type: 'location' as const, lat: e.lngLat.lat, lng: e.lngLat.lng };
+			// Compute the route and name right away so both are usually ready when
+			// the wait ends
+			const pos = get(currentPos);
+			let prefetchedRoute: PlannedRoute|null = null;
+			if (pos) {
+				computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
+					.then(route => prefetchedRoute = route)
+					.catch(() => {}); // if it failed, the recompute below will retry and report
+			}
+			const geocoded = reverseGeocode(destination);
+			pendingPinDrop = setTimeout(() => {
+				pendingPinDrop = null;
+				// Publishing a route for this destination first makes the destination
+				// subscription in routing.ts skip its recompute; if the prefetch isn't
+				// done yet, the normal recompute takes over
+				if (prefetchedRoute) currentRoute.set(prefetchedRoute);
+				routeDestination.set(destination);
+				geocoded.then(name => {
+					const current = get(routeDestination);
+					if (current && current.lat === destination.lat && current.lng === destination.lng) {
+						// The generic fallback is only shown once the lookup concluded
+						// without a name — not while it's still pending
+						routeDestination.set({ ...destination, name: name ?? get(t)('selected_location') });
+					}
+				});
+			}, PIN_DROP_DELAY_ms);
 		});
+		map.on('dblclick', cancelPendingPinDrop);
+		map.on('zoomstart', cancelPendingPinDrop);
+		map.on('dragstart', cancelPendingPinDrop);
+		map.on('rotatestart', cancelPendingPinDrop);
+		map.on('pitchstart', cancelPendingPinDrop);
 		map.on('rotate', () => {
 			bearing.set(map.getBearing());
 			bearingNorth.set(false);
@@ -104,6 +188,136 @@
 				});
 			}
 		}
+		applyRouteData(get(currentRoute), pos);
+	});
+
+	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
+		const src = map.getSource<maplibregl.GeoJSONSource>('route');
+		const destSrc = map.getSource<maplibregl.GeoJSONSource>('route-destination');
+		if (src == null || destSrc == null) return;
+		if (route && pos?.coords) {
+			routeClippingState = projectPositionOntoRoute(route, {
+				lat: pos.coords.latitude,
+				lng: pos.coords.longitude,
+			}, routeClippingState, get(currentTrip) !== null ? 'bike' : 'foot');
+		}
+		// Refine the trip HUD's distance-left and arrival time with the progress
+		// along the route, which route recomputes alone would only track every ~30m
+		if (route && routeClippingState.accepted && get(currentTrip) !== null) {
+			const remaining = remainingRoute(route, routeClippingState.accepted);
+			const arrivalTime = new Date(Date.now() + remaining.duration * 1000);
+			currentTrip.update(trip => trip ? { ...trip, distanceLeft: remaining.distance / 1000, arrivalTime, predictedEndDate: arrivalTime } : trip);
+		}
+		const displayLegs = route ? clipRouteAtProjection(route, routeClippingState.accepted) : [];
+		src.setData({
+			type: 'FeatureCollection',
+			features: displayLegs.map(leg => ({
+				type: 'Feature' as const,
+				properties: { mode: leg.mode },
+				geometry: {
+					type: 'LineString' as const,
+					coordinates: leg.coordinates,
+				},
+			})) ?? [],
+		});
+		const destination = get(routeDestination);
+		destSrc.setData({
+			type: 'FeatureCollection',
+			features: destination ? [{
+				type: 'Feature' as const,
+				properties: {},
+				geometry: {
+					type: 'Point' as const,
+					coordinates: [destination.lng, destination.lat],
+				},
+			}] : [],
+		});
+	}
+
+	// The station menu height passed as bottomPadding only measures the bike
+	// list; the sheet header (drag handle + station info) adds roughly this much
+	const SHEET_HEADER_px = 110;
+
+	let pendingFit = false;
+	let lastFitAt = 0;
+	let refitTimeout: ReturnType<typeof setTimeout>;
+
+	function fitRoute(route: PlannedRoute|null) {
+		if (!route || !mapLoaded || get(currentTrip) !== null) return;
+		lastFitAt = Date.now();
+		following.set(false);
+		const bounds = new maplibregl.LngLatBounds;
+		bounds.extend([route.origin.lng, route.origin.lat]);
+		route.legs.forEach(leg => leg.coordinates.forEach(c => bounds.extend(c)));
+		// Clear the search bar + route summary chip at the top, and the bottom
+		// sheet (bike list is CSS-capped at 50vh) plus its header at the bottom,
+		// while always keeping a minimum strip of the map visible
+		const top = topPadding + 130;
+		const bottom = Math.min(
+			Math.min(bottomPadding, window.innerHeight / 2) + SHEET_HEADER_px,
+			window.innerHeight - top - 150,
+		);
+		// fitBounds adds the map's persistent padding (left behind by flyTo calls
+		// with a padding option) on top of the requested one, so subtract it to
+		// avoid zooming out much further than the route needs
+		const persistent = map.getPadding();
+		map.fitBounds(bounds, {
+			padding: {
+				top: Math.max(0, top - persistent.top),
+				bottom: Math.max(0, bottom - persistent.bottom),
+				left: Math.max(0, leftPadding + 40 - persistent.left),
+				right: Math.max(0, 40 - persistent.right),
+			},
+			duration: 1000,
+			maxZoom: 16.5,
+		});
+	}
+
+	// Zoom to the full route whenever a destination is picked, unless riding
+	// (keep following the user)
+	currentRoute.subscribe(route => {
+		routeClippingState = emptyRouteClippingState();
+		if (!mapLoaded) return;
+		applyRouteData(route);
+		if (!route) {
+			pendingFit = false;
+			return;
+		}
+		if (pendingFit) {
+			pendingFit = false;
+			fitRoute(route);
+		}
+	});
+
+	routeDestination.subscribe(destination => {
+		if (!destination) routeClippingState = emptyRouteClippingState();
+		if (!mapLoaded) {
+			pendingFit = destination != null;
+			return;
+		}
+		const route = get(currentRoute);
+		applyRouteData(route);
+		if (!destination) {
+			pendingFit = false;
+			return;
+		}
+		pendingFit = true;
+		// The route for this destination may already be computed (e.g. a station
+		// was re-selected, or reverse geocoding named a pin) — fit it right away
+		if (route && route.destination.lat === destination.lat && route.destination.lng === destination.lng) {
+			pendingFit = false;
+			fitRoute(route);
+		}
+	});
+
+	// Re-fit when the bottom sheet resizes shortly after a fit (e.g. the bike
+	// list grows once up-to-date station info arrives), so the route stays visible
+	$effect(() => {
+		void bottomPadding;
+		clearTimeout(refitTimeout);
+		if (Date.now() - lastFitAt < 5000) {
+			refitTimeout = setTimeout(() => fitRoute(get(currentRoute)), 200);
+		}
 	});
 
 	currentTrip.subscribe((trip: ActiveTrip | null) => {
@@ -142,6 +356,7 @@
 			mapLoaded = true;
 			setSourceData(map);
 			addLayers(map);
+			applyRouteData(get(currentRoute));
 			addEventListeners(map);
 		});
 		return () => {
@@ -156,6 +371,7 @@
 				loadImages(map);
 				setSourceData(map);
 				addLayers(map);
+				applyRouteData(get(currentRoute));
 				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
 			map.setStyle(getMapStyle(currentTheme), { diff: true });

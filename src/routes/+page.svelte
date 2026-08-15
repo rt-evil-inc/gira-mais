@@ -10,6 +10,9 @@
 	import TripRating from '$lib/components/TripRating.svelte';
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
+	import { routeDestination } from '$lib/routing';
+	import SearchBar, { dismissSearchBar } from '$lib/components/SearchBar.svelte';
+	import { get } from 'svelte/store';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
 	import 'maplibre-gl/dist/maplibre-gl.css';
@@ -51,8 +54,12 @@
 
 		App.addListener('backButton', () => {
 			if (!profileOpen) {
-				if ($selectedStation != null) {
+				if (dismissSearchBar()) {
+				// just unfocus the search bar
+				} else if ($selectedStation != null) {
 					$selectedStation = null;
+				} else if (get(routeDestination) != null) {
+					routeDestination.set(null);
 				} else {
 					App.exitApp();
 				}
@@ -75,7 +82,7 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && $networkStatus}
+		{#if $tripRating.currentRating != null && $networkStatus }
 			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
 	{/if}
@@ -96,9 +103,18 @@
 		<Compass />
 	</Floating>
 
-	<Floating left={tripStatusWidth + 20} y={tripStatusHeight} offset={20}>
+	<!-- follows the search bar's anchor so the top inset can't squeeze their gap -->
+	<Floating left={tripStatusWidth + 20} y={Math.max(tripStatusHeight + 12, $safeInsets.top)} offset={68}>
 		<SupportButton />
 	</Floating>
+
+	{#if $token !== null}
+		<!-- in landscape trips the HUD already claims the left edge, so the bar
+			collapses into a button to keep the map visible -->
+		<Floating left={tripStatusWidth + 16} right={80} y={Math.max(tripStatusHeight + 16, $safeInsets.top)} offset={4} class="z-[5] pointer-events-none">
+			<SearchBar collapsible={tripStatusWidth > 0} />
+		</Floating>
+	{/if}
 
 	{#if profileOpen}
 		<Profile onclose={() => profileOpen = false}/>

@@ -26,24 +26,23 @@ export const errorMessages = (() => {
 // TODO: remove this file and put it in a svelte file using context
 type DialogSnippet = Snippet<[dismiss: () => void]>;
 
-export const dialogQueue = $state<{ snippet: DialogSnippet, dismiss: () => void }[]>([]);
+export const dialogQueue = $state<{ snippet: DialogSnippet, dismiss:() => void }[]>([]);
 
 export const enqueueDialog = (snippet: DialogSnippet) => {
-	let dismiss = () => {
+	const dismiss = () => {
 		const index = dialogQueue.findIndex(d => d.dismiss === dismiss);
 		if (index !== -1) dialogQueue.splice(index, 1);
-	}
+	};
 	dialogQueue.push({ snippet, dismiss });
 };
 
-
-export let keyboard = $state({ visible: false, height: 0 });
+export const keyboard = $state({ visible: false, height: 0 });
 
 Keyboard.addListener('keyboardWillShow', info => {
 	keyboard.visible = true;
 	keyboard.height = info.keyboardHeight;
-});
+}).catch(() => {}); // not implemented on web
 Keyboard.addListener('keyboardWillHide', () => {
 	keyboard.visible = false;
 	keyboard.height = 0;
-});
+}).catch(() => {}); // not implemented on web

@@ -31,6 +31,7 @@
     "baseline-browser-mapping": "^2.9.11",
     "eslint": "^8.57.1",
     "eslint-plugin-svelte": "^2.46.1",
+    "happy-dom": "^20.10.6",
     "postcss": "^8.5.3",
     "svelte": "^5.46.1",
     "svelte-check": "^4.0.0",
@@ -39,7 +40,7 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.40.0",
     "vite": "^7.2.6",
-    "vitest": "^1.6.1"
+    "vitest": "^3"
   },
   "type": "module",
   "dependencies": {
@@ -64,6 +65,9 @@
     "@fontsource/roboto-mono": "^5.2.6",
     "@mauricewegner/capacitor-navigation-bar": "^2.0.3",
     "@tabler/icons-svelte": "^3.34.1",
+    "@turf/distance": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
+    "@turf/nearest-point-on-line": "^7.3.5",
     "@types/suncalc": "^1.9.2",
     "capacitor-plugin-safe-area": "^2.0.6",
     "maplibre-gl": "^4.7.1",
