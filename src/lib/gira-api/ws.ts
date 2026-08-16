@@ -11,7 +11,7 @@ export function startWS() {
 	const tokens = get(token);
 	const access = tokens?.accessToken;
 	const firebase = get(encryptedFirebaseToken);
-	if (!access || !firebase) return;
+	if (!access) return;
 	if (ws) {
 		if (ws.readyState === WebSocket.CONNECTING) return;
 		if (ws.readyState === WebSocket.OPEN) return;
@@ -23,11 +23,11 @@ export function startWS() {
 		console.debug('ws opened');
 		ws.send(JSON.stringify({
 			'type': 'connection_init',
-			'payload': {
+			'payload': firebase ? {
 				'headers': {
 					'x-firebase-token': firebase,
 				},
-			},
+			} : {},
 		}));
 		ws.send(JSON.stringify({
 			'type': 'start',
