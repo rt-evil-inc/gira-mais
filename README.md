@@ -16,9 +16,9 @@ Com um olhar atento ao design, à experiência do utilizador (UX) e à estabilid
 ### Funcionalidades extra
 - Mapa com ciclovias
 - Modo escuro
+- Sistema de navegação
 - Estimativa da condição das bicicletas em função das avaliações contribuídas pelos utilizadores
-- Cálculo da distância percorrida e velocidade média durante uma viagem
-- Visualização do trajeto percorrido
+- Cálculo de métricas relevantes durante uma viagem
 
 ### Não implementado
 - Criação de contas
