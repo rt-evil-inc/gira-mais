@@ -13,12 +13,27 @@ export type Insets = {
 export const safeInsets = writable<Insets>({ top: 0, bottom: 0, left: 0, right: 0 });
 
 export const errorMessages = (() => {
-	const { subscribe, update } = writable<{ msg: string, id: number }[]>([]);
+	const { subscribe, update } = writable<{ msg: string, id: number, count: number }[]>([]);
+	const timeouts = new Map<number, ReturnType<typeof setTimeout>>;
+	const remove = (id: number) => {
+		timeouts.delete(id);
+		update(messages => messages.filter(m => m.id !== id));
+	};
 	const add = async (msg: string, delay = 3000) => {
 		if (!(await App.getState()).isActive) return;
-		const id = Math.random();
-		update(messages => [...messages, { msg, id }].slice(-3));
-		setTimeout(() => update(messages => messages.filter(m => m.id !== id)), delay);
+		update(messages => {
+			// Re-adding a visible message (e.g. each attempt of a retried request)
+			// refreshes it and bumps its counter instead of stacking a duplicate
+			const existing = messages.find(m => m.msg === msg);
+			if (existing) {
+				clearTimeout(timeouts.get(existing.id));
+				timeouts.set(existing.id, setTimeout(() => remove(existing.id), delay));
+				return messages.map(m => m === existing ? { ...m, count: m.count + 1 } : m);
+			}
+			const id = Math.random();
+			timeouts.set(id, setTimeout(() => remove(id), delay));
+			return [...messages, { msg, id, count: 1 }].slice(-3);
+		});
 	};
 	return { subscribe, add };
 })();
