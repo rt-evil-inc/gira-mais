@@ -2,7 +2,7 @@
 	import { token } from '$lib/account';
 	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, stations, viewMode } from '$lib/map.svelte';
+	import { addLayers, following, loadImages, selectedStation, setSourceData, stationDotColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
 	import { appSettings } from '$lib/settings';
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
@@ -13,7 +13,7 @@
 	import { currentTrip, type ActiveTrip } from '$lib/trip';
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
-	import maplibregl from 'maplibre-gl';
+	import maplibregl, { type ExpressionSpecification } from 'maplibre-gl';
 	import { onMount, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
@@ -280,6 +280,9 @@
 	// destination takes a deliberate hold instead. Detected from the pointer
 	// tracking rather than from clicks, because mobile webviews don't reliably
 	// emit a click for a long press
+	// every layer a station can be tapped through, whatever its current form
+	const STATION_LAYERS = ['points', 'docks', 'route-stations', 'station-dots'];
+
 	const TRIP_PIN_HOLD_ms = 400;
 	const TRIP_PIN_HOLD_TOLERANCE_px = 10;
 	let press: { id: number, x: number, y: number, time: number }|null = null;
@@ -290,7 +293,7 @@
 		const rect = map.getCanvasContainer().getBoundingClientRect();
 		const point: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
 		// releases over a dock open its menu through the regular click path
-		if (map.queryRenderedFeatures(point, { layers: ['points', 'docks'] }).length > 0) return;
+		if (map.queryRenderedFeatures(point, { layers: STATION_LAYERS }).length > 0) return;
 		schedulePinDrop(map.unproject(point));
 	}
 
@@ -334,14 +337,13 @@
 				});
 			}
 		}
-		map.on('click', 'points', onStationClick);
-		map.on('click', 'docks', onStationClick);
+		for (const layer of STATION_LAYERS) map.on('click', layer, onStationClick);
 		// on dragging map, remove user tracking
 		map.on('dragstart', () => {
 			following.set(false);
 		});
 		map.on('click', e => {
-			const features = map.queryRenderedFeatures(e.point, { layers: ['points', 'docks'] });
+			const features = map.queryRenderedFeatures(e.point, { layers: STATION_LAYERS });
 			if (features.length > 0) return;
 			if (get(selectedStation) != null) {
 				selectedStation.set(null);
@@ -464,6 +466,40 @@
 		});
 	}
 
+	function routeStationSerials(route: PlannedRoute|null): string[] {
+		if (!route) return [];
+		const serials = [route.startStationSerial, route.endStationSerial];
+		if (route.destination.type === 'station') serials.push(route.destination.stationSerial);
+		return [...new Set(serials.filter((s): s is string => s != null))];
+	}
+
+	// How stations are drawn depends on the trip (bike counts vs free docks)
+	// and the route on display: the route's own stations — plus the selected
+	// one — keep their full markers at every zoom while the rest step back:
+	// dimmed, and mere dots below the marker zoom, where the route line and
+	// the map must stay legible
+	function applyStationDisplayState() {
+		if (!mapLoaded || map.getLayer('points') == null) return;
+		const trip = get(currentTrip) !== null;
+		map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
+		map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
+		map.setLayoutProperty('route-stations', 'icon-image', stationIcon(trip ? 'dock' : 'bike', trip ? 'freeDocks' : 'bikes'));
+		map.setPaintProperty('station-dots', 'circle-color', stationDotColor(trip ? 'freeDocks' : 'bikes'));
+		const routeSerials = routeStationSerials(get(currentRoute));
+		const selected = get(selectedStation);
+		const fullMarkerSerials = selected != null && !routeSerials.includes(selected) ? [...routeSerials, selected] : routeSerials;
+		const fullMarker: ExpressionSpecification = ['in', ['get', 'serialNumber'], ['literal', fullMarkerSerials]];
+		map.setFilter('route-stations', fullMarker);
+		// those stations get a full marker instead of a dot
+		map.setFilter('station-dots', fullMarkerSerials.length ? ['!', fullMarker] : null);
+		const dotOpacity = routeSerials.length ? 0.4 : 1;
+		map.setPaintProperty('station-dots', 'circle-opacity', dotOpacity);
+		map.setPaintProperty('station-dots', 'circle-stroke-opacity', dotOpacity);
+		const markerOpacity: ExpressionSpecification|number = routeSerials.length ? ['case', fullMarker, 1, 0.4] : 1;
+		map.setPaintProperty('points', 'icon-opacity', markerOpacity);
+		map.setPaintProperty('docks', 'icon-opacity', markerOpacity);
+	}
+
 	// The station menu height passed as bottomPadding only measures the bike
 	// list; the sheet header (drag handle + station info) adds roughly this much
 	const SHEET_HEADER_px = 110;
@@ -509,6 +545,7 @@
 		routeClippingState = emptyRouteClippingState();
 		if (!mapLoaded) return;
 		applyRouteData(route);
+		applyStationDisplayState();
 		if (!route) {
 			pendingFit = false;
 			return;
@@ -604,6 +641,7 @@
 			mapLoaded = true;
 			setSourceData(map);
 			addLayers(map);
+			applyStationDisplayState();
 			renderUserMarker();
 			updateMarkerScale();
 			applyRouteData(get(currentRoute));
@@ -624,6 +662,7 @@
 				loadImages(map);
 				setSourceData(map);
 				addLayers(map);
+				applyStationDisplayState();
 				renderUserMarker();
 				updateMarkerScale();
 				applyRouteData(get(currentRoute));
@@ -649,8 +688,7 @@
 			renderUserMarker();
 		}
 		if (mapLoaded) {
-			map.setLayoutProperty('points', 'visibility', trip ? 'none' : 'visible');
-			map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
+			applyStationDisplayState();
 			// while riding, the route has to stay legible at a glance, so thicken it
 			map.setPaintProperty('route-outline', 'line-width', trip ? 12 : 9);
 			map.setPaintProperty('route-bike', 'line-width', trip ? 8 : 5);
@@ -663,6 +701,7 @@
 			$selectedStation = $selectedStation;
 			if (mapLoaded) {
 				setSourceData(map);
+				applyStationDisplayState();
 			}
 		}
 	});
