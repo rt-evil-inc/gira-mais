@@ -2,7 +2,7 @@
 	import { token } from '$lib/account';
 	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, stationDotColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
+	import { addLayers, following, loadImages, selectedStation, setSourceData, STATION_MARKER_FADE_END, STATION_MARKER_FADE_START, stationDotColor, stationDotStrokeColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
 	import { appSettings } from '$lib/settings';
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
@@ -475,9 +475,10 @@
 
 	// How stations are drawn depends on the trip (bike counts vs free docks)
 	// and the route on display: the route's own stations — plus the selected
-	// one — keep their full markers at every zoom while the rest step back:
-	// dimmed, and mere dots below the marker zoom, where the route line and
-	// the map must stay legible
+	// one — keep a full-size marker at every zoom (via the route-stations
+	// layer, hidden from the regular ones) while the rest step back: dimmed,
+	// and mere dots below the marker zoom, where the route line and the map
+	// must stay legible
 	function applyStationDisplayState() {
 		if (!mapLoaded || map.getLayer('points') == null) return;
 		const trip = get(currentTrip) !== null;
@@ -485,17 +486,20 @@
 		map.setLayoutProperty('docks', 'visibility', trip ? 'visible' : 'none');
 		map.setLayoutProperty('route-stations', 'icon-image', stationIcon(trip ? 'dock' : 'bike', trip ? 'freeDocks' : 'bikes'));
 		map.setPaintProperty('station-dots', 'circle-color', stationDotColor(trip ? 'freeDocks' : 'bikes'));
+		map.setPaintProperty('station-dots', 'circle-stroke-color', stationDotStrokeColor(trip ? 'freeDocks' : 'bikes'));
 		const routeSerials = routeStationSerials(get(currentRoute));
 		const selected = get(selectedStation);
 		const fullMarkerSerials = selected != null && !routeSerials.includes(selected) ? [...routeSerials, selected] : routeSerials;
 		const fullMarker: ExpressionSpecification = ['in', ['get', 'serialNumber'], ['literal', fullMarkerSerials]];
 		map.setFilter('route-stations', fullMarker);
-		// those stations get a full marker instead of a dot
+		// those stations get a full marker instead of a dot or a growing pin
 		map.setFilter('station-dots', fullMarkerSerials.length ? ['!', fullMarker] : null);
-		const dotOpacity = routeSerials.length ? 0.4 : 1;
+		const dim = routeSerials.length ? 0.4 : 1;
+		const dotOpacity: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'],
+			STATION_MARKER_FADE_START, dim, STATION_MARKER_FADE_END, 0];
 		map.setPaintProperty('station-dots', 'circle-opacity', dotOpacity);
 		map.setPaintProperty('station-dots', 'circle-stroke-opacity', dotOpacity);
-		const markerOpacity: ExpressionSpecification|number = routeSerials.length ? ['case', fullMarker, 1, 0.4] : 1;
+		const markerOpacity: ExpressionSpecification|number = fullMarkerSerials.length ? ['case', fullMarker, 0, dim] : dim;
 		map.setPaintProperty('points', 'icon-opacity', markerOpacity);
 		map.setPaintProperty('docks', 'icon-opacity', markerOpacity);
 	}
