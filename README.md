@@ -7,10 +7,10 @@
 Com um olhar atento ao design, à experiência do utilizador (UX) e à estabilidade, este projeto visa proporcionar uma experiência de utilização mais agradável ao sistema de bicicletas partilhadas de Lisboa.
 
 <p align="center">
-  <img src="assets/screenshots/screenshot-1.png" width="200">
-  <img src="assets/screenshots/screenshot-2.png" width="200">
-  <img src="assets/screenshots/screenshot-3.png" width="200">
-  <img src="assets/screenshots/screenshot-4.png" width="200">
+  <img src="assets/screenshots/profile-pt-light.png" width="200">
+  <img src="assets/screenshots/route-pt-light.png" width="200">
+  <img src="assets/screenshots/station-pt-dark.png" width="200">
+  <img src="assets/screenshots/trip-pt-dark.png" width="200">
 </p>
 
 ### Funcionalidades extra

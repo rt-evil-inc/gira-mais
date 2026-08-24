@@ -580,6 +580,10 @@
 			attributionControl: false,
 		});
 		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
+		// Development only: a handle on the map for the console and for the
+		// screenshot script, which projects coordinates with it and uses it to
+		// tell when the camera and the tiles have settled
+		if (import.meta.env.DEV) (window as unknown as { map: maplibregl.Map }).map = map;
 		// pointers can lift outside the map (or the app), so track the releases
 		// window-wide to never leave the follow stuck paused
 		const trackPointer = (e: PointerEvent) => {

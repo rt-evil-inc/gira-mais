@@ -1,0 +1,2719 @@
+{
+	"generatedAt": "2026-08-24T11:30:17.511Z",
+	"user": {
+		"name": "João Silva",
+		"email": "joao.silva@example.com"
+	},
+	"account": {
+		"balance": 0,
+		"bonus": 3390
+	},
+	"subscription": {
+		"name": "Passe Anual",
+		"type": "anual",
+		"subscriptionStatus": "paid",
+		"active": true,
+		"expiresInDays": 214
+	},
+	"stations": [
+		{
+			"code": "0000000003",
+			"description": "Alameda dos Oceanos",
+			"latitude": 38.756161,
+			"longitude": -9.096804,
+			"name": "101 - Alameda dos Oceanos / Rua dos Argonautas",
+			"bikes": 5,
+			"docks": 9,
+			"serialNumber": "1000101",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000000004",
+			"description": "Alameda dos Oceanos",
+			"latitude": 38.759156,
+			"longitude": -9.096439,
+			"name": "102 - Porta do Mar",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000102",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000000005",
+			"description": "Rua do Fogo de Santelmo",
+			"latitude": 38.761218,
+			"longitude": -9.095019,
+			"name": "103 - Jardim da Água",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000103",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000000001",
+			"description": "Av. PacÃ­fico",
+			"latitude": 38.766716,
+			"longitude": -9.097322,
+			"name": "104 - Gare do Oriente",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000104",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000000002",
+			"description": "Av. Indico",
+			"latitude": 38.768548,
+			"longitude": -9.096222,
+			"name": "105 - CC Vasco da Gama",
+			"bikes": 8,
+			"docks": 12,
+			"serialNumber": "1000105",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000000006",
+			"description": "Rua Bojador",
+			"latitude": 38.769459,
+			"longitude": -9.092506,
+			"name": "106 - Jardim Garcia da Orta",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000106",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000000007",
+			"description": "Alameda dos Oceanos",
+			"latitude": 38.774505,
+			"longitude": -9.095416,
+			"name": "107 - Rotunda dos Vice-Reis",
+			"bikes": 4,
+			"docks": 10,
+			"serialNumber": "1000107",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000000008",
+			"description": "Rua Bojador",
+			"latitude": 38.774289,
+			"longitude": -9.09235,
+			"name": "108 - Rua do Bojador",
+			"bikes": 9,
+			"docks": 12,
+			"serialNumber": "1000108",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000028402",
+			"description": "Alameda dos Oceanos",
+			"latitude": 38.777548,
+			"longitude": -9.094686,
+			"name": "109 - Alameda dos Oceanos / Rua do Zambeze",
+			"bikes": 11,
+			"docks": 11,
+			"serialNumber": "1000109",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000000010",
+			"description": "Rua de Moscavide",
+			"latitude": 38.778466,
+			"longitude": -9.097068,
+			"name": "110 - Rua de Moscavide",
+			"bikes": 7,
+			"docks": 11,
+			"serialNumber": "1000110",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011846",
+			"description": "Alameda dos Oceanos / Passeio das Garças",
+			"latitude": 38.78069,
+			"longitude": -9.09622,
+			"name": "112 - Alameda dos Oceanos / Passeio das Garças",
+			"bikes": 8,
+			"docks": 8,
+			"serialNumber": "1000112",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011844",
+			"description": "Alameda dos Oceanos/ Passeio do Levante",
+			"latitude": 38.78414,
+			"longitude": -9.09825,
+			"name": "113 - Alameda dos Oceanos/ Passeio do Levante",
+			"bikes": 9,
+			"docks": 10,
+			"serialNumber": "1000113",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010703",
+			"description": "Via do Oriente (Pingo Doce)",
+			"latitude": 38.78836,
+			"longitude": -9.09974,
+			"name": "114 - Via do Oriente",
+			"bikes": 8,
+			"docks": 9,
+			"serialNumber": "1000114",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009802",
+			"description": null,
+			"latitude": 38.793,
+			"longitude": -9.09781,
+			"name": "115 - Passeio dos Heróis do Mar / Rua Capitão Cook",
+			"bikes": 8,
+			"docks": 17,
+			"serialNumber": "1000115",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019302",
+			"description": "Avenida Berlim / Rua Américo Jesus Fernandes",
+			"latitude": 38.767761,
+			"longitude": -9.106858,
+			"name": "130 - Avenida Berlim / Rua Américo Jesus Fernandes",
+			"bikes": 16,
+			"docks": 17,
+			"serialNumber": "1000130",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017406",
+			"description": null,
+			"latitude": 38.768137,
+			"longitude": -9.110767,
+			"name": "131 - Avenida de Berlim / Praça Baden Powell",
+			"bikes": 16,
+			"docks": 17,
+			"serialNumber": "1000131",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017403",
+			"description": null,
+			"latitude": 38.76829,
+			"longitude": -9.11255,
+			"name": "132 - Avenida de Berlim / Rua Cidade de Cabinda",
+			"bikes": 21,
+			"docks": 22,
+			"serialNumber": "1000132",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017405",
+			"description": null,
+			"latitude": 38.76503,
+			"longitude": -9.110724,
+			"name": "133 - Rua Cidade de Benguela / Avenida Cidade de L",
+			"bikes": 15,
+			"docks": 16,
+			"serialNumber": "1000133",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017402",
+			"description": null,
+			"latitude": 38.765588,
+			"longitude": -9.116342,
+			"name": "134 - Praça Cidade do Luso",
+			"bikes": 7,
+			"docks": 18,
+			"serialNumber": "1000134",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017944",
+			"description": null,
+			"latitude": 38.764067,
+			"longitude": -9.118689,
+			"name": "135 - Avenida Cidade de Lourenço Marques / Vale do",
+			"bikes": 5,
+			"docks": 7,
+			"serialNumber": "1000135",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026203",
+			"description": "Rua Cidade de Bissau / Praça Cidade Salazar",
+			"latitude": 38.763585,
+			"longitude": -9.117117,
+			"name": "136 - Rua Cidade de Bissau / Praça Cidade Salazar",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000136",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018902",
+			"description": "Rua Cidade de Bissau (entrada SPACIO)",
+			"latitude": 38.762829,
+			"longitude": -9.114505,
+			"name": "137 - Rua Cidade de Bissau (entrada SPACIO)",
+			"bikes": 2,
+			"docks": 9,
+			"serialNumber": "1000137",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000018903",
+			"description": "Rua Cidade de Bissau (Metro Olivais)",
+			"latitude": 38.76134,
+			"longitude": -9.111596,
+			"name": "139 - Rua Cidade de Bissau (Metro Olivais)",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000139",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000017404",
+			"description": null,
+			"latitude": 38.769665,
+			"longitude": -9.111745,
+			"name": "150 - Avenida Dr. Francisco Luis Gomes / Go Fit",
+			"bikes": 9,
+			"docks": 12,
+			"serialNumber": "1000150",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019218",
+			"description": "Rua Contra Almirante Ferraz / Escola Sec.António Damásio",
+			"latitude": 38.770434,
+			"longitude": -9.108728,
+			"name": "151 - Rua Contra Almirante Ferraz / Escola Sec.António Damásio",
+			"bikes": 11,
+			"docks": 18,
+			"serialNumber": "1000151",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026876",
+			"description": "Alameda da Encarnação / Rua da Portela\t",
+			"latitude": 38.770808,
+			"longitude": -9.121902,
+			"name": "152 - Alameda da Encarnação / Rua da Portela\t",
+			"bikes": 6,
+			"docks": 9,
+			"serialNumber": "1000152",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026302",
+			"description": "Praça das Casas Novas / Mercado Sul",
+			"latitude": 38.771913,
+			"longitude": -9.11314,
+			"name": "153 - Praça das Casas Novas / Mercado Sul",
+			"bikes": 13,
+			"docks": 18,
+			"serialNumber": "1000153",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000028602",
+			"description": "Alameda da Encarnação / Jardim de Santo Eugénio",
+			"latitude": 38.773972,
+			"longitude": -9.117793,
+			"name": "154 - Alameda da Encarnação / Jardim de Santo Eugénio",
+			"bikes": 7,
+			"docks": 10,
+			"serialNumber": "1000154",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000028603",
+			"description": "Praça do Norte",
+			"latitude": 38.777186,
+			"longitude": -9.118952,
+			"name": "156 - Praça do Norte",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000156",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000011851",
+			"description": "Padrão dos Descobrimentos",
+			"latitude": 38.6935,
+			"longitude": -9.20633,
+			"name": "203 - Padrão dos Descobrimentos",
+			"bikes": 7,
+			"docks": 16,
+			"serialNumber": "1000203",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011850",
+			"description": "Av. Brasília / Cordoaria",
+			"latitude": 38.697,
+			"longitude": -9.188,
+			"name": "205 - Av. Brasília / Cordoaria",
+			"bikes": 3,
+			"docks": 9,
+			"serialNumber": "1000205",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011852",
+			"description": "Av. Brasília / Doca de Alcântara",
+			"latitude": 38.70141,
+			"longitude": -9.17502,
+			"name": "206 - Av. Brasília / Doca de Alcântara",
+			"bikes": 4,
+			"docks": 10,
+			"serialNumber": "1000206",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011302",
+			"description": "Cais do Sodré",
+			"latitude": 38.70523,
+			"longitude": -9.14373,
+			"name": "208 - Cais das Pombas",
+			"bikes": 6,
+			"docks": 11,
+			"serialNumber": "1000208",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000021402",
+			"description": "Ribeira das Naus",
+			"latitude": 38.705954,
+			"longitude": -9.141466,
+			"name": "209 - Ribeira das Naus",
+			"bikes": 19,
+			"docks": 19,
+			"serialNumber": "1000209",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000021902",
+			"description": null,
+			"latitude": 38.707751,
+			"longitude": -9.132463,
+			"name": "211 - Doca da Marinha",
+			"bikes": 13,
+			"docks": 28,
+			"serialNumber": "1000211",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010902",
+			"description": "Av. Infante Dom Henrique / Terminal de Cruzeiros",
+			"latitude": 38.71035,
+			"longitude": -9.12769,
+			"name": "212 - Av. Infante Dom Henrique / Terminal de Cruzeiros",
+			"bikes": 16,
+			"docks": 19,
+			"serialNumber": "1000212",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011854",
+			"description": "Av. Infante Dom Henrique / Santa Apolónia",
+			"latitude": 38.713416,
+			"longitude": -9.122548,
+			"name": "213 - Av. Infante Dom Henrique / Santa Apolónia",
+			"bikes": 15,
+			"docks": 25,
+			"serialNumber": "1000213",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011154",
+			"description": "Largo de Santos ",
+			"latitude": 38.70673,
+			"longitude": -9.15424,
+			"name": "214 - Largo de Santos",
+			"bikes": 8,
+			"docks": 18,
+			"serialNumber": "1000214",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011848",
+			"description": "Rua D. Luís I",
+			"latitude": 38.70662,
+			"longitude": -9.14949,
+			"name": "215 - Av. 24 de Julho",
+			"bikes": 0,
+			"docks": 3,
+			"serialNumber": "1000215",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011020",
+			"description": "Praça D.Luis I",
+			"latitude": 38.70663,
+			"longitude": -9.14655,
+			"name": "216 - Praça D. Luís I",
+			"bikes": 12,
+			"docks": 14,
+			"serialNumber": "1000216",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011019",
+			"description": "Cais do Sodré",
+			"latitude": 38.70617,
+			"longitude": -9.14471,
+			"name": "218 - Cais do Sodré",
+			"bikes": 2,
+			"docks": 13,
+			"serialNumber": "1000218",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009908",
+			"description": null,
+			"latitude": 38.70797,
+			"longitude": -9.13951,
+			"name": "219 - Praça do Município",
+			"bikes": 7,
+			"docks": 13,
+			"serialNumber": "1000219",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000018820",
+			"description": null,
+			"latitude": 38.70878,
+			"longitude": -9.137125,
+			"name": "220 - Rua do Comercio",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000220",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000019202",
+			"description": "221 - Rua do Crucifixo",
+			"latitude": 38.710191,
+			"longitude": -9.138828,
+			"name": "221 - Rua do Crucifixo / Rua São Nicolau",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000221",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000011849",
+			"description": "Praça da Figueira",
+			"latitude": 38.71383,
+			"longitude": -9.13828,
+			"name": "222 - Praça da Figueira",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000222",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018702",
+			"description": null,
+			"latitude": 38.713112,
+			"longitude": -9.138952,
+			"name": "223 - Praça do Rossio",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000223",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000010704",
+			"description": "Martim Moniz",
+			"latitude": 38.71498,
+			"longitude": -9.13651,
+			"name": "224 - Martim Moniz",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000224",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000010705",
+			"description": "Martim Moniz",
+			"latitude": 38.71526,
+			"longitude": -9.13694,
+			"name": "225 - Martim Moniz",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000225",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018821",
+			"description": null,
+			"latitude": 38.7118878,
+			"longitude": -9.1364557,
+			"name": "226 - Rua dos Fanqueiros",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000226",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000020410",
+			"description": "Praca D manuel I",
+			"latitude": 38.697979,
+			"longitude": -9.226569,
+			"name": "230 - Praça D. Manuel I",
+			"bikes": 6,
+			"docks": 21,
+			"serialNumber": "1000230",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023002",
+			"description": "Largo Luís Alves Miguel / Rua Fernão Mendes Pinto",
+			"latitude": 38.695342,
+			"longitude": -9.219675,
+			"name": "231 - Largo Luís Alves Miguel / Rua Fernão Mendes Pinto",
+			"bikes": 1,
+			"docks": 10,
+			"serialNumber": "1000231",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019722",
+			"description": "Avenida da Índia / Centro de Arqueologia de Lisboa",
+			"latitude": 38.694155,
+			"longitude": -9.212149,
+			"name": "232 - Avenida da Índia / Centro de Arqueologia de Lisboa",
+			"bikes": 9,
+			"docks": 22,
+			"serialNumber": "1000232",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026702",
+			"description": "Rua de Belém / Jardim Vasco da Gama",
+			"latitude": 38.696867,
+			"longitude": -9.204056,
+			"name": "233 - Rua de Belém / Jardim Vasco da Gama",
+			"bikes": 0,
+			"docks": 8,
+			"serialNumber": "1000233",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026592",
+			"description": "Av. da Índia / Museu Nacional dos Coches",
+			"latitude": 38.69631,
+			"longitude": -9.198901,
+			"name": "234 - Av. da Índia / Museu Nacional dos Coches",
+			"bikes": 14,
+			"docks": 14,
+			"serialNumber": "1000234",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020409",
+			"description": "Avenida da India / Travessa da Galeotas",
+			"latitude": 38.697907,
+			"longitude": -9.191793,
+			"name": "235 - Rua da Junqueira / Rua Pinto Ferreira",
+			"bikes": 3,
+			"docks": 5,
+			"serialNumber": "1000235",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020408",
+			"description": "Avenida da India / Praca das Industrias",
+			"latitude": 38.699093,
+			"longitude": -9.182262,
+			"name": "237 - Avenida da India / Praca das Industrias",
+			"bikes": 8,
+			"docks": 17,
+			"serialNumber": "1000237",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019723",
+			"description": "Rua de Cascais / Alcântara Terra",
+			"latitude": 38.702936,
+			"longitude": -9.175234,
+			"name": "238 - Rua de Cascais / Alcântara Mar",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000238",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000023103",
+			"description": "Largo Luís Alves Miguel / Rua Fernão Mendes Pinto",
+			"latitude": 38.694942,
+			"longitude": -9.214902,
+			"name": "241 - Rua Bartolomeu Dias / Palácio do Governador",
+			"bikes": 2,
+			"docks": 10,
+			"serialNumber": "1000241",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027502",
+			"description": "Rua Almerindo Lessa / ISCSP",
+			"latitude": 38.713538,
+			"longitude": -9.198276,
+			"name": "251 - Rua Almerindo Lessa / ISCSP",
+			"bikes": 2,
+			"docks": 26,
+			"serialNumber": "1000251",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027815",
+			"description": "Avenida da Universidade Técnica / Rua Sá Nogueira",
+			"latitude": 38.713721,
+			"longitude": -9.196554,
+			"name": "252 - Avenida da Universidade Técnica / Rua Sá Nogueira",
+			"bikes": 6,
+			"docks": 15,
+			"serialNumber": "1000252",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027503",
+			"description": "Rua Joaquim Fiadeiro / Residência Universitária",
+			"latitude": 38.711498,
+			"longitude": -9.194361,
+			"name": "254 - Rua Joaquim Fiadeiro / Residência Universitária",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000254",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000025235",
+			"description": "Calçada da Estrela / Assembleia da República ",
+			"latitude": 38.7114685,
+			"longitude": -9.1538708,
+			"name": "261 - Calçada da Estrela / Assembleia da República ",
+			"bikes": 11,
+			"docks": 11,
+			"serialNumber": "1000261",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023108",
+			"description": "HUB do Beato",
+			"latitude": 38.729739,
+			"longitude": -9.106709,
+			"name": "280 - Unicorn Factory Lisboa",
+			"bikes": 7,
+			"docks": 8,
+			"serialNumber": "1000280",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023102",
+			"description": "Av. Infante D. Henrique - HUB Beato nascente",
+			"latitude": 38.731578,
+			"longitude": -9.105308,
+			"name": "281 - Beato Innovation District",
+			"bikes": 11,
+			"docks": 14,
+			"serialNumber": "1000281",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000025802",
+			"description": "Praça David Leandro da Silva",
+			"latitude": 38.742484,
+			"longitude": -9.102359,
+			"name": "288 - Praça David Leandro da Silva",
+			"bikes": 14,
+			"docks": 19,
+			"serialNumber": "1000288",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000025702",
+			"description": "Parque Ribeirinho Poente",
+			"latitude": 38.744521,
+			"longitude": -9.097661,
+			"name": "289 - Parque Ribeirinho Oriente",
+			"bikes": 0,
+			"docks": 17,
+			"serialNumber": "1000289",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011845",
+			"description": "Avenida da Liberdade/ Restauradores",
+			"latitude": 38.71702,
+			"longitude": -9.14242,
+			"name": "301 - Avenida da Liberdade / Restauradores",
+			"bikes": 7,
+			"docks": 12,
+			"serialNumber": "1000301",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009909",
+			"description": null,
+			"latitude": 38.72026,
+			"longitude": -9.14637,
+			"name": "304 - Avenida da Liberdade / São Jorge",
+			"bikes": 7,
+			"docks": 12,
+			"serialNumber": "1000304",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009910",
+			"description": null,
+			"latitude": 38.72228,
+			"longitude": -9.147,
+			"name": "305 - Avenida da Liberdade / Rua Barata Salgueiro",
+			"bikes": 4,
+			"docks": 10,
+			"serialNumber": "1000305",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009911",
+			"description": null,
+			"latitude": 38.72281,
+			"longitude": -9.14854,
+			"name": "306 - Avenida da Liberdade / Rua Alexandre Herculano",
+			"bikes": 0,
+			"docks": 12,
+			"serialNumber": "1000306",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010105",
+			"description": "Marquês de Pombal",
+			"latitude": 38.724954,
+			"longitude": -9.149334,
+			"name": "307 - Marquês de Pombal",
+			"bikes": 8,
+			"docks": 31,
+			"serialNumber": "1000307",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010357",
+			"description": null,
+			"latitude": 38.7246,
+			"longitude": -9.14969,
+			"name": "308 - Marquês de Pombal",
+			"bikes": 1,
+			"docks": 8,
+			"serialNumber": "1000308",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009907",
+			"description": null,
+			"latitude": 38.71901,
+			"longitude": -9.13577,
+			"name": "309 - Rua da Palma",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000309",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000019632",
+			"description": "Rua Pina Manique / Largo do Intendente ",
+			"latitude": 38.720733,
+			"longitude": -9.134847,
+			"name": "310 - Rua Pina Manique / Largo do Intendente ",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000310",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018904",
+			"description": "Avenida Almirante Reis / Travessa do Maldonado",
+			"latitude": 38.721721,
+			"longitude": -9.135295,
+			"name": "311 - Avenida Almirante Reis Nº14",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000311",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000019633",
+			"description": "Rua Álvaro Coutinho / Avenida Almirante Reis",
+			"latitude": 38.724869,
+			"longitude": -9.134802,
+			"name": "312 - Rua Álvaro Coutinho / Avenida Almirante Reis",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000312",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018905",
+			"description": "Rua Frei Francisco Foreiro / Rua de Arroios",
+			"latitude": 38.728049,
+			"longitude": -9.135956,
+			"name": "313 - Rua Frei Francisco Foreiro / Rua de Arroios",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000313",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018906",
+			"description": "Rua Marques da Silva / Rua António Pedro",
+			"latitude": 38.729657,
+			"longitude": -9.135675,
+			"name": "314 - Rua Marques da Silva / Rua António Pedro",
+			"bikes": 3,
+			"docks": 8,
+			"serialNumber": "1000314",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000018907",
+			"description": "Rua Passos Manuel/ Jardim Constantino",
+			"latitude": 38.731264,
+			"longitude": -9.136968,
+			"name": "315 - Rua Passos Manuel/ Jardim Constantino",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000315",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000018908",
+			"description": "Rua António Pedro / Rua Pascoal de Melo",
+			"latitude": 38.731424,
+			"longitude": -9.135356,
+			"name": "316 - Rua António Pedro / Rua Pascoal de Melo",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000316",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000025102",
+			"description": "Rua Morais Soares / Largo Mendonça e Costa",
+			"latitude": 38.733025,
+			"longitude": -9.130805,
+			"name": "324 - Rua Morais Soares / Largo Mendonça e Costa",
+			"bikes": 1,
+			"docks": 10,
+			"serialNumber": "1000324",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026877",
+			"description": "Parada do Alto de São João",
+			"latitude": 38.729419,
+			"longitude": -9.123307,
+			"name": "327 - Parada do Alto de São João",
+			"bikes": 8,
+			"docks": 12,
+			"serialNumber": "1000327",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026202",
+			"description": "Avenida General Roçadas / Rua Francisco Pedro Curado",
+			"latitude": 38.727509,
+			"longitude": -9.128212,
+			"name": "328 - Avenida General Roçadas / Rua Francisco Pedro Curado",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000328",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000025103",
+			"description": "Avenida General Roçadas / Mercado de Sapadores",
+			"latitude": 38.722547,
+			"longitude": -9.128819,
+			"name": "331 - Avenida General Roçadas / Mercado de Sapadores",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000331",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000020356",
+			"description": null,
+			"latitude": 38.717313,
+			"longitude": -9.165653,
+			"name": "352 - Rua Tomás da Anunciação / Rua Almeida e S.",
+			"bikes": 2,
+			"docks": 5,
+			"serialNumber": "1000352",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000028604",
+			"description": "Praça Afonso do Paço",
+			"latitude": 38.720215,
+			"longitude": -9.166854,
+			"name": "355 - Praça Afonso do Paço",
+			"bikes": 1,
+			"docks": 19,
+			"serialNumber": "1000355",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019715",
+			"description": "Amoreiras Shopping Center",
+			"latitude": 38.72392,
+			"longitude": -9.160992,
+			"name": "361 - Amoreiras Shopping Center",
+			"bikes": 0,
+			"docks": 12,
+			"serialNumber": "1000361",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019716",
+			"description": "Avenida Eng. Duarte Pacheco",
+			"latitude": 38.7244122,
+			"longitude": -9.159288,
+			"name": "362 - Avenida Eng. Duarte Pacheco",
+			"bikes": 1,
+			"docks": 23,
+			"serialNumber": "1000362",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020203",
+			"description": null,
+			"latitude": 38.727094,
+			"longitude": -9.162216,
+			"name": "363 - Rua de Campolide / Rua Marquês da Fronteira",
+			"bikes": 2,
+			"docks": 7,
+			"serialNumber": "1000363",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020202",
+			"description": null,
+			"latitude": 38.728263,
+			"longitude": -9.159369,
+			"name": "364 - R. D.Francisco M. de Melo / Rua Artilharia 1",
+			"bikes": 4,
+			"docks": 11,
+			"serialNumber": "1000364",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019717",
+			"description": "Rua Castilho / Rua Marquês da Fronteira",
+			"latitude": 38.729724,
+			"longitude": -9.157531,
+			"name": "365 - Rua Castilho / Rua Marquês da Fronteira",
+			"bikes": 0,
+			"docks": 22,
+			"serialNumber": "1000365",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019502",
+			"description": "Palacio da justiça",
+			"latitude": 38.731134,
+			"longitude": -9.156435,
+			"name": "366 - Palacio da justiça",
+			"bikes": 2,
+			"docks": 23,
+			"serialNumber": "1000366",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011153",
+			"description": "Rua Martens Ferrão (Av Fontes Peireira Melo)",
+			"latitude": 38.72894,
+			"longitude": -9.14742,
+			"name": "401 - Rua Martens Ferrão / Av. Fontes Pereira de Melo",
+			"bikes": 2,
+			"docks": 6,
+			"serialNumber": "1000401",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006822",
+			"description": "Av. Fontes Pereira de Melo/ Praça de Picoas",
+			"latitude": 38.731698,
+			"longitude": -9.146522,
+			"name": "403 - Av. Fontes Pereira de Melo",
+			"bikes": 3,
+			"docks": 11,
+			"serialNumber": "1000403",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026002",
+			"description": "Largo São Sebastião da Pedreira",
+			"latitude": 38.733526,
+			"longitude": -9.152444,
+			"name": "404 - Largo São Sebastião da Pedreira",
+			"bikes": 1,
+			"docks": 6,
+			"serialNumber": "1000404",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026303",
+			"description": "Rua Pedro Nunes / Av. 5 de Outubro",
+			"latitude": 38.733827,
+			"longitude": -9.14727,
+			"name": "405 - Rua Pedro Nunes / Av. 5 de Outubro",
+			"bikes": 9,
+			"docks": 13,
+			"serialNumber": "1000405",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006818",
+			"description": "Praça Duque de Saldanha",
+			"latitude": 38.734247,
+			"longitude": -9.145341,
+			"name": "406 - Praça Duque de Saldanha",
+			"bikes": 5,
+			"docks": 6,
+			"serialNumber": "1000406",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006816",
+			"description": "Praça Duque de Saldanha",
+			"latitude": 38.73434,
+			"longitude": -9.14446,
+			"name": "407 - Praça Duque de Saldanha",
+			"bikes": 10,
+			"docks": 13,
+			"serialNumber": "1000407",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006817",
+			"description": "Praça Duque de Saldanha",
+			"latitude": 38.733749,
+			"longitude": -9.144117,
+			"name": "408 - Praça Duque de Saldanha",
+			"bikes": 6,
+			"docks": 7,
+			"serialNumber": "1000408",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011802",
+			"description": "Rua da Mesquita / Rua Dr. Júlio Dantas",
+			"latitude": 38.73492,
+			"longitude": -9.16015,
+			"name": "410 - Rua da Mesquita / Universidade Nova de Lisboa",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000410",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000006465",
+			"description": "Av. Ressano Garcia",
+			"latitude": 38.73448,
+			"longitude": -9.1546,
+			"name": "412 - Av. Ressano Garcia / Av. António Augusto de Aguiar",
+			"bikes": 2,
+			"docks": 11,
+			"serialNumber": "1000412",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006809",
+			"description": "Av. Ressano Garcia / Av. António Augusto de Aguiar",
+			"latitude": 38.73432,
+			"longitude": -9.15425,
+			"name": "413 - Av. Ressano Garcia / Av. António Augusto de Aguiar",
+			"bikes": 1,
+			"docks": 5,
+			"serialNumber": "1000413",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006346",
+			"description": null,
+			"latitude": 38.735,
+			"longitude": -9.151,
+			"name": "414 - Av. Duque de Ávila / Rua Pinheiro Chagas",
+			"bikes": 3,
+			"docks": 12,
+			"serialNumber": "1000414",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006807",
+			"description": "Av. Duque de Ávila / Av. Conde Valbom",
+			"latitude": 38.735188,
+			"longitude": -9.148443,
+			"name": "415 - Av. Duque de Ávila / Av. Conde Valbom",
+			"bikes": 1,
+			"docks": 9,
+			"serialNumber": "1000415",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006823",
+			"description": "Av. República/ Avenida Duque de Ávila",
+			"latitude": 38.735304,
+			"longitude": -9.14553,
+			"name": "416 - Av. República / Avenida Duque de Ávila",
+			"bikes": 6,
+			"docks": 8,
+			"serialNumber": "1000416",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006808",
+			"description": "Av. Duque de Ávila / Jardim Arco Do Cego",
+			"latitude": 38.735352,
+			"longitude": -9.142703,
+			"name": "417 - Av. Duque de Ávila / Jardim Arco Do Cego",
+			"bikes": 6,
+			"docks": 11,
+			"serialNumber": "1000417",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010732",
+			"description": null,
+			"latitude": 38.73811,
+			"longitude": -9.13956,
+			"name": "419 - Av. António José de Almeida / Instituto Superior Técnico",
+			"bikes": 6,
+			"docks": 13,
+			"serialNumber": "1000419",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009904",
+			"description": null,
+			"latitude": 38.73617,
+			"longitude": -9.13672,
+			"name": "420 - Av. Rovisco Pais / Av. Manuel da Maia",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000420",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000009902",
+			"description": null,
+			"latitude": 38.73736,
+			"longitude": -9.13416,
+			"name": "421 - Alameda D. Afonso Henriques",
+			"bikes": 16,
+			"docks": 30,
+			"serialNumber": "1000421",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006813",
+			"description": "Av. Conde de Valbom/ frente nº 127 A",
+			"latitude": 38.737911,
+			"longitude": -9.152295,
+			"name": "423 - Av. Conde Valbom / Rua Marquês Sá da Bandeira",
+			"bikes": 0,
+			"docks": 8,
+			"serialNumber": "1000423",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006802",
+			"description": "Av. Elias Garcia",
+			"latitude": 38.739046,
+			"longitude": -9.14793,
+			"name": "426 - Av. Elias Garcia / Av. 5 de Outubro",
+			"bikes": 3,
+			"docks": 9,
+			"serialNumber": "1000426",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006820",
+			"description": "Av. República/ Av. Visconde Valmor",
+			"latitude": 38.73812,
+			"longitude": -9.14617,
+			"name": "427 - Av. República / Av. Visconde Valmor",
+			"bikes": 8,
+			"docks": 8,
+			"serialNumber": "1000427",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006819",
+			"description": "Av. República/ Avenida Barbosa Du Bocage",
+			"latitude": 38.74047,
+			"longitude": -9.14684,
+			"name": "428 - Av. República / Avenida Barbosa Du Bocage",
+			"bikes": 1,
+			"docks": 4,
+			"serialNumber": "1000428",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000025904",
+			"description": "Av. Defensores de Chaves / Av. Elias Garcia",
+			"latitude": 38.738442,
+			"longitude": -9.144196,
+			"name": "429 - Av. Defensores de Chaves / Av. Elias Garcia",
+			"bikes": 10,
+			"docks": 12,
+			"serialNumber": "1000429",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006702",
+			"description": "Av. Barbosa du Bocage, 3",
+			"latitude": 38.74081,
+			"longitude": -9.14329,
+			"name": "430 - Av. Barbosa Du Bocage / Rua Arco do Cego",
+			"bikes": 5,
+			"docks": 13,
+			"serialNumber": "1000430",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006464",
+			"description": "Rua Arco Cego",
+			"latitude": 38.73937,
+			"longitude": -9.14199,
+			"name": "431 - Rua do Arco Cego / Av. Magalhães Lima",
+			"bikes": 1,
+			"docks": 7,
+			"serialNumber": "1000431",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010903",
+			"description": "Praça de Londres (junto a igreja)",
+			"latitude": 38.7407,
+			"longitude": -9.1377,
+			"name": "432 - Praça de Londres",
+			"bikes": 4,
+			"docks": 8,
+			"serialNumber": "1000432",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011803",
+			"description": "Av. Paris / Av. Almirante Reis",
+			"latitude": 38.74095,
+			"longitude": -9.13409,
+			"name": "433 - Av. Paris / Av. Almirante Reis",
+			"bikes": 5,
+			"docks": 6,
+			"serialNumber": "1000433",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000025902",
+			"description": "Praça de Londres",
+			"latitude": 38.741407,
+			"longitude": -9.13745,
+			"name": "434 - Praça de Londres / Av. de Roma",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000434",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000021202",
+			"description": "Interface de Sete Rios",
+			"latitude": 38.7405788,
+			"longitude": -9.1669549,
+			"name": "435 - Interface de Sete Rios",
+			"bikes": 1,
+			"docks": 31,
+			"serialNumber": "1000435",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000021102",
+			"description": "Instituto Português de Oncologia",
+			"latitude": 38.739395,
+			"longitude": -9.162447,
+			"name": "436 - Instituto Português de Oncologia",
+			"bikes": 7,
+			"docks": 14,
+			"serialNumber": "1000436",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000022602",
+			"description": "Avenida Columbano Bordalo Pinheiro / Rua de Campolide",
+			"latitude": 38.739427,
+			"longitude": -9.166589,
+			"name": "437 - Avenida Columbano Bordalo Pinheiro / Rua de Campolide",
+			"bikes": 1,
+			"docks": 12,
+			"serialNumber": "1000437",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023104",
+			"description": "Avenida Columbano Bordalo Pinheiro / Praça de Espanha",
+			"latitude": 38.738086,
+			"longitude": -9.159409,
+			"name": "438 - Avenida Columbano Bordalo Pinheiro / Praça de Espanha",
+			"bikes": 2,
+			"docks": 19,
+			"serialNumber": "1000438",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026304",
+			"description": "Rua General Leman",
+			"latitude": 38.741986,
+			"longitude": -9.157637,
+			"name": "439 - Rua General Leman",
+			"bikes": 7,
+			"docks": 21,
+			"serialNumber": "1000439",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026003",
+			"description": "Rua Soeiro Pereira Gomes",
+			"latitude": 38.742574,
+			"longitude": -9.158365,
+			"name": "440 - Rua Soeiro Pereira Gomes",
+			"bikes": 9,
+			"docks": 12,
+			"serialNumber": "1000440",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026805",
+			"description": "Rua Soeiro Pereira Gomes",
+			"latitude": 38.74516,
+			"longitude": -9.160048,
+			"name": "441 - Rua Soeiro Pereira Gomes",
+			"bikes": 14,
+			"docks": 14,
+			"serialNumber": "1000441",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006466",
+			"description": "Campo Pequeno",
+			"latitude": 38.7433709,
+			"longitude": -9.14523,
+			"name": "442 - Campo Pequeno",
+			"bikes": 2,
+			"docks": 8,
+			"serialNumber": "1000442",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010402",
+			"description": null,
+			"latitude": 38.74351,
+			"longitude": -9.13866,
+			"name": "443 - Av. de Roma / Fórum Lisboa",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000443",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000025903",
+			"description": "Rua João da Silva / Complexo Desportivo do Casal Vistoso",
+			"latitude": 38.742368,
+			"longitude": -9.128901,
+			"name": "444 - Rua João da Silva / Complexo Desportivo do Casal Vistoso",
+			"bikes": 5,
+			"docks": 7,
+			"serialNumber": "1000444",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026803",
+			"description": "Avenida Afonso Costa / SSCML",
+			"latitude": 38.74068,
+			"longitude": -9.127572,
+			"name": "445 - Avenida Afonso Costa / SSCML",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000445",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000006821",
+			"description": "Av. Republica/ Interface Entrecampos",
+			"latitude": 38.74456,
+			"longitude": -9.14773,
+			"name": "446 - Av. República / Interface Entrecampos ",
+			"bikes": 20,
+			"docks": 34,
+			"serialNumber": "1000446",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027302",
+			"description": "447 - Av. 5 de Outubro / Av. António Serpa",
+			"latitude": 38.742814,
+			"longitude": -9.149145,
+			"name": "447 - Av. 5 de Outubro / Av. António Serpa",
+			"bikes": 7,
+			"docks": 19,
+			"serialNumber": "1000447",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027504",
+			"description": "Praça Marechal Humberto Delgado",
+			"latitude": 38.741954,
+			"longitude": -9.168795,
+			"name": "448 - Praça Marechal Humberto Delgado",
+			"bikes": 8,
+			"docks": 31,
+			"serialNumber": "1000448",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006803",
+			"description": "Av. 5 de Outubro, 291",
+			"latitude": 38.746836,
+			"longitude": -9.150085,
+			"name": "449 - Av. 5 de Outubro / Rua da Cruz Vermelha",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000449",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000025002",
+			"description": "Rua Alfredo Cortês",
+			"latitude": 38.746268,
+			"longitude": -9.143854,
+			"name": "450 - Rua Alfredo Cortês",
+			"bikes": 3,
+			"docks": 11,
+			"serialNumber": "1000450",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006102",
+			"description": null,
+			"latitude": 38.747751,
+			"longitude": -9.136681,
+			"name": "452 - Rua Teixeira de Pascoais / Rua Dr. Gama Barros",
+			"bikes": 1,
+			"docks": 9,
+			"serialNumber": "1000452",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006810",
+			"description": "Av. Roma/ Av EUA",
+			"latitude": 38.74873,
+			"longitude": -9.14207,
+			"name": "453 - Av. Roma / Av. EUA",
+			"bikes": 1,
+			"docks": 11,
+			"serialNumber": "1000453",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027002",
+			"description": "454 - Av. Álvaro Pais / Rua da Cruz Vermelha",
+			"latitude": 38.744971,
+			"longitude": -9.151449,
+			"name": "454 - Av. Álvaro Pais / Rua da Cruz Vermelha\t",
+			"bikes": 10,
+			"docks": 19,
+			"serialNumber": "1000454",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027303",
+			"description": "455 - Avenida Álvaro Pais / Rua Sousa Lopes",
+			"latitude": 38.74574,
+			"longitude": -9.155302,
+			"name": "455 - Avenida Álvaro Pais / Rua Sousa Lopes",
+			"bikes": 6,
+			"docks": 19,
+			"serialNumber": "1000455",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011847",
+			"description": "Entrecampos / Av. das Forças Armadas",
+			"latitude": 38.74877,
+			"longitude": -9.14872,
+			"name": "456 - Entrecampos / Av. das Forças Armadas",
+			"bikes": 24,
+			"docks": 30,
+			"serialNumber": "1000456",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006103",
+			"description": null,
+			"latitude": 38.74975,
+			"longitude": -9.14722,
+			"name": "457 - Rua Aboim Ascensão",
+			"bikes": 1,
+			"docks": 5,
+			"serialNumber": "1000457",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006812",
+			"description": "Rua Maria Amália/ frente ao nº30 e escola s. Leonor",
+			"latitude": 38.751481,
+			"longitude": -9.141741,
+			"name": "459 - Rua Maria Amália Vaz de Carvalho / ES Rainha D. Leonor",
+			"bikes": 2,
+			"docks": 7,
+			"serialNumber": "1000459",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006805",
+			"description": "Rua Lopes de Mendonça / EB São João de Brito",
+			"latitude": 38.75176,
+			"longitude": -9.13749,
+			"name": "460 - Av. Rio de Janeiro / Parque de Jogos 1º de Maio",
+			"bikes": 3,
+			"docks": 9,
+			"serialNumber": "1000460",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011857",
+			"description": "Rua Professora Teresa Ambrósio",
+			"latitude": 38.749141,
+			"longitude": -9.155564,
+			"name": "461 - Rua Professora Teresa Ambrósio",
+			"bikes": 10,
+			"docks": 27,
+			"serialNumber": "1000461",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011021",
+			"description": "Campo Grande/Bib Nacional",
+			"latitude": 38.75027,
+			"longitude": -9.15031,
+			"name": "462 - Campo Grande / Biblioteca Nacional",
+			"bikes": 16,
+			"docks": 18,
+			"serialNumber": "1000462",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006815",
+			"description": "Campo Grande/ frente nº152",
+			"latitude": 38.75243,
+			"longitude": -9.14951,
+			"name": "463 - Campo Grande / Av. da Igreja",
+			"bikes": 3,
+			"docks": 6,
+			"serialNumber": "1000463",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006331",
+			"description": null,
+			"latitude": 38.75165,
+			"longitude": -9.148427,
+			"name": "464 - Av. da Igreja / Rua Afonso Lopes Vieira",
+			"bikes": 5,
+			"docks": 11,
+			"serialNumber": "1000464",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026802",
+			"description": "Rua Azevedo Neves (Universidade Católica Portuguesa)",
+			"latitude": 38.748018,
+			"longitude": -9.165081,
+			"name": "466 - Rua Azevedo Neves (Universidade Católica Portuguesa)",
+			"bikes": 5,
+			"docks": 5,
+			"serialNumber": "1000466",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000029202",
+			"description": "Av. Professor Egas Moniz / Hospital de Santa Maria",
+			"latitude": 38.75021,
+			"longitude": -9.162994,
+			"name": "467 - Av. Professor Egas Moniz / Hospital de Santa Maria",
+			"bikes": 4,
+			"docks": 26,
+			"serialNumber": "1000467",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006402",
+			"description": null,
+			"latitude": 38.75482,
+			"longitude": -9.13827,
+			"name": "468 - Largo Frei Heitor Pinto",
+			"bikes": 13,
+			"docks": 14,
+			"serialNumber": "1000468",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026033",
+			"description": "Avenida Almirante Gago Coutinho / Avenida Dom Rodrigo da Cunha",
+			"latitude": 38.754472,
+			"longitude": -9.130766,
+			"name": "469 - Avenida Almirante Gago Coutinho / Avenida Dom Rodrigo da Cunha",
+			"bikes": 11,
+			"docks": 17,
+			"serialNumber": "1000469",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000007302",
+			"description": "EB São João de Brito",
+			"latitude": 38.756487,
+			"longitude": -9.137337,
+			"name": "471 - Rua Lopes de Mendonça / EB São João de Brito",
+			"bikes": 5,
+			"docks": 7,
+			"serialNumber": "1000471",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006806",
+			"description": "Rua Marquês Soveral / ES Padre António Vieira",
+			"latitude": 38.75784,
+			"longitude": -9.13608,
+			"name": "472 - Rua Marquês Soveral / ES Padre António Vieira",
+			"bikes": 5,
+			"docks": 10,
+			"serialNumber": "1000472",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006811",
+			"description": "Av. Brasil/ frente ao nº 92",
+			"latitude": 38.75643,
+			"longitude": -9.14697,
+			"name": "473 - Av. do Brasil / Av. de Roma",
+			"bikes": 6,
+			"docks": 10,
+			"serialNumber": "1000473",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006814",
+			"description": "Av. Do Brasil/ frente LNEC",
+			"latitude": 38.75832,
+			"longitude": -9.1409,
+			"name": "474 - Av. do Brasil / Av. Rio de Janeiro",
+			"bikes": 2,
+			"docks": 2,
+			"serialNumber": "1000474",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011855",
+			"description": "Av. Professor Gama Pinto / Cantina Velha",
+			"latitude": 38.75115,
+			"longitude": -9.15907,
+			"name": "475 - Av. Professor Gama Pinto / Cantina Velha",
+			"bikes": 22,
+			"docks": 29,
+			"serialNumber": "1000475",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011859",
+			"description": "Av. Professor Gama Pinto / Reitoria",
+			"latitude": 38.75231,
+			"longitude": -9.15885,
+			"name": "476 - Av. Professor Gama Pinto / Reitoria",
+			"bikes": 9,
+			"docks": 19,
+			"serialNumber": "1000476",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000012403",
+			"description": null,
+			"latitude": 38.75264,
+			"longitude": -9.15671,
+			"name": "477 - Alameda da Universidade / Faculdade de Direito",
+			"bikes": 14,
+			"docks": 15,
+			"serialNumber": "1000477",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000012402",
+			"description": null,
+			"latitude": 38.75359,
+			"longitude": -9.15717,
+			"name": "478 - Alameda da Universidade / Faculdade de Letras",
+			"bikes": 18,
+			"docks": 28,
+			"serialNumber": "1000478",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011856",
+			"description": "Rua Professor Oliveira Marques",
+			"latitude": 38.75491,
+			"longitude": -9.15724,
+			"name": "479 - Rua Professor Oliveira Marques",
+			"bikes": 3,
+			"docks": 11,
+			"serialNumber": "1000479",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011858",
+			"description": "Faculdade de Ciências",
+			"latitude": 38.75587,
+			"longitude": -9.15503,
+			"name": "480 - Faculdade de Ciências",
+			"bikes": 17,
+			"docks": 18,
+			"serialNumber": "1000480",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000006302",
+			"description": null,
+			"latitude": 38.758207,
+			"longitude": -9.156169,
+			"name": "481 - Campo Grande / Museu da Cidade",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000481",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000011152",
+			"description": "Rua Professor Francisco Lucas Pires",
+			"latitude": 38.75939,
+			"longitude": -9.16405,
+			"name": "483 - Rua Professor Francisco Lucas Pires ",
+			"bikes": 7,
+			"docks": 10,
+			"serialNumber": "1000483",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000009905",
+			"description": null,
+			"latitude": 38.76081,
+			"longitude": -9.16658,
+			"name": "484 - Rua Professor Vieira de Almeida",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000484",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000009906",
+			"description": null,
+			"latitude": 38.756,
+			"longitude": -9.17,
+			"name": "485 - Rua Tomás da Fonseca / Rua António Albino Machado",
+			"bikes": 1,
+			"docks": 4,
+			"serialNumber": "1000485",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010005",
+			"description": "Rua Hermano Neves / Rua José Escada",
+			"latitude": 38.75954,
+			"longitude": -9.16985,
+			"name": "486 - Rua Hermano Neves / Rua José Escada",
+			"bikes": 6,
+			"docks": 8,
+			"serialNumber": "1000486",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010004",
+			"description": "Rua Professor João Barreira",
+			"latitude": 38.76136,
+			"longitude": -9.17096,
+			"name": "487 - Rua Professor João Barreira",
+			"bikes": 3,
+			"docks": 11,
+			"serialNumber": "1000487",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000010006",
+			"description": "Rua Fernando Namora n35 / Rua António Quadros",
+			"latitude": 38.76014,
+			"longitude": -9.17526,
+			"name": "488 - Rua Fernando Namora / Rua António Quadros",
+			"bikes": 14,
+			"docks": 19,
+			"serialNumber": "1000488",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000011002",
+			"description": null,
+			"latitude": 38.76026,
+			"longitude": -9.17849,
+			"name": "490 - Rua Fernando Namora / Azinhaga da Torre do Fato",
+			"bikes": 6,
+			"docks": 15,
+			"serialNumber": "1000490",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023105",
+			"description": "Rua São Domingos de Benfica / Rua Francisco Gentil Martins",
+			"latitude": 38.741406,
+			"longitude": -9.176365,
+			"name": "502 - Rua São Domingos de Benfica / Rua Francisco Gentil Martins",
+			"bikes": 4,
+			"docks": 13,
+			"serialNumber": "1000502",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000023106",
+			"description": "Rua Conde de Almoster / Rua Carlos Pereira",
+			"latitude": 38.74266,
+			"longitude": -9.178764,
+			"name": "503 - Rua Conde de Almoster / Rua Carlos Pereira",
+			"bikes": 5,
+			"docks": 8,
+			"serialNumber": "1000503",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026102",
+			"description": "Rua Sousa Loureiro / Rua Conde de Almoster",
+			"latitude": 38.7450113,
+			"longitude": -9.1843584,
+			"name": "505 - Rua Sousa Loureiro / Rua Conde de Almoster",
+			"bikes": 3,
+			"docks": 13,
+			"serialNumber": "1000505",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000021431",
+			"description": "Rua Tenente Coronel Reibeiro dos Reis/Rua Conde de Almoster",
+			"latitude": 38.745181,
+			"longitude": -9.190028,
+			"name": "506 - Rua Tenente Coronel Reibeiro dos Reis/Rua Conde de Almoster",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000506",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000020403",
+			"description": "Rua José dos Santos Pereira / Rua Conde de Almoster",
+			"latitude": 38.744727,
+			"longitude": -9.193024,
+			"name": "507 - Rua José dos Santos Pereira / Rua Conde de Almoster",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000507",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000019718",
+			"description": "Estação de Comboios de Benfica",
+			"latitude": 38.74473,
+			"longitude": -9.200039,
+			"name": "508 - Estação de Comboios de Benfica",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000508",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000020404",
+			"description": "Centro Comercial Fonte Nova",
+			"latitude": 38.748901,
+			"longitude": -9.190007,
+			"name": "509 - Centro Comercial Fonte Nova",
+			"bikes": 7,
+			"docks": 12,
+			"serialNumber": "1000509",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019719",
+			"description": "Largo da Revista Militar / Avenida do Colégio Militar",
+			"latitude": 38.752892,
+			"longitude": -9.189058,
+			"name": "510 - Largo da Revista Militar / Avenida do Colégio Militar",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000510",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000023003",
+			"description": "Avenida do Uruguai",
+			"latitude": 38.753789,
+			"longitude": -9.196294,
+			"name": "511 - Avenida do Uruguai",
+			"bikes": 8,
+			"docks": 17,
+			"serialNumber": "1000511",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000025202",
+			"description": "512 - Metro da Pontinha",
+			"latitude": 38.7626054,
+			"longitude": -9.1967687,
+			"name": "512 - Metro da Pontinha",
+			"bikes": 0,
+			"docks": 15,
+			"serialNumber": "1000512",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000021120",
+			"description": null,
+			"latitude": 38.758691,
+			"longitude": -9.19216,
+			"name": "513 - Rua Guiomar Torresão/Metro de Carnide",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000513",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000020405",
+			"description": "Avenida do Colegio Militar / Rua Adelaide Cabete",
+			"latitude": 38.75736,
+			"longitude": -9.185588,
+			"name": "514 - Avenida do Colegio Militar / Rua Adelaide Cabete",
+			"bikes": 3,
+			"docks": 10,
+			"serialNumber": "1000514",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000026804",
+			"description": "Largo da Luz",
+			"latitude": 38.760986,
+			"longitude": -9.18327,
+			"name": "515 - Largo da Luz",
+			"bikes": 4,
+			"docks": 6,
+			"serialNumber": "1000515",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000022302",
+			"description": null,
+			"latitude": 38.76217,
+			"longitude": -9.174872,
+			"name": "516 - Rua Professor Carlos Teixeira / Rua Professor Simões Raposo",
+			"bikes": 6,
+			"docks": 12,
+			"serialNumber": "1000516",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019720",
+			"description": "Rua Padre Américo",
+			"latitude": 38.763505,
+			"longitude": -9.180437,
+			"name": "517 - Rua Padre Américo",
+			"bikes": 4,
+			"docks": 15,
+			"serialNumber": "1000517",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019721",
+			"description": "Avenida das Nações Unidas / Azinhaga da Torre do Fato",
+			"latitude": 38.764097,
+			"longitude": -9.177955,
+			"name": "518 - Avenida das Nações Unidas / Azinhaga da Torre do Fato",
+			"bikes": 8,
+			"docks": 16,
+			"serialNumber": "1000518",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020330",
+			"description": null,
+			"latitude": 38.763204,
+			"longitude": -9.1691,
+			"name": "519 - Rua Prof. Pulido Valente / Rua Prof. Mário ",
+			"bikes": 11,
+			"docks": 20,
+			"serialNumber": "1000519",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020406",
+			"description": "Lispolis",
+			"latitude": 38.766995,
+			"longitude": -9.182513,
+			"name": "520 - Lispolis",
+			"bikes": 2,
+			"docks": 16,
+			"serialNumber": "1000520",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000020407",
+			"description": "Rua César de Oliveira / Rua Fernando Lopes Graça",
+			"latitude": 38.7690441,
+			"longitude": -9.1738603,
+			"name": "521 - Rua César de Oliveira / Rua Fernando Lopes Graça",
+			"bikes": 6,
+			"docks": 21,
+			"serialNumber": "1000521",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000030202",
+			"description": "Avenida Cidade de Praga",
+			"latitude": 38.764705,
+			"longitude": -9.189768,
+			"name": "522 - Avenida Cidade de Praga",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000522",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000017602",
+			"description": null,
+			"latitude": 38.760871,
+			"longitude": -9.156487,
+			"name": "550 - Rua Fernando Curado Ribeiro / Alameda das Li",
+			"bikes": 11,
+			"docks": 14,
+			"serialNumber": "1000550",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017648",
+			"description": null,
+			"latitude": 38.762584,
+			"longitude": -9.157235,
+			"name": "551 - Rua Francisco Stromp / Alameda das Linhas de",
+			"bikes": 3,
+			"docks": 14,
+			"serialNumber": "1000551",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017603",
+			"description": null,
+			"latitude": 38.766075,
+			"longitude": -9.157335,
+			"name": "552 - Alameda das Linhas de Torres / Hospital Puli",
+			"bikes": 7,
+			"docks": 8,
+			"serialNumber": "1000552",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000019702",
+			"description": "Rua Luis Pastor de Macedo / Rua Tobis Portuguesa",
+			"latitude": 38.7671144,
+			"longitude": -9.1553503,
+			"name": "553 - Rua Luis Pastor de Macedo / Rua Tobis Portuguesa",
+			"bikes": 8,
+			"docks": 10,
+			"serialNumber": "1000553",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000017649",
+			"description": null,
+			"latitude": 38.768683,
+			"longitude": -9.158298,
+			"name": "554 - Alameda das Linhas de Torres / Rua Ladislau",
+			"bikes": 12,
+			"docks": 18,
+			"serialNumber": "1000554",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000018909",
+			"description": "Alameda das Linhas de Torres",
+			"latitude": 38.770657,
+			"longitude": -9.160248,
+			"name": "555 - Alameda das Linhas de Torres",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000555",
+			"assetStatus": "repair"
+		},
+		{
+			"code": "0000017604",
+			"description": null,
+			"latitude": 38.773489,
+			"longitude": -9.161462,
+			"name": "556 - Alamedas das Linhas de Torres / Estrada da T",
+			"bikes": 2,
+			"docks": 5,
+			"serialNumber": "1000556",
+			"assetStatus": "active"
+		},
+		{
+			"code": "0000027506",
+			"description": "R. Prof. Manuel Valadares / Azinhaga da Cidade",
+			"latitude": 38.776152,
+			"longitude": -9.159899,
+			"name": "564 - R. Prof. Manuel Valadares / Azinhaga da Cidade",
+			"bikes": 0,
+			"docks": 0,
+			"serialNumber": "1000564",
+			"assetStatus": "repair"
+		}
+	],
+	"stationInfo": {
+		"1000305": {
+			"getBikes": [
+				{
+					"battery": "100",
+					"code": "0000023931",
+					"name": "E1755",
+					"kms": "0",
+					"serialNumber": "dc2e026c9c",
+					"type": "electric",
+					"parent": "0000010089"
+				},
+				{
+					"battery": "100",
+					"code": "0000012923",
+					"name": "E2281",
+					"kms": "0",
+					"serialNumber": "4d90ea7d4a",
+					"type": "electric",
+					"parent": "0000010090"
+				},
+				{
+					"battery": "97",
+					"code": "0000024060",
+					"name": "E1885",
+					"kms": "0",
+					"serialNumber": "1a2e06cefc",
+					"type": "electric",
+					"parent": "0000010093"
+				},
+				{
+					"battery": "100",
+					"code": "0000018668",
+					"name": "E1709",
+					"kms": "0",
+					"serialNumber": "6ba26dad09",
+					"type": "electric",
+					"parent": "0000010095"
+				}
+			],
+			"getDocks": [
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "44174000021108",
+					"code": "0000010089",
+					"name": "1"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000242",
+					"code": "0000010098",
+					"name": "10"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000243",
+					"code": "0000010099",
+					"name": "11"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000244",
+					"code": "0000010100",
+					"name": "12"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000246",
+					"code": "0000010102",
+					"name": "14"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000247",
+					"code": "0000010103",
+					"name": "15"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000234",
+					"code": "0000010090",
+					"name": "2"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000236",
+					"code": "0000010092",
+					"name": "4"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "501713000237",
+					"code": "0000010093",
+					"name": "5"
+				},
+				{
+					"ledStatus": "green",
+					"lockStatus": "unlocked",
+					"serialNumber": "0522001001122",
+					"code": "0000010095",
+					"name": "7"
+				}
+			]
+		}
+	},
+	"bikeRatings": {
+		"E1755": 1,
+		"E2281": 5,
+		"E1885": 4,
+		"E1709": 5
+	},
+	"tripHistory": [
+		{
+			"daysAgo": 1,
+			"startTime": "18:32",
+			"minutes": 19,
+			"bike": "E0593",
+			"bikeType": "electric",
+			"from": "307 - Marquês de Pombal",
+			"to": "421 - Alameda D. Afonso Henriques",
+			"bonus": 10,
+			"rating": 5,
+			"code": "6JWFVI9O8N"
+		},
+		{
+			"daysAgo": 1,
+			"startTime": "08:47",
+			"minutes": 13,
+			"bike": "E1108",
+			"bikeType": "electric",
+			"from": "421 - Alameda D. Afonso Henriques",
+			"to": "307 - Marquês de Pombal",
+			"bonus": 110,
+			"rating": 5,
+			"code": "JWA8FQ1PFL"
+		},
+		{
+			"daysAgo": 2,
+			"startTime": "19:05",
+			"minutes": 24,
+			"bike": "C0217",
+			"bikeType": "classic",
+			"from": "305 - Avenida da Liberdade / Rua Barata Salgueiro",
+			"to": "219 - Praça do Município",
+			"bonus": 10,
+			"rating": 4,
+			"code": "5BRNS2SR5A"
+		},
+		{
+			"daysAgo": 2,
+			"startTime": "08:52",
+			"minutes": 16,
+			"bike": "E0771",
+			"bikeType": "electric",
+			"from": "219 - Praça do Município",
+			"to": "305 - Avenida da Liberdade / Rua Barata Salgueiro",
+			"bonus": 110,
+			"rating": 5,
+			"code": "DIIOWVFVSL"
+		},
+		{
+			"daysAgo": 4,
+			"startTime": "13:41",
+			"minutes": 9,
+			"bike": "E1873",
+			"bikeType": "electric",
+			"from": "403 - Av. Fontes Pereira de Melo",
+			"to": "407 - Praça Duque de Saldanha",
+			"bonus": 10,
+			"rating": 5,
+			"code": "K2QM7XZ4T1"
+		},
+		{
+			"daysAgo": 5,
+			"startTime": "17:26",
+			"minutes": 31,
+			"bike": "E0264",
+			"bikeType": "electric",
+			"from": "261 - Calçada da Estrela / Assembleia da República ",
+			"to": "211 - Doca da Marinha",
+			"bonus": 10,
+			"rating": 3,
+			"code": "P9LDR3VHB6"
+		}
+	],
+	"activeTrip": {
+		"code": "H7TQ2NMD4V",
+		"bike": "E1108",
+		"path": [
+			[
+				-9.148681,
+				38.748788
+			],
+			[
+				-9.149321,
+				38.749636
+			],
+			[
+				-9.149946,
+				38.750544
+			],
+			[
+				-9.150115,
+				38.750793
+			],
+			[
+				-9.15013,
+				38.750817
+			],
+			[
+				-9.150663,
+				38.751595
+			],
+			[
+				-9.150955,
+				38.752026
+			],
+			[
+				-9.151002,
+				38.752096
+			],
+			[
+				-9.151452,
+				38.752744
+			],
+			[
+				-9.151591,
+				38.752954
+			],
+			[
+				-9.152292,
+				38.753977
+			],
+			[
+				-9.152603,
+				38.754387
+			],
+			[
+				-9.152617,
+				38.754406
+			],
+			[
+				-9.152643,
+				38.754439
+			],
+			[
+				-9.152707,
+				38.754524
+			],
+			[
+				-9.152753,
+				38.754585
+			],
+			[
+				-9.152879,
+				38.754538
+			],
+			[
+				-9.152934,
+				38.75453
+			],
+			[
+				-9.152988,
+				38.754522
+			],
+			[
+				-9.153099,
+				38.754512
+			],
+			[
+				-9.153115,
+				38.754536
+			],
+			[
+				-9.153166,
+				38.754613
+			],
+			[
+				-9.153183,
+				38.754675
+			],
+			[
+				-9.153195,
+				38.754706
+			],
+			[
+				-9.153216,
+				38.754735
+			],
+			[
+				-9.153814,
+				38.755355
+			],
+			[
+				-9.154034,
+				38.755632
+			],
+			[
+				-9.154083,
+				38.755694
+			],
+			[
+				-9.154198,
+				38.755858
+			],
+			[
+				-9.154256,
+				38.755873
+			],
+			[
+				-9.154435,
+				38.755908
+			],
+			[
+				-9.154589,
+				38.756051
+			],
+			[
+				-9.154773,
+				38.756241
+			]
+		],
+		"distanceMeters": 1015
+	},
+	"destinations": {
+		"route": {
+			"query": "Praça de Touros",
+			"features": [
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "R",
+						"osm_id": 8872281,
+						"osm_key": "leisure",
+						"osm_value": "stadium",
+						"type": "house",
+						"name": "Praça de Touros do Campo Pequeno",
+						"street": "Campo Pequeno",
+						"district": "Areeiro",
+						"city": "Lisboa",
+						"county": "Lisboa",
+						"country": "Portugal",
+						"postcode": "1000-306",
+						"countrycode": "PT",
+						"extent": [
+							-9.1458318,
+							38.743049,
+							-9.144591,
+							38.7421074
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-9.145639,
+							38.7425785
+						]
+					}
+				},
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "R",
+						"osm_id": 8872281,
+						"osm_key": "amenity",
+						"osm_value": "arena",
+						"type": "house",
+						"name": "Praça de Touros do Campo Pequeno",
+						"street": "Campo Pequeno",
+						"district": "Areeiro",
+						"city": "Lisboa",
+						"county": "Lisboa",
+						"country": "Portugal",
+						"postcode": "1000-306",
+						"countrycode": "PT",
+						"extent": [
+							-9.1458318,
+							38.743049,
+							-9.144591,
+							38.7421074
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-9.145639,
+							38.7425785
+						]
+					}
+				},
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "R",
+						"osm_id": 8463722,
+						"osm_key": "leisure",
+						"osm_value": "stadium",
+						"type": "house",
+						"name": "Praça de Touros de Alcochete",
+						"street": "Alameda Grupo Desportivo Alcochetense",
+						"locality": "Várzea",
+						"district": "Alcochete",
+						"city": "Alcochete",
+						"county": "Setúbal",
+						"country": "Portugal",
+						"postcode": "2890-110",
+						"countrycode": "PT",
+						"extent": [
+							-8.9561264,
+							38.7558888,
+							-8.9554651,
+							38.7553251
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-8.9555304,
+							38.7556078
+						]
+					}
+				}
+			]
+		},
+		"trip": {
+			"query": "Quinta das Conchas",
+			"features": [
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "W",
+						"osm_id": 1113292195,
+						"osm_key": "railway",
+						"osm_value": "station",
+						"type": "house",
+						"name": "Quinta das Conchas",
+						"street": "Rua Luís Pastor de Macedo",
+						"locality": "Quinta do Lambert",
+						"district": "Lumiar",
+						"city": "Lisboa",
+						"county": "Lisboa",
+						"country": "Portugal",
+						"postcode": "1750-158",
+						"countrycode": "PT",
+						"extent": [
+							-9.1557607,
+							38.7679593,
+							-9.1553339,
+							38.7668369
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-9.155521,
+							38.7673617
+						]
+					}
+				},
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "W",
+						"osm_id": 54820068,
+						"osm_key": "leisure",
+						"osm_value": "park",
+						"type": "other",
+						"name": "Quinta das Conchas",
+						"district": "Lumiar",
+						"city": "Lisboa",
+						"county": "Lisboa",
+						"country": "Portugal",
+						"countrycode": "PT",
+						"extent": [
+							-9.1595071,
+							38.7714571,
+							-9.1490632,
+							38.767638
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-9.1546969,
+							38.769452
+						]
+					}
+				},
+				{
+					"type": "Feature",
+					"properties": {
+						"osm_type": "W",
+						"osm_id": 1113292197,
+						"osm_key": "railway",
+						"osm_value": "platform",
+						"type": "house",
+						"name": "Quinta das Conchas",
+						"street": "Rua Luís Pastor de Macedo",
+						"locality": "Quinta do Lambert",
+						"district": "Lumiar",
+						"city": "Lisboa",
+						"county": "Lisboa",
+						"country": "Portugal",
+						"postcode": "1750-158",
+						"countrycode": "PT",
+						"extent": [
+							-9.1557037,
+							38.7677835,
+							-9.1555012,
+							38.7668369
+						]
+					},
+					"geometry": {
+						"type": "Point",
+						"coordinates": [
+							-9.1556064,
+							38.7673288
+						]
+					}
+				}
+			]
+		}
+	}
+}

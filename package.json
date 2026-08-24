@@ -13,7 +13,9 @@
     "build-app": "node scripts/build.js",
     "build-app-dev": "node scripts/build.js --dev",
     "install-app": "node scripts/build.js --install",
-    "install-app-dev": "node scripts/build.js --dev --install && vite dev --host"
+    "install-app-dev": "node scripts/build.js --dev --install && vite dev --host",
+    "screenshots": "node scripts/screenshots/index.js",
+    "screenshots:mock-data": "node scripts/screenshots/fetch-mock-data.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",
