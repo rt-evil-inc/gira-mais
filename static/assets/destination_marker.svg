@@ -1,0 +1,6 @@
+<svg width="94" height="108" viewBox="0 0 94 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="47" cy="40" r="40" fill="{background}"/>
+<path d="M47 108L12 60L82 60L47 108Z" fill="{background}"/>
+<circle cx="47" cy="40" r="34" fill="{accent}"/>
+<path d="M47 98L21 62L73 62L47 98Z" fill="{accent}"/>
+</svg>

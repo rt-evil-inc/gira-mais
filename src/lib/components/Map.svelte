@@ -451,9 +451,10 @@
 			})) ?? [],
 		});
 		const destination = get(routeDestination);
+		// A station destination is already marked by its station bubble
 		destSrc.setData({
 			type: 'FeatureCollection',
-			features: destination ? [{
+			features: destination && destination.type !== 'station' ? [{
 				type: 'Feature' as const,
 				properties: {},
 				geometry: {

@@ -196,23 +196,18 @@ export function addLayers(map: maplibregl.Map) {
 		},
 	}, 'building');
 	map.addLayer({
-		'id': 'route-destination-outer',
-		'type': 'circle',
+		'id': 'route-destination',
+		'type': 'symbol',
 		'source': 'route-destination',
-		'paint': {
-			'circle-radius': 9,
-			'circle-color': getCssVariable('--color-background'),
+		'layout': {
+			'icon-image': 'destination-marker',
+			'icon-size': 0.3,
+			// pin tip sits exactly on the destination point
+			'icon-anchor': 'bottom',
+			'icon-allow-overlap': true,
+			'icon-ignore-placement': true,
 		},
-	}, 'building');
-	map.addLayer({
-		'id': 'route-destination-inner',
-		'type': 'circle',
-		'source': 'route-destination',
-		'paint': {
-			'circle-radius': 5.5,
-			'circle-color': getCssVariable('--color-primary'),
-		},
-	}, 'building');
+	});
 	map.addLayer({
 		'id': 'points',
 		'type': 'symbol',
@@ -304,6 +299,7 @@ export async function loadImages(map: maplibregl.Map) {
 	addOrReplace('bike_inactive_selected', await loadSvg('./assets/bike_marker_inactive_selected.svg', replaces));
 	addOrReplace('dock_inactive', await loadSvg('./assets/dock_marker_inactive.svg', replaces));
 	addOrReplace('dock_inactive_selected', await loadSvg('./assets/dock_marker_inactive_selected.svg', replaces));
+	addOrReplace('destination-marker', await loadSvg('./assets/destination_marker.svg', replaces));
 
 	const imgs = [['bike', './assets/bike_marker.svg', accent], ['bike_selected', './assets/bike_marker_selected.svg', replaces.background], ['dock', './assets/dock_marker.svg', accent], ['dock_selected', './assets/dock_marker_selected.svg', replaces.background]];
 	const canvas = document.createElement('canvas');
