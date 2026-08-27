@@ -494,9 +494,8 @@
 		map.setFilter('route-stations', fullMarker);
 		// those stations get a full marker instead of a dot or a growing pin
 		map.setFilter('station-dots', fullMarkerSerials.length ? ['!', fullMarker] : null);
-		const dim = routeSerials.length ? 0.4 : 1;
-		const dotOpacity: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'],
-			STATION_MARKER_FADE_START, dim, STATION_MARKER_FADE_END, 0];
+		const dim = routeSerials.length ? 0.6 : 1;
+		const dotOpacity: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], STATION_MARKER_FADE_START, dim, STATION_MARKER_FADE_END, 0];
 		map.setPaintProperty('station-dots', 'circle-opacity', dotOpacity);
 		map.setPaintProperty('station-dots', 'circle-stroke-opacity', dotOpacity);
 		const markerOpacity: ExpressionSpecification|number = fullMarkerSerials.length ? ['case', fullMarker, 0, dim] : dim;
