@@ -3,7 +3,7 @@ import { navigationMarker, pulsingDot } from '$lib/pulsing-dot';
 import type { GeoJSON } from 'geojson';
 import { getCssVariable } from '$lib/utils';
 import { theme } from '$lib/theme';
-import maplibregl from 'maplibre-gl';
+import maplibregl, { type ExpressionSpecification } from 'maplibre-gl';
 import { currentPos } from '$lib/location';
 
 export type StationInfo ={
@@ -123,8 +123,64 @@ export async function loadSvg(url: string, replaces?:Record<string, string>): Pr
 	});
 }
 
+/** At low zoom stations are drawn as small dots instead of full markers, so a
+ * zoomed-out map (e.g. framing a computed route) isn't buried under pins.
+ * Over this zoom range the dots fade out while the pins grow in from dot size. */
+export const STATION_MARKER_FADE_START = 13.5;
+export const STATION_MARKER_FADE_END = 14;
+
+/** Dot for a station at low zoom: filled accent when it has something to
+ * offer (bikes or free docks, depending on the trip state), hollow when in
+ * service but empty, muted when out of service — matching the pins, which are
+ * only gray when out of service. */
+export function stationDotColor(countProp: 'bikes'|'freeDocks'): ExpressionSpecification {
+	return ['case',
+		['!', ['get', 'inService']], getCssVariable('--color-label'),
+		['>', ['get', countProp], 0], getCssVariable('--color-primary'),
+		getCssVariable('--color-background')];
+}
+
+export function stationDotStrokeColor(countProp: 'bikes'|'freeDocks'): ExpressionSpecification {
+	return ['case',
+		['all', ['get', 'inService'], ['<=', ['get', countProp], 0]],
+		getCssVariable('--color-primary'),
+		getCssVariable('--color-background')];
+}
+
+/** Marker for a station: a pin with the count of bikes or free docks baked in,
+ * with selected/inactive variants. */
+export function stationIcon(kind: 'bike'|'dock', countProp: 'bikes'|'freeDocks'): ExpressionSpecification {
+	return ['case',
+		['get', 'selected'],
+		['case',
+			['get', 'inService'],
+			['concat', kind + '_selected-', ['get', countProp]],
+			kind + '_inactive_selected'],
+		['case',
+			['get', 'inService'],
+			['concat', kind + '-', ['get', countProp]],
+			kind + '_inactive']];
+}
+
 export function addLayers(map: maplibregl.Map) {
 	if (map.getLayer('points') != undefined) return;
+	// Added first so every later insertion before 'building' (trip path, route,
+	// destination pin) lands above it — at low zoom the route must cover the
+	// dots, not the other way around
+	map.addLayer({
+		'id': 'station-dots',
+		'type': 'circle',
+		'source': 'points',
+		'maxzoom': STATION_MARKER_FADE_END,
+		'paint': {
+			'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, STATION_MARKER_FADE_START, 5],
+			'circle-color': stationDotColor('bikes'),
+			'circle-opacity': ['interpolate', ['linear'], ['zoom'], STATION_MARKER_FADE_START, 1, STATION_MARKER_FADE_END, 0],
+			'circle-stroke-opacity': ['interpolate', ['linear'], ['zoom'], STATION_MARKER_FADE_START, 1, STATION_MARKER_FADE_END, 0],
+			'circle-stroke-width': 1.5,
+			'circle-stroke-color': stationDotStrokeColor('bikes'),
+		},
+	}, 'building');
 	map.addLayer({
 		'id': 'trip-path-outline',
 		'type': 'line',
@@ -217,23 +273,11 @@ export function addLayers(map: maplibregl.Map) {
 		'id': 'points',
 		'type': 'symbol',
 		'source': 'points',
+		'minzoom': STATION_MARKER_FADE_START,
 		'layout': {
-			// bike if selected, bike_selected otherwise
-			// 'icon-image': ['case', ['get', 'selected'], ['concat', 'bike_selected-', ['get', 'bikes']], ['concat', 'bike-', ['get', 'bikes']]],
-			// Add case for inService and selected
 			visibility: 'visible',
-			'icon-image': ['case',
-				['get', 'selected'],
-				['case',
-					['get', 'inService'],
-					['concat', 'bike_selected-', ['get', 'bikes']],
-					'bike_inactive_selected'],
-				['case',
-					['get', 'inService'],
-					['concat', 'bike-', ['get', 'bikes']],
-					'bike_inactive']],
-
-			'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 13, 0.5],
+			'icon-image': stationIcon('bike', 'bikes'),
+			'icon-size': ['interpolate', ['linear'], ['zoom'], STATION_MARKER_FADE_START, 0.1, STATION_MARKER_FADE_END, 0.5],
 			'icon-anchor': 'bottom',
 			'icon-allow-overlap': true,
 			'icon-padding': 0,
@@ -243,23 +287,29 @@ export function addLayers(map: maplibregl.Map) {
 		'id': 'docks',
 		'type': 'symbol',
 		'source': 'points',
+		'minzoom': STATION_MARKER_FADE_START,
 		'layout': {
-			// bike if selected, bike_selected otherwise
-			// 'icon-image': ['case', ['get', 'selected'], ['concat', 'bike_selected-', ['get', 'bikes']], ['concat', 'bike-', ['get', 'bikes']]],
-			// Add case for inService and selected
 			visibility: 'none',
-			'icon-image': ['case',
-				['get', 'selected'],
-				['case',
-					['get', 'inService'],
-					['concat', 'dock_selected-', ['get', 'freeDocks']],
-					'dock_inactive_selected'],
-				['case',
-					['get', 'inService'],
-					['concat', 'dock-', ['get', 'freeDocks']],
-					'dock_inactive']],
-
-			'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 13, 0.5],
+			'icon-image': stationIcon('dock', 'freeDocks'),
+			'icon-size': ['interpolate', ['linear'], ['zoom'], STATION_MARKER_FADE_START, 0.1, STATION_MARKER_FADE_END, 0.5],
+			'icon-anchor': 'bottom',
+			'icon-allow-overlap': true,
+			'icon-padding': 0,
+		},
+	});
+	// The stations that matter right now (the route's pickup/dropoff/
+	// destination and the selected one) keep a full-size marker at every
+	// zoom, drawn above the route line — this layer covers them alone, and
+	// Map.svelte hides them from the growing regular layers. Starts matching
+	// nothing; Map.svelte sets the filter as the route and selection change
+	map.addLayer({
+		'id': 'route-stations',
+		'type': 'symbol',
+		'source': 'points',
+		'filter': ['in', ['get', 'serialNumber'], ['literal', []]],
+		'layout': {
+			'icon-image': stationIcon('bike', 'bikes'),
+			'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.35, STATION_MARKER_FADE_END, 0.5],
 			'icon-anchor': 'bottom',
 			'icon-allow-overlap': true,
 			'icon-padding': 0,
