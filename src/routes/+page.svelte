@@ -39,6 +39,18 @@
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
 
+	// Toasts anchor to the sheet's predicted top edge (anchorTop), which tracks
+	// station switches immediately instead of waiting for bike info to load.
+	// It blanks during drags — hold the last value so toasts don't fall to the
+	// bottom and back — and only truly clear it during trips, when the
+	// unmounted menu's position is a stale snapshot
+	let stationMenuAnchor: number|undefined = $state();
+	let toastMenuPos: number|undefined = $state();
+	$effect(() => {
+		if ($currentTrip !== null) toastMenuPos = undefined;
+		else if (stationMenuAnchor !== undefined) toastMenuPos = stationMenuAnchor;
+	});
+
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {
 			locationPermission = location == 'granted';
@@ -84,7 +96,7 @@
 	{#if $currentTrip !== null}
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
-		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
+		<StationMenu bind:posTop={stationMenuPos} bind:anchorTop={stationMenuAnchor} bind:bikeListHeight={menuHeight} />
 		{#if $tripRating.currentRating != null && $networkStatus }
 			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
@@ -128,4 +140,4 @@
 </div>
 
 <InfoDialog />
-<ErrorMessage />
+<ErrorMessage menuPos={toastMenuPos} />
