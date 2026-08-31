@@ -91,7 +91,7 @@ export function ingestActiveTripInfo(maybeTrips:Q<['activeTrip']>) {
 		return;
 	}
 	const {
-		// asset,
+		asset,
 		startDate,
 		code,
 		// user,
@@ -121,7 +121,7 @@ export function ingestActiveTripInfo(maybeTrips:Q<['activeTrip']>) {
 	} = maybeTrips.activeTrip!;
 	currentTrip.update(ct => ({
 		code: code!,
-		bikePlate: ct?.bikePlate ?? null,
+		bikePlate: asset ?? ct?.bikePlate ?? null,
 		startPos: ct?.startPos ?? null,
 		destination: ct?.destination ?? null,
 		traveledDistanceKm: ct?.traveledDistanceKm ?? 0,
