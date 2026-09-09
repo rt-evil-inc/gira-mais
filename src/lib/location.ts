@@ -4,6 +4,7 @@ import { type Position, Geolocation } from '@capacitor/geolocation';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
 import { checkTripActive, currentTrip } from '$lib/trip';
 import { compassHeading } from '$lib/compass';
+import { compassOffset } from '$lib/compass-offset';
 import { bearingBetweenCoords, distanceBetweenCoords } from '$lib/utils';
 import { MIN_TRAVEL_DISTANCE_m } from '$lib/constants';
 import { appSettings } from './settings';
@@ -20,14 +21,18 @@ export const currentHeading = writable<number|null>(null);
 // only computed once the anchor point is far enough behind
 const HEADING_MIN_SPEED_mps = 0.5;
 const HEADING_MIN_DISTANCE_m = 5;
+// The fix's own course is accurate enough to calibrate the compass against
+// only at a proper riding pace
+const CALIBRATION_MIN_SPEED_mps = 2;
 let headingAnchor: {lat: number, lng: number}|null = null;
 let lastCourseTime = 0;
 
 currentPos.subscribe(pos => {
 	if (!pos) return;
 	const { latitude, longitude, heading, speed } = pos.coords;
-	let course = typeof heading === 'number' && Number.isFinite(heading) && heading >= 0 &&
+	const fixCourse = typeof heading === 'number' && Number.isFinite(heading) && heading >= 0 &&
 		(speed == null || speed >= HEADING_MIN_SPEED_mps) ? heading % 360 : null;
+	let course = fixCourse;
 	const moved = headingAnchor ? distanceBetweenCoords(headingAnchor.lat, headingAnchor.lng, latitude, longitude) * 1000 : 0;
 	if (headingAnchor && moved >= HEADING_MIN_DISTANCE_m && course === null) {
 		course = bearingBetweenCoords(headingAnchor.lat, headingAnchor.lng, latitude, longitude);
@@ -36,17 +41,21 @@ currentPos.subscribe(pos => {
 	if (course !== null) {
 		currentHeading.set(course);
 		lastCourseTime = Date.now();
+		if (fixCourse !== null && typeof speed === 'number' && speed >= CALIBRATION_MIN_SPEED_mps) {
+			compassOffset.observeCourse(fixCourse, lastCourseTime);
+		}
 	}
 });
 
 // The GPS course wins while it's fresh (i.e. while moving); the compass takes
-// over when standing still, where the course is unavailable or stale
+// over when standing still, where the course is unavailable or stale — with
+// the error learned along the last leg taken out
 const COMPASS_TAKEOVER_ms = 3000;
 
 compassHeading.subscribe(heading => {
 	if (heading === null) return;
 	if (Date.now() - lastCourseTime < COMPASS_TAKEOVER_ms) return;
-	currentHeading.set(heading);
+	currentHeading.set(compassOffset.correct(heading));
 });
 
 let simulatedLocationActive = false;
