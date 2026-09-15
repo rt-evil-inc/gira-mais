@@ -53,7 +53,7 @@ let ratingRecoveryRequest: Promise<void> | null = null;
 
 function logTripLifecycle(event: string, details: Record<string, unknown> = {}) {
 	if (!import.meta.env.DEV) return;
-	console.info('[trip-lifecycle]', JSON.stringify({ time: new Date().toISOString(), event, ...details }));
+	console.info('[trip-lifecycle]', JSON.stringify({ time: (new Date).toISOString(), event, ...details }));
 }
 
 function tripSummary(trip: ActiveTrip | null) {

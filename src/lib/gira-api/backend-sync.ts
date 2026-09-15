@@ -20,7 +20,7 @@ let tripEndSignalled = false;
 
 function logBackendSync(event: string, details: Record<string, unknown> = {}) {
 	if (!import.meta.env.DEV) return;
-	console.info('[backend-sync]', JSON.stringify({ time: new Date().toISOString(), event, ...details }));
+	console.info('[backend-sync]', JSON.stringify({ time: (new Date).toISOString(), event, ...details }));
 }
 
 function clearTripTimer() {

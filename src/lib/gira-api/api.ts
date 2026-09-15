@@ -178,7 +178,7 @@ function vaimooLocalTimestamp(date: Date) {
 }
 
 /** Submit the same trip feedback payload as the official Gira Android app. */
-export async function submitTripRating(tripCode: string, bikePlate: string, rating: number, createdAt = new Date()): Promise<void> {
+export async function submitTripRating(tripCode: string, bikePlate: string, rating: number, createdAt = new Date): Promise<void> {
 	const tripId = Number(tripCode);
 	if (!Number.isInteger(tripId) || tripId <= 0) throw new Error('Cannot rate a trip without a valid VAIMOO trip id');
 	if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Trip rating must be between 1 and 5');
