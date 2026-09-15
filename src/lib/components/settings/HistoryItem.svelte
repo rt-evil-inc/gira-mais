@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { TripHistory_TripDetail } from '$lib/gira-api/api-types';
+	import type { CompletedTrip } from '$lib/gira-api/models';
 	import { t } from '$lib/translations';
 
 	interface Props {
-		trip: TripHistory_TripDetail|null;
+		trip: CompletedTrip|null;
 	}
 
 	let { trip }: Props = $props();
@@ -45,17 +45,17 @@
 		</div>
 		<div class="flex flex-col gap-4 grow">
 			<div>
-				<div class="font-bold text-primary text-xl leading-none">{formatHours(new Date(trip.startDate))}</div>
-				{#if trip.startLocation}
-					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.startLocation)}</div>
-					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.startLocation)}</div>
+				<div class="font-bold text-primary text-xl leading-none">{formatHours(trip.startedAt)}</div>
+				{#if trip.startStation}
+					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.startStation)}</div>
+					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.startStation)}</div>
 				{/if}
 			</div>
 			<div>
-				<div class="font-bold text-primary text-xl leading-none">{formatHours(new Date(trip.endDate))}</div>
-				{#if trip.endLocation}
-					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.endLocation)}</div>
-					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.endLocation)}</div>
+				<div class="font-bold text-primary text-xl leading-none">{formatHours(trip.endedAt)}</div>
+				{#if trip.endStation}
+					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.endStation)}</div>
+					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.endStation)}</div>
 				{/if}
 			</div>
 		</div>
@@ -63,10 +63,10 @@
 			<div class="flex flex-col">
 				<div class="flex flex-col items-center">
 					<div class="text-nowrap">
-						{#if getHoursDiff(new Date(trip.endDate), new Date(trip.startDate)) > 0}
-							<span class="text-2xl font-bold text-primary pr-px">{getHoursDiff(new Date(trip.endDate), new Date(trip.startDate))}</span><span class="text-sm font-semibold text-label">{$t('hours_label')}</span>
+						{#if getHoursDiff(trip.endedAt, trip.startedAt) > 0}
+							<span class="text-2xl font-bold text-primary pr-px">{getHoursDiff(trip.endedAt, trip.startedAt)}</span><span class="text-sm font-semibold text-label">{$t('hours_label')}</span>
 						{/if}
-						<span class="text-2xl font-bold text-primary pr-px">{getMinutesDiff(new Date(trip.endDate), new Date(trip.startDate))}</span><span class="text-sm font-semibold text-label">{$t('minutes_label')}</span>
+						<span class="text-2xl font-bold text-primary pr-px">{getMinutesDiff(trip.endedAt, trip.startedAt)}</span><span class="text-sm font-semibold text-label">{$t('minutes_label')}</span>
 					</div>
 					<span class="text-2xs font-semibold text-label text-center -mt-1 leading-none max-w-[70px]">{$t('duration_label')}</span>
 				</div>
@@ -81,7 +81,7 @@
 					<circle cx="18.4076" cy="43.5921" r="15.4076" class="stroke-primary" stroke-width="6"/>
 					<circle cx="82.4437" cy="43.5921" r="15.4076" class="stroke-primary" stroke-width="6"/>
 				</svg>
-				<div class="text-primary font-bold text-sm">{trip.bikeName}</div>
+				<div class="text-primary font-bold text-sm">{trip.bikeId}</div>
 			</div>
 		</div>
 	</div>
