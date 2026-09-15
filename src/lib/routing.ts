@@ -64,7 +64,7 @@ function hasAvailableBike(station: StationInfo): boolean {
 }
 
 function hasAvailableDock(station: StationInfo): boolean {
-	return station.assetStatus === 'active' && station.docks - station.bikes > 0;
+	return station.assetStatus === 'active' && station.freeDocks > 0;
 }
 
 function nearestStations(target: Coord, isEligible: (station: StationInfo) => boolean): StationInfo[] {

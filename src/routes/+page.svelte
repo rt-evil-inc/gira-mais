@@ -7,8 +7,8 @@
 	import Profile from '$lib/components/Profile.svelte';
 	import StationMenu from '$lib/components/StationMenu.svelte';
 	import TripStatus from '$lib/components/TripStatus.svelte';
-	import TripRating from '$lib/components/TripRating.svelte';
-	import { currentTrip, tripRating } from '$lib/trip';
+	import TripCompleted from '$lib/components/TripCompleted.svelte';
+	import { currentTrip, recentlyCompletedTrip } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
 	import { routeDestination } from '$lib/routing';
 	import SearchBar, { dismissSearchBar } from '$lib/components/SearchBar.svelte';
@@ -85,8 +85,8 @@
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:bikeListHeight={menuHeight} />
-		{#if $tripRating.currentRating != null && $networkStatus }
-			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
+		{#if $recentlyCompletedTrip != null && $networkStatus }
+			<TripCompleted trip={$recentlyCompletedTrip} />
 		{/if}
 	{/if}
 
