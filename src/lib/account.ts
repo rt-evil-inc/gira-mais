@@ -2,7 +2,7 @@ import { startBackendSync, stopBackendSync } from '$lib/gira-api/backend-sync';
 import { getAccountSnapshot } from '$lib/gira-api/api';
 import type { AccountSnapshot, SubscriptionInfo } from '$lib/gira-api/models';
 import { selectedStation } from '$lib/map.svelte';
-import { currentTrip, recentlyCompletedTrip } from '$lib/trip';
+import { currentTrip, tripRating } from '$lib/trip';
 import { Network } from '@capacitor/network';
 import { Preferences } from '@capacitor/preferences';
 import { get, writable } from 'svelte/store';
@@ -108,7 +108,7 @@ export async function logOut() {
 	currentTrip.set(null);
 	user.set(null);
 	selectedStation.set(null);
-	recentlyCompletedTrip.set(null);
+	tripRating.set({ currentRating: null });
 	// purposefully not settings settings distancelock, since thats annoying when you swap accounts
 }
 

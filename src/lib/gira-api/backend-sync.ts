@@ -4,8 +4,11 @@ import { stations } from '$lib/map.svelte';
 import { currentTrip, DEBUG_TRIP_CODE, refreshTripStatus } from '$lib/trip';
 import { subscribeFirestoreBike } from '$lib/vaimoo-api/firestore';
 import { subscribeStations } from './api';
+import { errorMessages } from '$lib/ui.svelte';
+import { t } from '$lib/translations';
 
 const PENDING_TRIP_INTERVAL_MS = 3_000;
+const FIRESTORE_START_TRIP_TIMEOUT = 100;
 const ACTIVE_TRIP_INTERVAL_MS = 15_000;
 let tripTimer: ReturnType<typeof setTimeout> | null = null;
 let stopStationListener: (() => void) | null = null;
@@ -42,12 +45,21 @@ function followActiveBike(bikeId: string | null) {
 	if (!bikeId) return;
 
 	let previousState: string | null | undefined;
+	let previousErrorCode: number | null | undefined;
 	stopBikeListener = subscribeFirestoreBike(
 		bikeId,
 		bike => {
 			const nextState = bike?.TripVehicleState ?? null;
+			const nextErrorCode = bike?.TripErrorCode ?? null;
 			if (previousState !== undefined && previousState !== nextState) void refreshTripStatus();
+			// The official app surfaces these codes straight from the bike document (100 = start timeout, 4xx = end failures).
+			if (previousErrorCode !== undefined && previousErrorCode !== nextErrorCode && nextErrorCode != null) {
+				console.warn('VAIMOO bike reported trip error code', nextErrorCode);
+				if (nextErrorCode === FIRESTORE_START_TRIP_TIMEOUT) errorMessages.add(get(t)('bike_unlock_error'));
+				void refreshTripStatus();
+			}
 			previousState = nextState;
+			previousErrorCode = nextErrorCode;
 		},
 		error => console.error('VAIMOO active-bike listener failed', error),
 	);

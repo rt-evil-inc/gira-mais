@@ -76,7 +76,7 @@ export async function httpRequestWithRetry(options: HttpOptions, retryOnStatus =
 				console.error(`Attempt ${attempt}:`, error);
 			}
 			const isAuthUrl = options.url.startsWith(GIRA_AUTH_URL);
-		const isGiraApiUrl = options.url.startsWith(GIRA_API_URL);
+			const isGiraApiUrl = options.url.startsWith(GIRA_API_URL);
 			if (attempt < maxAttempts) {
 				if (error.status === undefined && attempt === 1 && get(networkStatus)) {
 					if (isAuthUrl) {

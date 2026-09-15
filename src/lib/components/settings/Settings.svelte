@@ -87,6 +87,13 @@
 					</div>
 					<Toggle bind:checked={$appSettings.analytics} />
 				</div>
+				<div class="flex bg-background rounded-2xl py-4 px-5 gap-5 text-info justify-between items-center dark:bg-background-secondary" style:box-shadow="0px 0px 12px 0px var(--color-shadow)">
+					<div class="grow">
+						<div class="font-semibold leading-tight mb-1">{$t('report_ratings_setting_label')}</div>
+						<div class="text-xs font-medium leading-[1.1] text-label">{$t('report_ratings_setting_description')}</div>
+					</div>
+					<Toggle bind:checked={$appSettings.reportRatings} />
+				</div>
 			</div>
 		</div>
 

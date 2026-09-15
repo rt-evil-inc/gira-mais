@@ -40,17 +40,3 @@ export type AccountSnapshot = {
 	balance: number;
 	subscription: SubscriptionInfo | null;
 };
-
-export type TripIssueReport = {
-	tripId: string;
-	bikeId?: string | null;
-	comment: string;
-	issueCategoryId?: number | null;
-	location?: { latitude: number; longitude: number } | null;
-};
-
-export type IssueCategory = {
-	id: number;
-	name: string;
-	description: string;
-};

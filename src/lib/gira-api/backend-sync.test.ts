@@ -18,10 +18,20 @@ import { startBackendSync, stopBackendSync } from './backend-sync';
 
 function trip(confirmed = true): ActiveTrip {
 	return {
-		code: confirmed ? '123' : '', bikePlate: 'E0980', confirmed,
-		startPos: null, destination: null, traveledDistanceKm: 0, distanceLeft: null,
-		speed: 0, startDate: new Date(), predictedEndDate: null, arrivalTime: null,
-		finished: false, pathTaken: [], lastUpdate: new Date(),
+		code: confirmed ? '123' : '',
+		bikePlate: 'E0980',
+		confirmed,
+		startPos: null,
+		destination: null,
+		traveledDistanceKm: 0,
+		distanceLeft: null,
+		speed: 0,
+		startDate: new Date,
+		predictedEndDate: null,
+		arrivalTime: null,
+		finished: false,
+		pathTaken: [],
+		lastUpdate: new Date,
 	};
 }
 

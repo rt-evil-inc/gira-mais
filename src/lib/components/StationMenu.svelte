@@ -3,15 +3,13 @@
 	import BikeSkeleton from '$lib/components/BikeSkeleton.svelte';
 	import { getStationBikeRatings } from '$lib/gira-mais-api/gira-mais-api';
 	import type { StationBikeRating } from '$lib/gira-mais-api/types';
-	import { findAvailableBike, subscribeStationBikes } from '$lib/gira-api/api';
+	import { subscribeStationBikes } from '$lib/gira-api/api';
 	import type { AvailableBike } from '$lib/gira-api/models';
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
-	import { enqueueDialog, errorMessages, safeInsets } from '$lib/ui.svelte';
-	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
-	import { IconX } from '@tabler/icons-svelte';
-	import Search from '@tabler/icons-svelte/icons/search';
+	import { safeInsets } from '$lib/ui.svelte';
+	import { distanceBetweenCoords, formatDistance } from '$lib/utils';
 	import { onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { Tween } from 'svelte/motion';
@@ -111,9 +109,8 @@
 		}
 		await tick();
 		bikeListHeight = bikeList.clientHeight;
-		const visibleBikes = manualBike && !bikesAtStation.some(bike => bike.id === manualBike?.id)
-			? [...bikesAtStation, manualBike]
-			: bikesAtStation;
+		const extraBike = manualBike;
+		const visibleBikes = extraBike && !bikesAtStation.some(bike => bike.id === extraBike.id) ? [...bikesAtStation, extraBike] : bikesAtStation;
 		if (stationId === $selectedStation) {
 			bikeInfo = visibleBikes;
 			loadBikeRatings(visibleBikes.map(bike => bike.id));
@@ -166,6 +163,7 @@
 		return s;
 	}
 
+/* Ghost-bike lookup disabled: the VAIMOO backend lists every dockable bike, so the legacy "missing bike" workaround is not needed.
 	function getSelectArrowBackground() {
 		const primaryColor = getCssVariable('--color-primary').slice(1);
 		return `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23${primaryColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`;
@@ -215,10 +213,12 @@
 			bikeIdInput.focus();
 		}
 	});
+	*/
 </script>
 
 <svelte:window bind:innerHeight={windowHeight} />
 
+<!--
 {#snippet addGhostBike(dismiss:() => void)}
 	<div class="w-[340px] max-w-md mx-auto p-6 bg-background rounded-2xl shadow-lg text-left flex flex-col gap-3">
 		<div class="flex justify-between">
@@ -248,6 +248,7 @@
 		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={makeExtraBikeFunction(dismiss)}>{$t('ghost_dismiss_label')}</button>
 	</div>
 {/snippet}
+-->
 
 <div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{pos.current}px)" >
 	<div bind:this={dragged} class="bg-background rounded-t-4xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
@@ -288,9 +289,11 @@
 						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.manual ? null : bike.dock} serial={bike.communicationId} rating={bike.rating} disabled={isScrolling} station={station} />
 					{/each}
 				{/if}
+				<!-- Ghost-bike lookup disabled, see the commented-out addGhostBike snippet above.
 				<button class="py-4 pb-2 px-8 w-full flex justify-center text-primary items-center font-semibold gap-2" onclick={() => enqueueDialog(addGhostBike)}>
 					<Search size="16px" stroke="2"/> {$t('search_other_bikes')}
 				</button>
+				-->
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>
 		</div>

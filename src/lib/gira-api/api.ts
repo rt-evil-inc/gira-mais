@@ -1,16 +1,14 @@
 import { get } from 'svelte/store';
 import { token } from '$lib/account';
+import { GIRA_TENANT } from '$lib/constants';
 import type { StationInfo } from '$lib/map.svelte';
 import type { Translations } from '$lib/translations';
 import {
 	getCurrentVaimooTrip,
-	getVaimooIssueCategories,
 	getVaimooRemainingCredit,
 	getVaimooSubscriptionUsage,
 	getVaimooTrips,
 	quickStartVaimooTrip,
-	submitVaimooTripIssue,
-	vaimooRequest,
 } from '$lib/vaimoo-api/client';
 import {
 	findFirestoreBike,
@@ -20,10 +18,10 @@ import {
 	subscribeFirestoreStations,
 } from '$lib/vaimoo-api/firestore';
 import type { VaimooBike, VaimooSession, VaimooStation, VaimooTripDetails } from '$lib/vaimoo-api/types';
-import type { AccountSnapshot, AvailableBike, CompletedTrip, IssueCategory, ServerActiveTrip, TripIssueReport } from './models';
+import type { AccountSnapshot, AvailableBike, CompletedTrip, ServerActiveTrip } from './models';
 
+// TODO: these keys come from the legacy GIRA GraphQL API; VAIMOO error payloads still need to be mapped.
 export const knownErrors = {
-	'Serviço indisponível. Horário de utilização entre as 06:00 e as 02:00.': { message: 'service_hours_error', retry: false },
 	trip_interval_limit: { message: 'trip_interval_limit_error', retry: false },
 	not_enough_balance: { message: 'negative_balance_error', retry: false },
 	has_no_active_subscriptions: { message: 'no_active_subscription_error', retry: false },
@@ -49,7 +47,7 @@ function session(): VaimooSession {
 		refreshToken: current.refreshToken,
 		userId: current.userId,
 		expiresAt: current.expiration,
-		user: { userId: current.userId, tenantId: current.tenantId ?? 'P1/EML/EML/' },
+		user: { userId: current.userId, tenantId: current.tenantId ?? GIRA_TENANT },
 	};
 }
 
@@ -126,7 +124,7 @@ export async function getActiveTrip(): Promise<ServerActiveTrip | null> {
 	return {
 		id: String(trip.activeTripId),
 		bikeId: trip.visualId,
-		startedAt: trip.tripStartDate ? new Date(trip.tripStartDate) : new Date(),
+		startedAt: trip.tripStartDate ? new Date(trip.tripStartDate) : new Date,
 		bikeState: trip.bikePcbBikeState,
 	};
 }
@@ -143,15 +141,6 @@ function mapCompletedTrip(trip: VaimooTripDetails): CompletedTrip {
 		distanceMeters: trip.coveredDistanceInMeters,
 		cost: trip.tripCost,
 	};
-}
-
-export async function getTripDetails(tripId: string): Promise<CompletedTrip> {
-	const currentSession = session();
-	const trip = await vaimooRequest<VaimooTripDetails>(`trip/trip-details/${encodeURIComponent(tripId)}`, {
-		token: currentSession.accessToken,
-		userId: currentSession.userId,
-	});
-	return mapCompletedTrip(trip);
 }
 
 export async function getTripHistory(page: number, pageSize: number): Promise<CompletedTrip[]> {
@@ -177,23 +166,4 @@ export async function getAccountSnapshot(): Promise<AccountSnapshot> {
 			type: activeUsage.currentSubscription.membershipType ?? 'unknown',
 		} : null,
 	};
-}
-
-export async function submitTripIssue(report: TripIssueReport): Promise<number> {
-	const response = await submitVaimooTripIssue(session(), {
-		tripId: Number(report.tripId),
-		vehicleVisualId: report.bikeId ?? '',
-		comment: [report.comment],
-		issueCategoryId: report.issueCategoryId,
-		location: report.location,
-	});
-	return response.reportId;
-}
-
-export async function getIssueCategories(): Promise<IssueCategory[]> {
-	return (await getVaimooIssueCategories(session())).map(category => ({
-		id: category.id,
-		name: category.name,
-		description: category.description,
-	}));
 }

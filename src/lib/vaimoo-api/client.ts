@@ -1,9 +1,7 @@
 import { dev } from '$app/environment';
-import { CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
+import { CapacitorHttp, type HttpOptions } from '@capacitor/core';
 import type {
 	VaimooCurrentTrip,
-	VaimooFeedbackResponse,
-	VaimooIssueCategory,
 	VaimooLoginResponse,
 	VaimooPagedResponse,
 	VaimooSession,
@@ -175,36 +173,3 @@ export const getVaimooRemainingCredit = (session: VaimooSession) => vaimooReques
 export const quickStartVaimooTrip = (session: VaimooSession, communicationId: string) => vaimooRequest<void>(`trip/v2/quick-start/${encodeURIComponent(communicationId)}`, {
 	method: 'POST', token: session.accessToken, userId: session.userId,
 });
-
-export const submitVaimooTripIssue = (
-	session: VaimooSession,
-	report: {
-		tripId: number;
-		vehicleVisualId: string;
-		comment: string[];
-		issueCategoryId?: number | null;
-		location?: { latitude: number; longitude: number } | null;
-	},
-) => vaimooRequest<VaimooFeedbackResponse>('user-feedback', {
-	method: 'POST',
-	token: session.accessToken,
-	userId: session.userId,
-	data: {
-		...report,
-		reportType: 'BikeIssue',
-		createDate: new Date().toISOString(),
-		osVersion: 'WebView',
-		appVersion: VAIMOO_APP_VERSION,
-	},
-});
-
-export const getVaimooIssueCategories = (session: VaimooSession) => vaimooRequest<VaimooIssueCategory[]>('issue-category', {
-	token: session.accessToken,
-	userId: session.userId,
-	params: { issueType: 'BikeIssue' },
-});
-
-export function asHttpResponse(error: unknown): HttpResponse | null {
-	if (!(error instanceof VaimooApiError)) return null;
-	return { status: error.status, data: error.body, headers: {}, url: '' };
-}

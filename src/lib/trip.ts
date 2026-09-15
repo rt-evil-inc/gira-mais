@@ -1,6 +1,6 @@
 import { LOCK_DISTANCE_m } from '$lib/constants';
-import { getActiveTrip, getTripDetails, knownErrors, quickStartBike } from '$lib/gira-api/api';
-import type { CompletedTrip, ServerActiveTrip } from '$lib/gira-api/models';
+import { getActiveTrip, knownErrors, quickStartBike } from '$lib/gira-api/api';
+import type { ServerActiveTrip } from '$lib/gira-api/models';
 import { VaimooApiError } from '$lib/vaimoo-api/client';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
 import { currentPos, setDebugPosition, watchPosition } from '$lib/location';
@@ -29,8 +29,17 @@ export type ActiveTrip = {
 	lastUpdate: Date | null;
 };
 
+export type TripRating = {
+	currentRating: {
+		code: string;
+		bikePlate: string;
+		startDate: Date;
+		endDate: Date;
+	} | null;
+};
+
 export const currentTrip = writable<ActiveTrip | null>(null);
-export const recentlyCompletedTrip = writable<CompletedTrip | null>(null);
+export const tripRating = writable<TripRating>({ currentRating: null });
 
 export const DEBUG_TRIP_CODE = 'DEBUG-TRIP';
 export const DEBUG_START_POSITION = { lat: 38.744, lng: -9.15 } as const;
@@ -54,42 +63,18 @@ function localTripFromServer(serverTrip: ServerActiveTrip, previous: ActiveTrip 
 		finished: false,
 		confirmed: true,
 		pathTaken: previous?.pathTaken ?? [],
-		lastUpdate: new Date(),
+		lastUpdate: new Date,
 	};
-}
-
-async function loadFinalTripDetails(tripId: string, fallback: CompletedTrip) {
-	const delays = [0, 1_000, 2_000, 4_000];
-	for (const delay of delays) {
-		if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-		try {
-			const details = await getTripDetails(tripId);
-			recentlyCompletedTrip.set(details);
-			return;
-		} catch (error) {
-			if (delay === delays.at(-1)) console.error('Final trip details are not available yet', error);
-		}
-	}
-	recentlyCompletedTrip.set(fallback);
 }
 
 async function completeTrip(trip: ActiveTrip) {
 	if (!trip.code || completingTripId === trip.code) return;
 	completingTripId = trip.code;
-	const fallback: CompletedTrip = {
-		id: trip.code,
-		startedAt: trip.startDate,
-		endedAt: new Date(),
-		bikeId: trip.bikePlate,
-		bikeType: null,
-		startStation: null,
-		endStation: null,
-		distanceMeters: Math.round(trip.traveledDistanceKm * 1_000),
-		cost: null,
-	};
-	recentlyCompletedTrip.set(fallback);
 	currentTrip.set(null);
-	await loadFinalTripDetails(trip.code, fallback);
+	// VAIMOO has no trip-rating endpoint; the rating only feeds Gira+ bike-condition data.
+	if (trip.bikePlate) {
+		tripRating.set({ currentRating: { code: trip.code, bikePlate: trip.bikePlate, startDate: trip.startDate, endDate: new Date } });
+	}
 	await refreshAccountInfo().catch(error => console.error('Could not refresh account after trip completion', error));
 	completingTripId = null;
 }
@@ -146,8 +131,8 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 		}
 
 		const position = get(currentPos);
-		const now = new Date();
-		recentlyCompletedTrip.set(null);
+		const now = new Date;
+		tripRating.set({ currentRating: null });
 		currentTrip.set({
 			code: '',
 			arrivalTime: null,
@@ -193,10 +178,6 @@ export function checkTripActive() {
 	else void refreshTripStatus();
 }
 
-export function dismissCompletedTrip() {
-	recentlyCompletedTrip.set(null);
-}
-
 export function startDebugTrip() {
 	if (!import.meta.env.DEV || get(currentTrip) !== null) return false;
 	let position = get(currentPos);
@@ -208,7 +189,7 @@ export function startDebugTrip() {
 		position = get(currentPos);
 	}
 	const startPos = position ? { lat: position.coords.latitude, lng: position.coords.longitude } : DEBUG_START_POSITION;
-	const now = new Date();
+	const now = new Date;
 	currentTrip.set({
 		code: DEBUG_TRIP_CODE,
 		bikePlate: 'DEBUG',

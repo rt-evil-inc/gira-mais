@@ -102,14 +102,3 @@ export interface VaimooPagedResponse<T> {
 	totalCount: number;
 	totalPages: number;
 }
-
-export interface VaimooFeedbackResponse {
-	reportId: number;
-}
-
-export interface VaimooIssueCategory {
-	id: number;
-	name: string;
-	description: string;
-	issueType: string;
-}
