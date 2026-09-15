@@ -130,11 +130,15 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 			}
 		}
 
+		const mockUnlock = import.meta.env.DEV && get(appSettings).mockUnlock;
+		// Ask VAIMOO to unlock before showing the trip view, so the unlock slider can finish its animation.
+		if (!mockUnlock) await quickStartBike(communicationId);
+
 		const position = get(currentPos);
 		const now = new Date;
 		tripRating.set({ currentRating: null });
 		currentTrip.set({
-			code: '',
+			code: mockUnlock ? DEBUG_TRIP_CODE : '',
 			arrivalTime: null,
 			bikePlate: id,
 			traveledDistanceKm: 0,
@@ -145,16 +149,12 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 			startPos: position ? { lng: position.coords.longitude, lat: position.coords.latitude } : null,
 			predictedEndDate: null,
 			finished: false,
-			confirmed: false,
+			confirmed: mockUnlock,
 			pathTaken: position ? [{ lng: position.coords.longitude, lat: position.coords.latitude, time: now }] : [],
 			lastUpdate: now,
 		});
+		if (mockUnlock) return true;
 
-		if (import.meta.env.DEV && get(appSettings).mockUnlock) {
-			currentTrip.update(trip => trip ? { ...trip, code: DEBUG_TRIP_CODE, confirmed: true } : trip);
-			return true;
-		}
-		await quickStartBike(communicationId);
 		reportTripStartEvent(communicationId, station.serialNumber);
 		watchPosition();
 		void refreshTripStatus();
