@@ -53,38 +53,40 @@
 		<div class="flex flex-col justify-between items-center h-full gap-10 col-start-1 col-end-2 row-start-1 row-end-2 p-4 overflow-x-hidden"
 			style:padding-top="{Math.max($safeInsets.top, 16)}px" style:padding-bottom="{Math.max($safeInsets.bottom, 24)}px"
 		>
-			<div class="flex flex-col justify-center items-center w-full gap-6 mt-9">
-				<div class="flex flex-col items-center">
-					<div class="font-bold text-primary text-3xl text-center leading-none">
-						{$user?.name ? `${$user.name.split(' ').shift()}${$user.name.includes(' ') ? ` ${$user.name.split(' ').pop()}` : ''}` : $t('user_label')}
-					</div>
-					<div class="text-sm font-medium text-label">{$user?.email}</div>
-				</div>
-				<div class="flex items-center justify-center gap-12">
+			<div class="flex flex-col grow justify-center items-center w-full gap-10 pt-9">
+				<div class="flex flex-col justify-center items-center w-full gap-6">
 					<div class="flex flex-col items-center">
-						<div class="flex items-center gap-1">
-							<IconTicket size={28} stroke={1.9} class="text-info" />
-							<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
+						<div class="font-bold text-primary text-3xl text-center leading-none">
+							{$user?.name ? `${$user.name.split(' ').shift()}${$user.name.includes(' ') ? ` ${$user.name.split(' ').pop()}` : ''}` : $t('user_label')}
 						</div>
-						{#if $accountInfo?.subscription?.expiresAt}
-							<span class="text-2xs font-semibold text-label text-center leading-none">
-								{$t('valid_until_label', { date: $accountInfo.subscription.expiresAt.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }).toUpperCase()}
-							</span>
-						{/if}
+						<div class="text-sm font-medium text-label">{$user?.email}</div>
 					</div>
-					<Metric value={$accountInfo?.balance?.toFixed(2) ?? '—'} unit={$accountInfo ? '€' : ''} label={$t('balance_label')} color={($accountInfo?.balance ?? 0) < 0 ? 'warning' : 'info'} />
+					<div class="flex items-center justify-center gap-12">
+						<div class="flex flex-col items-center">
+							<div class="flex items-center gap-1">
+								<IconTicket size={28} stroke={1.9} class="text-info" />
+								<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
+							</div>
+							{#if $accountInfo?.subscription?.expiresAt}
+								<span class="text-2xs font-semibold text-label text-center leading-none">
+									{$t('valid_until_label', { date: $accountInfo.subscription.expiresAt.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }).toUpperCase()}
+								</span>
+							{/if}
+						</div>
+						<Metric value={$accountInfo?.balance?.toFixed(2) ?? '—'} unit={$accountInfo ? '€' : ''} label={$t('balance_label')} color={($accountInfo?.balance ?? 0) < 0 ? 'warning' : 'info'} />
+					</div>
 				</div>
-			</div>
-			<div class="flex flex-col grow font-semibold px-2 gap-3 w-full">
-				<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} onclick={() => openPage = 'history'} />
-				<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} onclick={() => openPage = 'settings'} />
-				<ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external onclick={() => enqueueDialog(feedbackWarning)} />
-				<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} onclick={() => openPage = 'info'} />
-				{#if Capacitor.getPlatform() === 'ios'}
-					<a href="https://github.com/rt-evil-inc/gira-mais/"><ProfileMenuEntry icon={IconStar} iconClass="stroke-warning" text={$t('star_label')} subtext={$t('star_subtext')} external /></a>
-				{:else}
-					<a href="https://github.com/sponsors/rt-evil-inc/"><ProfileMenuEntry icon={IconHeart} iconClass="stroke-[#db61a2]" text={$t('contribute_label')} subtext={$t('contribute_subtext')} external /></a>
-				{/if}
+				<div class="flex flex-col font-semibold px-2 gap-3 w-full">
+					<ProfileMenuEntry icon={IconHistory} text={$t('history_label')} subtext={$t('history_subtext')} onclick={() => openPage = 'history'} />
+					<ProfileMenuEntry icon={IconTool} text={$t('settings_label')} subtext={$t('settings_subtext')} onclick={() => openPage = 'settings'} />
+					<ProfileMenuEntry icon={IconMessageReport} text={$t('feedback_label')} subtext={$t('feedback_subtext')} external onclick={() => enqueueDialog(feedbackWarning)} />
+					<ProfileMenuEntry icon={IconInfoCircle} text={$t('about_label')} subtext={$t('about_subtext')} onclick={() => openPage = 'info'} />
+					{#if Capacitor.getPlatform() === 'ios'}
+						<a href="https://github.com/rt-evil-inc/gira-mais/"><ProfileMenuEntry icon={IconStar} iconClass="stroke-warning" text={$t('star_label')} subtext={$t('star_subtext')} external /></a>
+					{:else}
+						<a href="https://github.com/sponsors/rt-evil-inc/"><ProfileMenuEntry icon={IconHeart} iconClass="stroke-[#db61a2]" text={$t('contribute_label')} subtext={$t('contribute_subtext')} external /></a>
+					{/if}
+				</div>
 			</div>
 			<button class="flex flex-col items-center mb-3" onclick={() => { onclose(); logOut(); }}>
 				<IconLogout2 class="text-primary mr-2" size={32} />
