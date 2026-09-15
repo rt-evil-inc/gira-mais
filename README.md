@@ -3,6 +3,20 @@
 </p>
 
 # Gira+
+
+## Backend
+
+The app uses VAIMOO's current consumer API and the GIRA Firestore availability feed:
+
+- EMEL email/password authentication is exchanged for a VAIMOO session through the production OAuth JSON flow.
+- Account, subscription, balance, trip history, active-trip, and quick-start operations use `emel-consumerapp.vaimoo.com`.
+- Stations and individual bikes are kept current with Firestore snapshot listeners on the `docking-stations` and `bikes` collections for the GIRA tenant.
+- While an unlock is pending or a trip is active, the app reconciles Firestore bike-state changes with the authoritative `/user/trip` endpoint. It also performs a bounded status poll as a fallback and refreshes once when the app resumes or reconnects.
+- A confirmed trip ends only when `/user/trip` reports no active trip. The app then retries the completed-trip details, refreshes account data, and presents the completion summary and VAIMOO problem-report flow.
+
+The domain adapter in `src/lib/gira-api/api.ts` keeps VAIMOO DTOs out of the UI. Legacy points payment, reservation, GraphQL websocket, and five-star trip-rating flows have been removed; Gira Mais bike-condition ratings remain read-only.
+
+During `bun run dev`, requests to EMEL, VAIMOO, and the Gira+ companion API use Vite's same-origin `__dev-proxy` routes. This lets the browser development build complete the login flow even though some upstream endpoints do not allow cross-origin browser requests. Installed native builds continue to call the upstream HTTPS services directly.
 **Gira+** é uma re-implementação da aplicação Gira da Câmara Municipal de Lisboa/EMEL.
 Com um olhar atento ao design, à experiência do utilizador (UX) e à estabilidade, este projeto visa proporcionar uma experiência de utilização mais agradável ao sistema de bicicletas partilhadas de Lisboa.
 

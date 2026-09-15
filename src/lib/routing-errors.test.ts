@@ -26,8 +26,8 @@ const dest = { type: 'location' as const, lat: 38.7700, lng: -9.0950 };
 describe('computeRoute against a failing routing server', () => {
 	beforeAll(() => {
 		stations.value = [
-			{ code: '1', name: '481 - Cais do Sodré', description: null, latitude: 38.7063, longitude: -9.1449, bikes: 10, docks: 20, serialNumber: 'sodre', assetStatus: 'active' },
-			{ code: '4', name: '450 - Parque das Nações', description: null, latitude: 38.7687, longitude: -9.0977, bikes: 8, docks: 20, serialNumber: 'nacoes', assetStatus: 'active' },
+			{ code: '1', name: '481 - Cais do Sodré', description: null, latitude: 38.7063, longitude: -9.1449, bikes: 10, docks: 20, freeDocks: 10, serialNumber: 'sodre', assetStatus: 'active' },
+			{ code: '4', name: '450 - Parque das Nações', description: null, latitude: 38.7687, longitude: -9.0977, bikes: 8, docks: 20, freeDocks: 12, serialNumber: 'nacoes', assetStatus: 'active' },
 		];
 	});
 

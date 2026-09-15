@@ -286,7 +286,7 @@
 											<IconBike class="text-label shrink-0" size="20" stroke="2" />
 											<div class="flex flex-col min-w-0">
 												<span class="text-info font-semibold text-sm truncate">{station.name}</span>
-												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: Math.max(station.docks - station.bikes, 0).toString() })}</span>
+												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: station.freeDocks.toString() })}</span>
 											</div>
 										</button>
 									{/each}
