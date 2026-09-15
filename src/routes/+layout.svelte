@@ -68,7 +68,7 @@
 				console.debug('Refreshing token because app was reopened');
 				await refreshToken();
 			}
-			refreshTripStatus();
+			refreshTripStatus('app-resume');
 		});
 
 		theme.subscribe(currentTheme => {

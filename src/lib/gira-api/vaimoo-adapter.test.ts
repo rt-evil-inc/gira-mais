@@ -7,22 +7,34 @@ const mocks = vi.hoisted(() => ({
 	findFirestoreBike: vi.fn(),
 	quickStartVaimooTrip: vi.fn(),
 	getCurrentVaimooTrip: vi.fn(),
+	getVaimooTripDetails: vi.fn(),
 	getVaimooRemainingCredit: vi.fn(),
 	getVaimooSubscriptionUsage: vi.fn(),
+	submitVaimooTripFeedback: vi.fn(),
+	refreshToken: vi.fn(),
 }));
 
 vi.mock('$lib/account', () => ({
 	token: writable({ accessToken: 'access', refreshToken: 'refresh', expiration: Date.now() + 60_000, userId: 42, tenantId: 'P1/EML/EML/' }),
+	refreshToken: mocks.refreshToken,
 }));
 vi.mock('$lib/vaimoo-api/firestore', () => mocks);
 vi.mock('$lib/vaimoo-api/client', () => ({
+	VaimooApiError: class VaimooApiError extends Error {
+		constructor(message: string, readonly status: number, readonly body: unknown) {
+			super(message);
+		}
+	},
 	quickStartVaimooTrip: mocks.quickStartVaimooTrip,
 	getCurrentVaimooTrip: mocks.getCurrentVaimooTrip,
+	getVaimooTripDetails: mocks.getVaimooTripDetails,
 	getVaimooRemainingCredit: mocks.getVaimooRemainingCredit,
 	getVaimooSubscriptionUsage: mocks.getVaimooSubscriptionUsage,
+	submitVaimooTripFeedback: mocks.submitVaimooTripFeedback,
 }));
 
-import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, quickStartBike } from './api';
+import { VaimooApiError } from '$lib/vaimoo-api/client';
+import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, quickStartBike, submitTripRating } from './api';
 
 const station = {
 	DockingStationId: 4551,
@@ -85,6 +97,40 @@ describe('VAIMOO app-domain adapter', () => {
 	it('treats VAIMOO activeTripId zero as no active trip', async () => {
 		mocks.getCurrentVaimooTrip.mockResolvedValue({ activeTripId: 0 });
 		expect(await getActiveTrip()).toBeNull();
+	});
+
+	it('refreshes the session and retries once after a 401', async () => {
+		mocks.getCurrentVaimooTrip
+			.mockRejectedValueOnce(new VaimooApiError('expired', 401, null))
+			.mockResolvedValueOnce({ activeTripId: 0 });
+		mocks.refreshToken.mockResolvedValue(true);
+
+		expect(await getActiveTrip()).toBeNull();
+		expect(mocks.refreshToken).toHaveBeenCalledOnce();
+		expect(mocks.getCurrentVaimooTrip).toHaveBeenCalledTimes(2);
+	});
+
+	it('submits official VAIMOO trip feedback with the end-station id', async () => {
+		mocks.getVaimooTripDetails.mockResolvedValue({
+			tripId: 123,
+			endStation: { name: 'Station', stationId: 1084 },
+		});
+		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
+
+		await submitTripRating('123', 'E0980', 5, new Date(2026, 8, 15, 21, 20, 22, 308));
+
+		expect(mocks.getVaimooTripDetails).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), 123);
+		expect(mocks.submitVaimooTripFeedback).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), {
+			createDate: '2026-09-15T21:20:22.308',
+			osVersion: 'Android',
+			appVersion: '1.0.0',
+			rating: 5,
+			comment: [''],
+			reportType: 'Opinion',
+			vehicleVisualId: 'E0980',
+			geoFenceId: 1084,
+			tripId: 123,
+		});
 	});
 
 	it('maps credit and infers subscription status when isExpired is omitted', async () => {

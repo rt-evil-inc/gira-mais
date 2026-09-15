@@ -9,6 +9,6 @@ Network.getStatus().then((s: ConnectionStatus) => networkStatus.set(s.connected)
 Network.addListener('networkStatusChange', (status: ConnectionStatus) => {
 	networkStatus.set(status.connected);
 	if (status.connected) {
-		refreshToken().then(refreshTripStatus);
+		refreshToken().then(() => refreshTripStatus('network-reconnected'));
 	}
 });

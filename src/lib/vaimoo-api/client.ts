@@ -7,6 +7,7 @@ import type {
 	VaimooSession,
 	VaimooSubscriptionUsage,
 	VaimooTripDetails,
+	VaimooTripFeedback,
 	VaimooUser,
 } from './types';
 
@@ -18,7 +19,10 @@ export const EMEL_REDIRECT_URI = 'vaimoo://auth/callback';
 
 function serviceUrl(service: 'emel' | 'vaimoo', path: string) {
 	const normalizedPath = path.replace(/^\/+/, '');
-	if (dev) return `/__dev-proxy/${service}/${normalizedPath}`;
+	// CapacitorHttp is a native client, so unlike fetch it cannot resolve a relative URL.
+	// Development builds load from the Vite server through adb reverse; preserve that
+	// origin while routing the request through Vite's proxy.
+	if (dev) return new URL(`/__dev-proxy/${service}/${normalizedPath}`, globalThis.location.origin).toString();
 	return new URL(normalizedPath, service === 'emel' ? EMEL_LOGIN_URL : VAIMOO_BASE_URL).toString();
 }
 
@@ -180,6 +184,18 @@ export const getVaimooTrips = (session: VaimooSession, pageIndex: number, pageSi
 	token: session.accessToken,
 	userId: session.userId,
 	params: { query: defaultQuery(pageIndex, pageSize) },
+});
+
+export const getVaimooTripDetails = (session: VaimooSession, tripId: number) => vaimooRequest<VaimooTripDetails>(`trip/trip-details/${tripId}`, {
+	token: session.accessToken,
+	userId: session.userId,
+});
+
+export const submitVaimooTripFeedback = (session: VaimooSession, feedback: VaimooTripFeedback) => vaimooRequest<unknown>('user-feedback', {
+	method: 'POST',
+	token: session.accessToken,
+	userId: session.userId,
+	data: feedback,
 });
 
 export const getVaimooSubscriptionUsage = (session: VaimooSession) => vaimooRequest<VaimooSubscriptionUsage[]>('subscription/v2/usage', { token: session.accessToken, userId: session.userId });

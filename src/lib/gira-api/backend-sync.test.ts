@@ -2,13 +2,14 @@ import { get, writable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActiveTrip } from '$lib/trip';
 
-const mocks = vi.hoisted(() => ({ refreshTripStatus: vi.fn(), bikeListener: null as null | ((bike: unknown) => void) }));
+const mocks = vi.hoisted(() => ({ refreshTripStatus: vi.fn(), recoverRecentTripRating: vi.fn(), bikeListener: null as null | ((bike: unknown) => void) }));
 vi.mock('$lib/account', () => ({ token: writable({ accessToken: 'test' }) }));
 vi.mock('$lib/map.svelte', () => ({ stations: { value: [] } }));
 vi.mock('$lib/trip', () => ({
 	currentTrip: writable(null),
 	DEBUG_TRIP_CODE: 'DEBUG-TRIP',
 	refreshTripStatus: mocks.refreshTripStatus,
+	recoverRecentTripRating: mocks.recoverRecentTripRating,
 }));
 vi.mock('$lib/vaimoo-api/firestore', () => ({ subscribeFirestoreBike: vi.fn((_id: string, onData: (bike: unknown) => void) => { mocks.bikeListener = onData; return () => {}; }) }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
@@ -41,7 +42,13 @@ describe('trip status polling', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		mocks.refreshTripStatus.mockReset().mockResolvedValue(null);
+		mocks.recoverRecentTripRating.mockReset().mockResolvedValue(undefined);
 		currentTrip.set(null);
+	});
+
+	it('recovers a recent rating prompt when startup finds no active trip', async () => {
+		startBackendSync();
+		await vi.waitFor(() => expect(mocks.recoverRecentTripRating).toHaveBeenCalledOnce());
 	});
 
 	afterEach(() => {

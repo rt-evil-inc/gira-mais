@@ -3,14 +3,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	getActiveTrip: vi.fn(),
+	getTripHistory: vi.fn(),
 	quickStartBike: vi.fn(),
 	refreshAccountInfo: vi.fn(),
+	preferencesGet: vi.fn(),
+	preferencesSet: vi.fn(),
 }));
 
 vi.mock('$lib/gira-api/api', () => ({
 	getActiveTrip: mocks.getActiveTrip,
+	getTripHistory: mocks.getTripHistory,
 	quickStartBike: mocks.quickStartBike,
 	knownErrors: {},
+}));
+vi.mock('@capacitor/preferences', () => ({
+	Preferences: { get: mocks.preferencesGet, set: mocks.preferencesSet },
 }));
 vi.mock('$lib/account', () => ({
 	token: writable({ accessToken: 'access', expiration: Date.now() + 60_000 }),
@@ -27,7 +34,7 @@ vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
 vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: vi.fn(), reportTripStartEvent: vi.fn() }));
 vi.mock('$lib/translations', () => ({ t: writable((key: string) => key) }));
 
-import { currentTrip, refreshTripStatus, tripRating } from './trip';
+import { currentTrip, markTripRated, recoverRecentTripRating, refreshTripStatus, tripRating } from './trip';
 
 describe('VAIMOO trip lifecycle', () => {
 	beforeEach(() => {
@@ -35,6 +42,41 @@ describe('VAIMOO trip lifecycle', () => {
 		currentTrip.set(null);
 		tripRating.set({ currentRating: null });
 		mocks.refreshAccountInfo.mockResolvedValue(undefined);
+		mocks.preferencesGet.mockResolvedValue({ value: null });
+		mocks.preferencesSet.mockResolvedValue(undefined);
+	});
+
+	it('recovers a recent completed trip rating without persisting the active trip', async () => {
+		const endedAt = new Date(Date.now() - 60_000);
+		mocks.getTripHistory.mockResolvedValue([{
+			id: '456',
+			startedAt: new Date(endedAt.getTime() - 300_000),
+			endedAt,
+			bikeId: 'E2114',
+		}]);
+
+		await recoverRecentTripRating();
+
+		expect(get(tripRating).currentRating).toMatchObject({ code: '456', bikePlate: 'E2114', endDate: endedAt });
+	});
+
+	it('does not recover a trip that was already rated successfully', async () => {
+		mocks.getTripHistory.mockResolvedValue([{
+			id: '456',
+			startedAt: new Date(Date.now() - 300_000),
+			endedAt: new Date(Date.now() - 60_000),
+			bikeId: 'E2114',
+		}]);
+		mocks.preferencesGet.mockResolvedValue({ value: '456' });
+
+		await recoverRecentTripRating();
+
+		expect(get(tripRating).currentRating).toBeNull();
+	});
+
+	it('remembers only the successfully rated trip id', async () => {
+		await markTripRated('456');
+		expect(mocks.preferencesSet).toHaveBeenCalledWith({ key: 'trip/lastRatedTripId', value: '456' });
 	});
 
 	it('restores an active server trip', async () => {

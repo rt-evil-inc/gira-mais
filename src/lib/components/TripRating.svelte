@@ -3,8 +3,9 @@
 	import { t } from '$lib/translations';
 	import { errorMessages, safeInsets } from '$lib/ui.svelte';
 
+	import { submitTripRating } from '$lib/gira-api/api';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
-	import { tripRating } from '$lib/trip';
+	import { markTripRated, tripRating } from '$lib/trip';
 	import IconMoodConfuzed from '@tabler/icons-svelte/icons/mood-confuzed';
 	import IconMoodConfuzedFilled from '@tabler/icons-svelte/icons/mood-confuzed-filled';
 	import IconMoodEmpty from '@tabler/icons-svelte/icons/mood-empty';
@@ -25,15 +26,22 @@
 	let { tripCode, bikePlate, date }: Props = $props();
 	let rating:number|undefined = $state();
 
-	// VAIMOO has no trip-rating endpoint, so ratings only feed the Gira+ bike-condition data.
 	async function setRating(ratingValue: number) {
 		rating = ratingValue;
 		try {
-			await postBikeRating(tripCode, bikePlate, rating, date?.toISOString());
+			await submitTripRating(tripCode, bikePlate, rating);
+			await markTripRated(tripCode);
+			// Keep the optional Gira+ aggregate for bike-condition hints, but VAIMOO is authoritative.
+			void postBikeRating(tripCode, bikePlate, rating, date?.toISOString()).catch(error => {
+				console.error('Could not mirror bike rating to Gira+', error);
+				reportErrorEvent('bike_rating_mirror_error');
+			});
 		} catch (e) {
-			console.error('Could not submit bike rating', e);
+			console.error('Could not submit VAIMOO trip rating', e);
 			errorMessages.add($t('rate_trip_error'));
 			reportErrorEvent('rate_trip_error');
+			rating = undefined;
+			return;
 		}
 		$tripRating.currentRating = null;
 	}

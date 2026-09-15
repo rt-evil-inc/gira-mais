@@ -1,5 +1,5 @@
 import { LOCK_DISTANCE_m } from '$lib/constants';
-import { getActiveTrip, knownErrors, quickStartBike } from '$lib/gira-api/api';
+import { getActiveTrip, getTripHistory, knownErrors, quickStartBike } from '$lib/gira-api/api';
 import type { ServerActiveTrip } from '$lib/gira-api/models';
 import { VaimooApiError } from '$lib/vaimoo-api/client';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
@@ -8,6 +8,7 @@ import { appSettings } from '$lib/settings';
 import { errorMessages } from '$lib/ui.svelte';
 import { distanceBetweenCoords } from '$lib/utils';
 import { get, writable } from 'svelte/store';
+import { Preferences } from '@capacitor/preferences';
 import { refreshAccountInfo, refreshToken, token } from './account';
 import type { StationInfo } from './map.svelte';
 import { t, type Translations } from './translations';
@@ -44,8 +45,25 @@ export const tripRating = writable<TripRating>({ currentRating: null });
 export const DEBUG_TRIP_CODE = 'DEBUG-TRIP';
 export const DEBUG_START_POSITION = { lat: 38.744, lng: -9.15 } as const;
 const START_CONFIRM_TIMEOUT_MS = 30_000;
+const RECENT_RATING_WINDOW_MS = 60 * 60 * 1_000;
+const LAST_RATED_TRIP_KEY = 'trip/lastRatedTripId';
 let statusRequest: Promise<ServerActiveTrip | null> | null = null;
 let completingTripId: string | null = null;
+let ratingRecoveryRequest: Promise<void> | null = null;
+
+function logTripLifecycle(event: string, details: Record<string, unknown> = {}) {
+	if (!import.meta.env.DEV) return;
+	console.info('[trip-lifecycle]', JSON.stringify({ time: new Date().toISOString(), event, ...details }));
+}
+
+function tripSummary(trip: ActiveTrip | null) {
+	return trip ? {
+		code: trip.code || null,
+		bikePlate: trip.bikePlate,
+		confirmed: trip.confirmed,
+		lastUpdate: trip.lastUpdate?.toISOString() ?? null,
+	} : null;
+}
 
 function localTripFromServer(serverTrip: ServerActiveTrip, previous: ActiveTrip | null): ActiveTrip {
 	const position = get(currentPos);
@@ -68,36 +86,92 @@ function localTripFromServer(serverTrip: ServerActiveTrip, previous: ActiveTrip 
 }
 
 async function completeTrip(trip: ActiveTrip) {
-	if (!trip.code || completingTripId === trip.code) return;
+	if (!trip.code || completingTripId === trip.code) {
+		logTripLifecycle('completion-skipped', { trip: tripSummary(trip), completingTripId });
+		return;
+	}
+	logTripLifecycle('completion-started', { trip: tripSummary(trip) });
 	completingTripId = trip.code;
 	currentTrip.set(null);
-	// VAIMOO has no trip-rating endpoint; the rating only feeds Gira+ bike-condition data.
 	if (trip.bikePlate) {
 		tripRating.set({ currentRating: { code: trip.code, bikePlate: trip.bikePlate, startDate: trip.startDate, endDate: new Date } });
 	}
 	await refreshAccountInfo().catch(error => console.error('Could not refresh account after trip completion', error));
 	completingTripId = null;
+	logTripLifecycle('completion-finished', { tripCode: trip.code });
+}
+
+/** Recover a rating prompt after the app restarts around trip completion. */
+export async function recoverRecentTripRating(): Promise<void> {
+	if (get(currentTrip) || get(tripRating).currentRating) return;
+	if (ratingRecoveryRequest) return ratingRecoveryRequest;
+	ratingRecoveryRequest = (async () => {
+		const [latest] = await getTripHistory(1, 1);
+		if (!latest?.id || !latest.bikeId || !Number.isFinite(latest.endedAt.getTime())) return;
+		const ageMs = Date.now() - latest.endedAt.getTime();
+		if (ageMs < 0 || ageMs > RECENT_RATING_WINDOW_MS) return;
+		const lastRatedTripId = (await Preferences.get({ key: LAST_RATED_TRIP_KEY })).value;
+		if (lastRatedTripId === latest.id) return;
+		logTripLifecycle('rating-prompt-recovered', { tripCode: latest.id, bikePlate: latest.bikeId, ageMs });
+		tripRating.set({
+			currentRating: {
+				code: latest.id,
+				bikePlate: latest.bikeId,
+				startDate: latest.startedAt,
+				endDate: latest.endedAt,
+			},
+		});
+	})().finally(() => ratingRecoveryRequest = null);
+	return ratingRecoveryRequest;
+}
+
+export async function markTripRated(tripCode: string): Promise<void> {
+	await Preferences.set({ key: LAST_RATED_TRIP_KEY, value: tripCode });
 }
 
 /** Reconcile local state with VAIMOO's authoritative active-trip endpoint. */
-export async function refreshTripStatus(): Promise<ServerActiveTrip | null> {
-	if (statusRequest) return statusRequest;
+export async function refreshTripStatus(source = 'unspecified'): Promise<ServerActiveTrip | null> {
+	if (statusRequest) {
+		logTripLifecycle('refresh-coalesced', { source, localTrip: tripSummary(get(currentTrip)) });
+		return statusRequest;
+	}
+	logTripLifecycle('refresh-started', { source, localTrip: tripSummary(get(currentTrip)) });
 	statusRequest = getActiveTrip();
 	try {
 		const serverTrip = await statusRequest;
 		const localTrip = get(currentTrip);
+		logTripLifecycle('refresh-result', {
+			source,
+			localTrip: tripSummary(localTrip),
+			serverTrip: serverTrip ? {
+				id: serverTrip.id,
+				bikeId: serverTrip.bikeId,
+				bikeState: serverTrip.bikeState,
+				startedAt: serverTrip.startedAt.toISOString(),
+			} : null,
+		});
 		if (serverTrip) {
+			logTripLifecycle('trip-kept-active', { source, bikeState: serverTrip.bikeState });
 			currentTrip.set(localTripFromServer(serverTrip, localTrip));
 			watchPosition();
 		} else if (localTrip?.confirmed) {
+			logTripLifecycle('trip-completion-detected', { source, trip: tripSummary(localTrip) });
 			void completeTrip(localTrip);
 		} else if (localTrip && Date.now() - localTrip.startDate.getTime() >= START_CONFIRM_TIMEOUT_MS) {
+			logTripLifecycle('start-confirmation-timed-out', { source, trip: tripSummary(localTrip) });
 			currentTrip.set(null);
 			errorMessages.add(get(t)('bike_unlock_error'));
 		}
 		return serverTrip;
+	} catch (error) {
+		logTripLifecycle('refresh-failed', {
+			source,
+			message: error instanceof Error ? error.message : String(error),
+		});
+		throw error;
 	} finally {
 		statusRequest = null;
+		logTripLifecycle('refresh-finished', { source });
 	}
 }
 
@@ -157,7 +231,7 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 
 		reportTripStartEvent(communicationId, station.serialNumber);
 		watchPosition();
-		void refreshTripStatus();
+		void refreshTripStatus('quick-start-response');
 		return true;
 	} catch (error) {
 		currentTrip.set(null);
@@ -174,8 +248,8 @@ export function checkTripActive() {
 	if (lastUpdate && Date.now() - lastUpdate.getTime() < 30_000) return;
 	const currentToken = get(token);
 	if (!currentToken) return;
-	if (currentToken.expiration - Date.now() < 30_000) void refreshToken().then(refreshTripStatus);
-	else void refreshTripStatus();
+	if (currentToken.expiration - Date.now() < 30_000) void refreshToken().then(() => refreshTripStatus('background-location-after-token-refresh'));
+	else void refreshTripStatus('background-location');
 }
 
 export function startDebugTrip() {

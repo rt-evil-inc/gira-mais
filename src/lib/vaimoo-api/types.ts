@@ -84,10 +84,22 @@ export interface VaimooTripDetails {
 	startDate: string;
 	endDate: string;
 	coveredDistanceInMeters: number;
-	startStation: { name: string } | null;
-	endStation: { name: string } | null;
+	startStation: { name: string; stationId?: number | null } | null;
+	endStation: { name: string; stationId?: number | null } | null;
 	tripCost: number;
 	vehicle: { visualId: string; vehicleCategoryCode: string } | null;
+}
+
+export interface VaimooTripFeedback {
+	createDate: string;
+	osVersion: string;
+	appVersion: string;
+	rating: number;
+	comment: string[];
+	reportType: 'Opinion';
+	vehicleVisualId: string;
+	geoFenceId: number | null;
+	tripId: number;
 }
 
 export interface VaimooSubscriptionUsage {
