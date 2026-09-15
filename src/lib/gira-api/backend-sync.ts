@@ -20,7 +20,7 @@ function clearTripTimer() {
 
 function scheduleTripCheck(confirmed: boolean) {
 	clearTripTimer();
-	tripTimer = setTimeout(async () => {
+	const timer = setTimeout(async () => {
 		if (!get(token)) return;
 		try {
 			await refreshTripStatus();
@@ -28,9 +28,10 @@ function scheduleTripCheck(confirmed: boolean) {
 			console.error('VAIMOO trip status refresh failed', error);
 		} finally {
 			const trip = get(currentTrip);
-			if (trip && trip.code !== DEBUG_TRIP_CODE) scheduleTripCheck(trip.confirmed);
+			if (tripTimer === timer && trip && trip.code !== DEBUG_TRIP_CODE) scheduleTripCheck(trip.confirmed);
 		}
 	}, confirmed ? ACTIVE_TRIP_INTERVAL_MS : PENDING_TRIP_INTERVAL_MS);
+	tripTimer = timer;
 }
 
 function followActiveBike(bikeId: string | null) {
@@ -60,14 +61,23 @@ export function startBackendSync() {
 		);
 	}
 	if (!stopTripStoreListener) {
+		let polledTripCode: string | null = null;
+		let polledTripConfirmed: boolean | null = null;
 		stopTripStoreListener = currentTrip.subscribe(trip => {
 			if (!trip || trip.code === DEBUG_TRIP_CODE) {
+				polledTripCode = null;
+				polledTripConfirmed = null;
 				clearTripTimer();
 				followActiveBike(null);
 				return;
 			}
 			followActiveBike(trip.bikePlate);
-			scheduleTripCheck(trip.confirmed);
+			// GPS and routing updates must not postpone the next backend check.
+			if (trip.code !== polledTripCode || trip.confirmed !== polledTripConfirmed) {
+				polledTripCode = trip.code;
+				polledTripConfirmed = trip.confirmed;
+				scheduleTripCheck(trip.confirmed);
+			}
 		});
 	}
 	void refreshTripStatus().catch(error => console.error('Initial VAIMOO trip status refresh failed', error));
