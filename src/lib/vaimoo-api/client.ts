@@ -67,18 +67,34 @@ async function http<T>(options: HttpOptions): Promise<T> {
 	return response.data as T;
 }
 
+function jwtExpiration(token: string): number | null {
+	try {
+		const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+		return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+	} catch {
+		return null;
+	}
+}
+
+// VAIMOO access tokens are short-lived (5 minutes at the time of writing) and the login
+// response does not include expireSeconds, so read the expiry from the JWT itself.
 function expiresAt(response: VaimooLoginResponse) {
+	const fromJwt = jwtExpiration(response.accessToken.token);
+	if (fromJwt) return fromJwt;
 	const seconds = Number(response.accessToken.expireSeconds);
-	return Date.now() + (Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 60 * 60 * 1000);
+	return Date.now() + (Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 5 * 60 * 1000);
 }
 
 function toSession(response: VaimooLoginResponse): VaimooSession {
+	// The login response uses `userId`, the refresh-token response uses `id`.
+	const userId = response.user.userId ?? response.user.id;
+	if (userId == null) throw new VaimooApiError('VAIMOO session has no user id', 500, response);
 	return {
 		accessToken: response.accessToken.token,
 		refreshToken: response.accessToken.refreshToken,
-		userId: response.user.userId,
+		userId,
 		expiresAt: expiresAt(response),
-		user: response.user,
+		user: { ...response.user, userId },
 	};
 }
 

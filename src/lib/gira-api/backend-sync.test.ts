@@ -2,7 +2,7 @@ import { get, writable } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActiveTrip } from '$lib/trip';
 
-const mocks = vi.hoisted(() => ({ refreshTripStatus: vi.fn() }));
+const mocks = vi.hoisted(() => ({ refreshTripStatus: vi.fn(), bikeListener: null as null | ((bike: unknown) => void) }));
 vi.mock('$lib/account', () => ({ token: writable({ accessToken: 'test' }) }));
 vi.mock('$lib/map.svelte', () => ({ stations: { value: [] } }));
 vi.mock('$lib/trip', () => ({
@@ -10,7 +10,9 @@ vi.mock('$lib/trip', () => ({
 	DEBUG_TRIP_CODE: 'DEBUG-TRIP',
 	refreshTripStatus: mocks.refreshTripStatus,
 }));
-vi.mock('$lib/vaimoo-api/firestore', () => ({ subscribeFirestoreBike: vi.fn(() => () => {}) }));
+vi.mock('$lib/vaimoo-api/firestore', () => ({ subscribeFirestoreBike: vi.fn((_id: string, onData: (bike: unknown) => void) => { mocks.bikeListener = onData; return () => {}; }) }));
+vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
+vi.mock('$lib/translations', () => ({ t: writable((key: string) => key) }));
 vi.mock('./api', () => ({ subscribeStations: vi.fn(() => () => {}) }));
 
 import { currentTrip } from '$lib/trip';
@@ -91,6 +93,19 @@ describe('trip status polling', () => {
 		stopBackendSync();
 		finish();
 		await vi.advanceTimersByTimeAsync(30_000);
+		expect(mocks.refreshTripStatus).toHaveBeenCalledTimes(2);
+	});
+
+	it('polls quickly once Firestore reports the bike locked without a trip', async () => {
+		currentTrip.set(trip());
+		startBackendSync();
+		await Promise.resolve();
+		mocks.refreshTripStatus.mockClear();
+		mocks.bikeListener!({ TripVehicleState: 'RUNNING', TripId: 1, TripErrorCode: 0 });
+		expect(mocks.refreshTripStatus).not.toHaveBeenCalled();
+		mocks.bikeListener!({ TripVehicleState: 'LOCKED', TripId: null, TripErrorCode: 0 });
+		expect(mocks.refreshTripStatus).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(3_000);
 		expect(mocks.refreshTripStatus).toHaveBeenCalledTimes(2);
 	});
 });

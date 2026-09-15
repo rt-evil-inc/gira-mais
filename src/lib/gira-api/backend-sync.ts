@@ -15,6 +15,8 @@ let stopStationListener: (() => void) | null = null;
 let stopBikeListener: (() => void) | null = null;
 let stopTripStoreListener: (() => void) | null = null;
 let watchedBikeId: string | null = null;
+// Set when the bike document says the trip is over; keeps polling fast until /user/trip agrees.
+let tripEndSignalled = false;
 
 function clearTripTimer() {
 	if (tripTimer) clearTimeout(tripTimer);
@@ -33,7 +35,7 @@ function scheduleTripCheck(confirmed: boolean) {
 			const trip = get(currentTrip);
 			if (tripTimer === timer && trip && trip.code !== DEBUG_TRIP_CODE) scheduleTripCheck(trip.confirmed);
 		}
-	}, confirmed ? ACTIVE_TRIP_INTERVAL_MS : PENDING_TRIP_INTERVAL_MS);
+	}, confirmed && !tripEndSignalled ? ACTIVE_TRIP_INTERVAL_MS : PENDING_TRIP_INTERVAL_MS);
 	tripTimer = timer;
 }
 
@@ -50,8 +52,18 @@ function followActiveBike(bikeId: string | null) {
 		bikeId,
 		bike => {
 			const nextState = bike?.TripVehicleState ?? null;
-			const nextErrorCode = bike?.TripErrorCode ?? null;
-			if (previousState !== undefined && previousState !== nextState) void refreshTripStatus();
+			const nextErrorCode = bike?.TripErrorCode || null;
+			// Same rule as the official app: LOCKED with no trip id means the trip is over.
+			const tripEnded = bike != null && nextState === 'LOCKED' && bike.TripId == null;
+			const trip = get(currentTrip);
+			if (tripEnded && trip?.confirmed && !tripEndSignalled) {
+				console.debug('Firestore reports the bike locked with no trip, confirming with VAIMOO');
+				tripEndSignalled = true;
+				scheduleTripCheck(true);
+				void refreshTripStatus();
+			} else if (previousState !== undefined && previousState !== nextState) {
+				void refreshTripStatus();
+			}
 			// The official app surfaces these codes straight from the bike document (100 = start timeout, 4xx = end failures).
 			if (previousErrorCode !== undefined && previousErrorCode !== nextErrorCode && nextErrorCode != null) {
 				console.warn('VAIMOO bike reported trip error code', nextErrorCode);
@@ -79,6 +91,7 @@ export function startBackendSync() {
 			if (!trip || trip.code === DEBUG_TRIP_CODE) {
 				polledTripCode = null;
 				polledTripConfirmed = null;
+				tripEndSignalled = false;
 				clearTripTimer();
 				followActiveBike(null);
 				return;
@@ -97,6 +110,7 @@ export function startBackendSync() {
 
 export function stopBackendSync() {
 	clearTripTimer();
+	tripEndSignalled = false;
 	stopStationListener?.();
 	stopBikeListener?.();
 	stopTripStoreListener?.();

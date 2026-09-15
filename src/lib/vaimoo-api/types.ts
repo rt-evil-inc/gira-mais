@@ -7,6 +7,8 @@ export interface VaimooAccessToken {
 
 export interface VaimooUser {
 	userId: number;
+	/** The refresh-token response uses `id` instead of `userId`. */
+	id?: number;
 	userName?: string | null;
 	firstName?: string | null;
 	lastName?: string | null;

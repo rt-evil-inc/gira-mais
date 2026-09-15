@@ -4,7 +4,9 @@ const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('$app/environment', () => ({ dev: false }));
 vi.mock('@capacitor/core', () => ({ CapacitorHttp: { request } }));
 
-import { defaultQuery, loginWithEmel, vaimooRequest, VaimooApiError } from './client';
+import { defaultQuery, loginWithEmel, refreshVaimooSession, vaimooRequest, VaimooApiError } from './client';
+
+const jwt = (exp: number) => `h.${Buffer.from(JSON.stringify({ sub: '42', exp })).toString('base64url')}.s`;
 
 describe('VAIMOO API client', () => {
 	beforeEach(() => request.mockReset());
@@ -48,5 +50,15 @@ describe('VAIMOO API client', () => {
 
 		expect(error).toBeInstanceOf(VaimooApiError);
 		expect(error).toMatchObject({ status: 409, errors: [{ message: 'already_active_trip' }] });
+	});
+
+	it('reads the short access-token lifetime from the JWT and accepts the refresh response user id', async () => {
+		const exp = Math.floor(Date.now() / 1000) + 300;
+		request.mockResolvedValue({ status: 200, data: { accessToken: { token: jwt(exp), refreshToken: 'r' }, user: { id: 42, tenantId: 'P1/EML/EML/' } } });
+
+		const session = await refreshVaimooSession('old-refresh');
+
+		expect(session.userId).toBe(42);
+		expect(session.expiresAt).toBe(exp * 1000);
 	});
 });

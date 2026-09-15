@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { token } from '$lib/account';
+import { refreshToken, token } from '$lib/account';
 import { GIRA_TENANT } from '$lib/constants';
 import type { StationInfo } from '$lib/map.svelte';
 import type { Translations } from '$lib/translations';
@@ -17,6 +17,7 @@ import {
 	subscribeFirestoreBikes,
 	subscribeFirestoreStations,
 } from '$lib/vaimoo-api/firestore';
+import { VaimooApiError } from '$lib/vaimoo-api/client';
 import type { VaimooBike, VaimooSession, VaimooStation, VaimooTripDetails } from '$lib/vaimoo-api/types';
 import type { AccountSnapshot, AvailableBike, CompletedTrip, ServerActiveTrip } from './models';
 
@@ -49,6 +50,18 @@ function session(): VaimooSession {
 		expiresAt: current.expiration,
 		user: { userId: current.userId, tenantId: current.tenantId ?? GIRA_TENANT },
 	};
+}
+
+/** Run a VAIMOO call with the current session, refreshing the token and retrying once if it was rejected. */
+async function withSession<T>(request: (session: VaimooSession) => Promise<T>): Promise<T> {
+	try {
+		return await request(session());
+	} catch (error) {
+		if (!(error instanceof VaimooApiError) || error.status !== 401) throw error;
+		console.debug('VAIMOO rejected the access token, refreshing and retrying');
+		if (!await refreshToken()) throw error;
+		return request(session());
+	}
 }
 
 function stationDescription(station: VaimooStation) {
@@ -115,11 +128,11 @@ export async function findAvailableBike(visualId: string): Promise<AvailableBike
 }
 
 export async function quickStartBike(communicationId: string): Promise<void> {
-	await quickStartVaimooTrip(session(), communicationId);
+	await withSession(currentSession => quickStartVaimooTrip(currentSession, communicationId));
 }
 
 export async function getActiveTrip(): Promise<ServerActiveTrip | null> {
-	const trip = await getCurrentVaimooTrip(session());
+	const trip = await withSession(getCurrentVaimooTrip);
 	if (trip.activeTripId == null || trip.activeTripId <= 0) return null;
 	return {
 		id: String(trip.activeTripId),
@@ -144,16 +157,15 @@ function mapCompletedTrip(trip: VaimooTripDetails): CompletedTrip {
 }
 
 export async function getTripHistory(page: number, pageSize: number): Promise<CompletedTrip[]> {
-	const trips = await getVaimooTrips(session(), page, pageSize);
+	const trips = await withSession(currentSession => getVaimooTrips(currentSession, page, pageSize));
 	return trips.data.map(mapCompletedTrip);
 }
 
 export async function getAccountSnapshot(): Promise<AccountSnapshot> {
-	const currentSession = session();
-	const [credit, usage] = await Promise.all([
+	const [credit, usage] = await withSession(currentSession => Promise.all([
 		getVaimooRemainingCredit(currentSession),
 		getVaimooSubscriptionUsage(currentSession),
-	]);
+	]));
 	const isExpired = (item: typeof usage[number]) => item.isExpired ?? new Date(item.expirationDate).getTime() <= Date.now();
 	const activeUsage = usage.find(item => !isExpired(item)) ?? usage[0];
 	return {
