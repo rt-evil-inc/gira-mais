@@ -258,8 +258,10 @@ export function addLayers(map: maplibregl.Map) {
 		'layout': {
 			'icon-image': 'destination-marker',
 			'icon-size': 0.3,
-			// pin tip sits exactly on the destination point
+			// pin tip sits exactly on the destination point: anchored at the bottom,
+			// shifted down by the image's shadow padding below the tip
 			'icon-anchor': 'bottom',
+			'icon-offset': [0, 14],
 			'icon-allow-overlap': true,
 			'icon-ignore-placement': true,
 		},
