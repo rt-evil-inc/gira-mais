@@ -189,10 +189,6 @@ const translations = {
 		en: 'Balance',
 		pt: 'Saldo',
 	},
-	points_label: {
-		en: 'Points',
-		pt: 'Pontos',
-	},
 	no_subscription_label: {
 		en: 'No subscription',
 		pt: 'Sem subscrição',

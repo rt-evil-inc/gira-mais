@@ -14,6 +14,7 @@ export type StationInfo ={
 	longitude: number;
 	bikes: number;
 	docks: number;
+	freeDocks: number;
 	serialNumber: string;
 	assetStatus: string;
 }
@@ -40,7 +41,7 @@ export function setSourceData(map: maplibregl.Map) {
 				selected: station.serialNumber == get(selectedStation),
 				inService: station.assetStatus === 'active',
 				docks: station.docks,
-				freeDocks: station.docks - station.bikes,
+				freeDocks: station.freeDocks,
 			},
 			geometry: {
 				type: 'Point',
@@ -135,8 +136,10 @@ export const STATION_MARKER_FADE_END = 14;
  * only gray when out of service. */
 export function stationDotColor(countProp: 'bikes'|'freeDocks'): ExpressionSpecification {
 	return ['case',
-		['!', ['get', 'inService']], getCssVariable('--color-label'),
-		['>', ['get', countProp], 0], getCssVariable('--color-primary'),
+		['!', ['get', 'inService']],
+		getCssVariable('--color-label'),
+		['>', ['get', countProp], 0],
+		getCssVariable('--color-primary'),
 		getCssVariable('--color-background')];
 }
 
