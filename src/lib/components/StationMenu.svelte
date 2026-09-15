@@ -275,7 +275,7 @@
 			</div>
 		</div>
 		<div class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
-			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom={$safeInsets.bottom + 'px'}>
+			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom="max(1.25rem, {$safeInsets.bottom}px)">
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
 						<BikeSkeleton />

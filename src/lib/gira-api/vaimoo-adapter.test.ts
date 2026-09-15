@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
 	getFirestoreStations: vi.fn(),
 	getFirestoreBikes: vi.fn(),
 	findFirestoreBike: vi.fn(),
+	subscribeFirestoreStations: vi.fn(),
+	subscribeFirestoreBikes: vi.fn(),
 	quickStartVaimooTrip: vi.fn(),
 	getCurrentVaimooTrip: vi.fn(),
 	getVaimooTripDetails: vi.fn(),
@@ -34,7 +36,7 @@ vi.mock('$lib/vaimoo-api/client', () => ({
 }));
 
 import { VaimooApiError } from '$lib/vaimoo-api/client';
-import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, quickStartBike, submitTripRating } from './api';
+import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, quickStartBike, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
 
 const station = {
 	DockingStationId: 4551,
@@ -154,5 +156,36 @@ describe('VAIMOO app-domain adapter', () => {
 			{ ...bike, VisualId: 'E0004', DockingPointVisualId: '3' },
 		]);
 		expect((await getStationBikes('4551')).map(b => b.id)).toEqual(['E0003', 'E0004', 'E0001', 'E0002']);
+	});
+
+	it('replaces the server bike counter with the unlockable count once station bikes load', () => {
+		let emitStations: (stations: unknown[]) => void = () => {};
+		let emitBikes: (bikes: unknown[]) => void = () => {};
+		mocks.subscribeFirestoreStations.mockImplementation((onData: typeof emitStations) => {
+			emitStations = onData;
+			return () => {};
+		});
+		mocks.subscribeFirestoreBikes.mockImplementation((_: number, onData: typeof emitBikes) => {
+			emitBikes = onData;
+			return () => {};
+		});
+		const onStations = vi.fn();
+		const unsubscribe = subscribeStations(onStations);
+		subscribeStationBikes('4551', () => {});
+
+		emitStations([{ ...station, AvailableBikes: 3 }]);
+		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 3 })]);
+
+		emitBikes([bike, { ...bike, VisualId: 'E0002' }, { ...bike, VisualId: 'E0003', IsAvaliable: false }]);
+		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 2 })]);
+
+		// The server counter did not change, so a fresh station feed keeps the observed count.
+		emitStations([{ ...station, AvailableBikes: 3 }]);
+		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 2 })]);
+
+		// Once the server counter moves, the observation is stale and the server value wins again.
+		emitStations([{ ...station, AvailableBikes: 4 }]);
+		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 4 })]);
+		unsubscribe();
 	});
 });

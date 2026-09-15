@@ -70,14 +70,42 @@ function stationDescription(station: VaimooStation) {
 	return [station.StreetBuildingIdentifier, station.Street, station.City].filter(Boolean).join(' ');
 }
 
+// The station feed's AvailableBikes counter ignores bikes flagged as out of service, so it can exceed the
+// number of bikes a user can actually unlock. Once a station's bikes have been loaded, prefer the observed
+// count for as long as the server counter stays at the value it had when we observed it.
+const observedBikeCounts = new Map<string, { serverBikes: number; bikes: number }>;
+let lastStations: VaimooStation[] = [];
+let stationListener: ((stations: StationInfo[]) => void) | null = null;
+
+function serverBikeCount(station: VaimooStation) {
+	return Math.max(0, Math.trunc(station.AvailableBikes));
+}
+
+function stationBikeCount(station: VaimooStation) {
+	const serverBikes = serverBikeCount(station);
+	const observed = observedBikeCounts.get(String(station.DockingStationId));
+	return observed && observed.serverBikes === serverBikes ? observed.bikes : serverBikes;
+}
+
+function recordObservedBikeCount(stationId: string, bikes: number) {
+	const station = lastStations.find(candidate => String(candidate.DockingStationId) === stationId);
+	if (!station) return;
+	const serverBikes = serverBikeCount(station);
+	const previous = observedBikeCounts.get(stationId);
+	if (previous?.serverBikes === serverBikes && previous.bikes === bikes) return;
+	observedBikeCounts.set(stationId, { serverBikes, bikes });
+	stationListener?.(mapStations(lastStations));
+}
+
 function mapStations(response: VaimooStation[]): StationInfo[] {
+	lastStations = response;
 	return response.map(station => ({
 		code: String(station.DockingStationId),
 		description: stationDescription(station),
 		latitude: station.Location.latitude,
 		longitude: station.Location.longitude,
 		name: station.Name,
-		bikes: Math.max(0, Math.trunc(station.AvailableBikes)),
+		bikes: stationBikeCount(station),
 		docks: Math.max(0, Math.trunc(station.DockLimit)),
 		freeDocks: Math.max(0, Math.trunc(station.FreeDocks)),
 		serialNumber: String(station.DockingStationId),
@@ -90,7 +118,12 @@ export async function getStations(): Promise<StationInfo[]> {
 }
 
 export function subscribeStations(onData: (stations: StationInfo[]) => void, onError?: (error: Error) => void) {
-	return subscribeFirestoreStations(stations => onData(mapStations(stations)), onError);
+	stationListener = onData;
+	const unsubscribe = subscribeFirestoreStations(stations => onData(mapStations(stations)), onError);
+	return () => {
+		if (stationListener === onData) stationListener = null;
+		unsubscribe();
+	};
 }
 
 function mapBike(bike: VaimooBike, manual = false): AvailableBike {
@@ -128,7 +161,11 @@ export function subscribeStationBikes(
 	onData: (bikes: AvailableBike[]) => void,
 	onError?: (error: Error) => void,
 ) {
-	return subscribeFirestoreBikes(Number(stationId), bikes => onData(availableBikes(bikes)), onError);
+	return subscribeFirestoreBikes(Number(stationId), bikes => {
+		const available = availableBikes(bikes);
+		recordObservedBikeCount(stationId, available.length);
+		onData(available);
+	}, onError);
 }
 
 export async function findAvailableBike(visualId: string): Promise<AvailableBike | null> {
