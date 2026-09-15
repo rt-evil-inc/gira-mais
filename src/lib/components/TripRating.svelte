@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { currentRoute } from '$lib/routing';
 	import { t } from '$lib/translations';
-	import { errorMessages, safeInsets } from '$lib/ui.svelte';
+	import { safeInsets } from '$lib/ui.svelte';
 
 	import { submitTripRating } from '$lib/gira-api/api';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
@@ -30,19 +30,17 @@
 		rating = ratingValue;
 		try {
 			await submitTripRating(tripCode, bikePlate, rating);
-			await markTripRated(tripCode);
-			// Keep the optional Gira+ aggregate for bike-condition hints, but VAIMOO is authoritative.
-			void postBikeRating(tripCode, bikePlate, rating, date?.toISOString()).catch(error => {
-				console.error('Could not mirror bike rating to Gira+', error);
-				reportErrorEvent('bike_rating_mirror_error');
-			});
-		} catch (e) {
-			console.error('Could not submit VAIMOO trip rating', e);
-			errorMessages.add($t('rate_trip_error'));
-			reportErrorEvent('rate_trip_error');
-			rating = undefined;
-			return;
+		} catch (error) {
+			// VAIMOO currently rejects otherwise valid opinion feedback. Rating is optional,
+			// so do not block or repeatedly prompt the rider when its backend is unavailable.
+			console.warn('VAIMOO trip rating was not accepted; continuing', error);
 		}
+		await markTripRated(tripCode).catch(error => console.warn('Could not remember handled trip rating', error));
+		// Keep the optional Gira+ aggregate for bike-condition hints regardless of VAIMOO's result.
+		void postBikeRating(tripCode, bikePlate, rating, date?.toISOString()).catch(error => {
+			console.warn('Could not mirror bike rating to Gira+', error);
+			reportErrorEvent('bike_rating_mirror_error');
+		});
 		$tripRating.currentRating = null;
 	}
 </script>
