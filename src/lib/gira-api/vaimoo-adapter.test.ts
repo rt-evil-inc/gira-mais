@@ -145,4 +145,14 @@ describe('VAIMOO app-domain adapter', () => {
 			subscription: { active: true, name: 'Passe Diário', status: 'Active' },
 		});
 	});
+
+	it('lists station bikes by dock number', async () => {
+		mocks.getFirestoreBikes.mockResolvedValue([
+			{ ...bike, VisualId: 'E0001', DockingPointVisualId: '12' },
+			{ ...bike, VisualId: 'E0002', DockingPointVisualId: null },
+			{ ...bike, VisualId: 'E0003', DockingPointVisualId: '02' },
+			{ ...bike, VisualId: 'E0004', DockingPointVisualId: '3' },
+		]);
+		expect((await getStationBikes('4551')).map(b => b.id)).toEqual(['E0003', 'E0004', 'E0001', 'E0002']);
+	});
 });

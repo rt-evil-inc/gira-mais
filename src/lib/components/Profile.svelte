@@ -60,17 +60,19 @@
 					</div>
 					<div class="text-sm font-medium text-label">{$user?.email}</div>
 				</div>
-				<div>
+				<div class="flex items-center justify-center gap-12">
+					<div class="flex flex-col items-center">
+						<div class="flex items-center gap-1">
+							<IconTicket size={28} stroke={1.9} class="text-info" />
+							<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
+						</div>
+						{#if $accountInfo?.subscription?.expiresAt}
+							<span class="text-2xs font-semibold text-label text-center leading-none">
+								{$t('valid_until_label', { date: $accountInfo.subscription.expiresAt.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }).toUpperCase()}
+							</span>
+						{/if}
+					</div>
 					<Metric value={$accountInfo?.balance?.toFixed(2) ?? '—'} unit={$accountInfo ? '€' : ''} label={$t('balance_label')} color={($accountInfo?.balance ?? 0) < 0 ? 'warning' : 'info'} />
-				</div>
-				<div>
-					<div class="flex items-center gap-1 justify-center">
-						<IconTicket size={28} stroke={1.9} class="text-info -my-1" />
-						<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
-					</div>
-					<div class="text-xs text-label font-medium text-center -mt-[2px]">
-						{$accountInfo?.subscription?.expiresAt ? $t('valid_until_label', { date: $accountInfo.subscription.expiresAt.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }) : ''}
-					</div>
 				</div>
 			</div>
 			<div class="flex flex-col grow font-semibold px-2 gap-3 w-full">

@@ -106,8 +106,17 @@ function mapBike(bike: VaimooBike, manual = false): AvailableBike {
 	};
 }
 
+function dockOrder(dock: string | null) {
+	const number = dock == null ? NaN : parseInt(dock, 10);
+	return Number.isNaN(number) ? Number.POSITIVE_INFINITY : number;
+}
+
+// Firestore returns bikes in arbitrary order; list them by dock number like the station does.
 function availableBikes(bikes: VaimooBike[]) {
-	return bikes.filter(bike => bike.IsAvaliable && !bike.IsBooked && Boolean(bike.CommunicationId)).map(bike => mapBike(bike));
+	return bikes
+		.filter(bike => bike.IsAvaliable && !bike.IsBooked && Boolean(bike.CommunicationId))
+		.map(bike => mapBike(bike))
+		.sort((a, b) => dockOrder(a.dock) - dockOrder(b.dock) || a.id.localeCompare(b.id));
 }
 
 export async function getStationBikes(stationId: string): Promise<AvailableBike[]> {
