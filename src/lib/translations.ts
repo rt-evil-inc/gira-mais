@@ -93,6 +93,14 @@ const translations = {
 		en: 'Selected location',
 		pt: 'Local selecionado',
 	},
+	rate_trip_error: {
+		en: 'Error rating trip',
+		pt: 'Erro ao avaliar viagem',
+	},
+	last_trip_question: {
+		en: 'How was your last trip?',
+		pt: 'Como foi a sua última viagem?',
+	},
 	station_label: {
 		en: 'Station',
 		pt: 'Estação',
@@ -180,6 +188,10 @@ const translations = {
 	balance_label: {
 		en: 'Balance',
 		pt: 'Saldo',
+	},
+	points_label: {
+		en: 'Points',
+		pt: 'Pontos',
 	},
 	no_subscription_label: {
 		en: 'No subscription',
@@ -361,6 +373,14 @@ const translations = {
 		en: 'Glide the marker and the map between location updates instead of placing them straight onto each one',
 		pt: 'Deslizar o marcador e o mapa entre atualizações de localização em vez de os colocar diretamente em cada uma',
 	},
+	report_ratings_setting_label: {
+		en: 'Share trip ratings',
+		pt: 'Partilhar avaliações de viagens',
+	},
+	report_ratings_setting_description: {
+		en: 'Share your trip ratings with us so we can warn about bike conditions',
+		pt: 'Partilhar as suas avaliações de viagens connosco para que possamos avisar sobre o estado das bicicletas',
+	},
 	ui_settings_section: {
 		en: 'Interface',
 		pt: 'Interface',
@@ -482,20 +502,20 @@ const translations = {
 		pt: 'Nenhuma bicicleta encontrada',
 	},
 	search_other_bikes: {
-		en: 'Bike not listed?',
-		pt: 'A bicicleta não aparece?',
+		en: 'Add missing bike',
+		pt: 'Adicionar bicicleta em falta',
 	},
 	ghost_bike_title: {
-		en: 'Enter bike number',
-		pt: 'Introduza o número da bicicleta',
+		en: 'Missing bikes',
+		pt: 'Bicicletas em falta',
 	},
 	ghost_bike_description: {
-		en: 'Look up a bike that is physically here but missing from this station list.',
-		pt: 'Procure uma bicicleta que está fisicamente aqui, mas não aparece nesta estação.',
+		en: 'You can try to retrieve bikes that do not appear in the system through their number.',
+		pt: 'Pode tentar retirar bicicletas que não aparecem no sistema através do seu número.',
 	},
 	ghost_dismiss_label: {
-		en: 'Find bike',
-		pt: 'Procurar bicicleta',
+		en: 'Add missing bike',
+		pt: 'Adicionar bicicleta em falta',
 	},
 	bike_unlock_invalid_id_error: {
 		en: 'Invalid bike ID. It should be a 4-digit number.',
@@ -516,38 +536,6 @@ const translations = {
 	service_warning_continue: {
 		en: 'Continue anyway',
 		pt: 'Continuar mesmo assim',
-	},
-	trip_completed_title: {
-		en: 'Trip completed',
-		pt: 'Viagem concluída',
-	},
-	trip_cost_label: {
-		en: 'Cost',
-		pt: 'Custo',
-	},
-	report_trip_problem: {
-		en: 'Report a problem',
-		pt: 'Reportar um problema',
-	},
-	problem_category_label: {
-		en: 'Problem type',
-		pt: 'Tipo de problema',
-	},
-	problem_comment_label: {
-		en: 'What happened?',
-		pt: 'O que aconteceu?',
-	},
-	send_report_label: {
-		en: 'Send report',
-		pt: 'Enviar relatório',
-	},
-	report_sent_message: {
-		en: 'Report sent',
-		pt: 'Relatório enviado',
-	},
-	report_failed_message: {
-		en: 'Could not send the report',
-		pt: 'Não foi possível enviar o relatório',
 	},
 } as const;
 

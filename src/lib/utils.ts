@@ -1,16 +1,12 @@
 import { get } from 'svelte/store';
 import { CapacitorHttp, type HttpOptions, type HttpResponse } from '@capacitor/core';
+import type { ThrownError } from './gira-api/api-types';
 import { knownErrors } from './gira-api/api';
 import { errorMessages } from './ui.svelte';
-import { GIRA_API_URL, GIRA_AUTH_URL } from './constants';
+import { GIRA_API_URL, GIRA_AUTH_URL, GIRA_WS_URL } from './constants';
 import { reportErrorEvent } from './gira-mais-api/gira-mais-api';
 import { t } from './translations';
 import { networkStatus } from '$lib/network';
-
-type HttpRequestError = {
-	status?: number;
-	errors?: { message: string }[];
-};
 
 export const deg2rad = (deg:number) => deg * (Math.PI / 180);
 
@@ -66,7 +62,7 @@ export async function httpRequestWithRetry(options: HttpOptions, retryOnStatus =
 			}
 			return response;
 		} catch (e) {
-			const error = { ...(e as HttpResponse).data, status: (e as HttpResponse).status } as HttpRequestError;
+			const error = { ...(e as HttpResponse).data, status: (e as HttpResponse).status } as ThrownError;
 			if (e instanceof Error && e.message === 'Request timed out') {
 				console.error(`Attempt ${attempt}: Request timed out`);
 			} else if (error?.errors && error.errors.some(err => knownErrors[err.message as keyof typeof knownErrors]?.retry === false)) {
@@ -76,7 +72,7 @@ export async function httpRequestWithRetry(options: HttpOptions, retryOnStatus =
 				console.error(`Attempt ${attempt}:`, error);
 			}
 			const isAuthUrl = options.url.startsWith(GIRA_AUTH_URL);
-		const isGiraApiUrl = options.url.startsWith(GIRA_API_URL);
+			const isGiraApiUrl = options.url.startsWith(GIRA_API_URL) || options.url.includes(GIRA_WS_URL.split('://')[1]);
 			if (attempt < maxAttempts) {
 				if (error.status === undefined && attempt === 1 && get(networkStatus)) {
 					if (isAuthUrl) {

@@ -11,10 +11,10 @@ beforeAll(() => {
 
 // Real GIRA station locations in Lisbon
 const testStations = [
-	{ code: '1', name: '481 - Cais do Sodré', description: null, latitude: 38.7063, longitude: -9.1449, bikes: 10, docks: 20, freeDocks: 10, serialNumber: 'sodre', assetStatus: 'active' },
-	{ code: '2', name: '407 - Marquês de Pombal', description: null, latitude: 38.7256, longitude: -9.1503, bikes: 5, docks: 20, freeDocks: 15, serialNumber: 'marques', assetStatus: 'active' },
-	{ code: '3', name: '417 - Saldanha', description: null, latitude: 38.7336, longitude: -9.1451, bikes: 0, docks: 20, freeDocks: 20, serialNumber: 'saldanha-empty', assetStatus: 'active' },
-	{ code: '4', name: '450 - Parque das Nações', description: null, latitude: 38.7687, longitude: -9.0977, bikes: 8, docks: 20, freeDocks: 12, serialNumber: 'nacoes', assetStatus: 'active' },
+	{ code: '1', name: '481 - Cais do Sodré', description: null, latitude: 38.7063, longitude: -9.1449, bikes: 10, docks: 20, serialNumber: 'sodre', assetStatus: 'active' },
+	{ code: '2', name: '407 - Marquês de Pombal', description: null, latitude: 38.7256, longitude: -9.1503, bikes: 5, docks: 20, serialNumber: 'marques', assetStatus: 'active' },
+	{ code: '3', name: '417 - Saldanha', description: null, latitude: 38.7336, longitude: -9.1451, bikes: 0, docks: 20, serialNumber: 'saldanha-empty', assetStatus: 'active' },
+	{ code: '4', name: '450 - Parque das Nações', description: null, latitude: 38.7687, longitude: -9.0977, bikes: 8, docks: 20, serialNumber: 'nacoes', assetStatus: 'active' },
 ];
 
 const serverReachable = await fetch(`${ROUTING_API_URL}/foot/route/v1/-/-9.1449,38.7063;-9.1503,38.7256?overview=false`)

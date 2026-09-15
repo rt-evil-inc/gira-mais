@@ -14,7 +14,7 @@
 	import '../app.css';
 	import { App } from '@capacitor/app';
 	import { loadUserCreds, refreshToken, token } from '$lib/account';
-	import { refreshTripStatus } from '$lib/trip';
+	import { updateActiveTripInfo, updateStations } from '$lib/injest-api-data';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
 	import { loadSettings } from '$lib/settings';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
@@ -68,7 +68,8 @@
 				console.debug('Refreshing token because app was reopened');
 				await refreshToken();
 			}
-			refreshTripStatus();
+			updateActiveTripInfo();
+			updateStations();
 		});
 
 		theme.subscribe(currentTheme => {
@@ -79,9 +80,7 @@
 			}
 		});
 
-		if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
-			ScreenOrientation.lock({ orientation: 'portrait' });
-		}
+		ScreenOrientation.lock({ orientation: 'portrait' });
 
 		return () => {
 			stopDebugControls?.();

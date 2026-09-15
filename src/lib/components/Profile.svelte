@@ -60,16 +60,17 @@
 					</div>
 					<div class="text-sm font-medium text-label">{$user?.email}</div>
 				</div>
-				<div>
-					<Metric value={$accountInfo?.balance?.toFixed(2) ?? '—'} unit={$accountInfo ? '€' : ''} label={$t('balance_label')} color={($accountInfo?.balance ?? 0) < 0 ? 'warning' : 'info'} />
+				<div class="flex gap-16">
+					<Metric value={$accountInfo?.balance?.toFixed(2) ?? '0.00'} unit={'€'} label={$t('balance_label')} color={($accountInfo?.balance ?? 0) < 0 ? 'warning' : 'info'} />
+					<Metric value={$accountInfo?.bonus ?? 0} unit={''} label={$t('points_label')} color={'info'} />
 				</div>
 				<div>
 					<div class="flex items-center gap-1 justify-center">
 						<IconTicket size={28} stroke={1.9} class="text-info -my-1" />
-						<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
+						<div class="text-info font-bold text-lg">{subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
 					</div>
 					<div class="text-xs text-label font-medium text-center -mt-[2px]">
-						{$accountInfo?.subscription?.expiresAt ? $t('valid_until_label', { date: $accountInfo.subscription.expiresAt.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }) : ''}
+						{$accountInfo?.subscription?.expirationDate ? $t('valid_until_label', { date: $accountInfo.subscription.expirationDate.toLocaleString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) }) : ''}
 					</div>
 				</div>
 			</div>

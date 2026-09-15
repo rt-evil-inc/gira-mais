@@ -11,7 +11,6 @@ function station(overrides: Partial<StationInfo>): StationInfo {
 		longitude: -9.14,
 		bikes: 5,
 		docks: 20,
-		freeDocks: 15,
 		serialNumber: 'serial',
 		assetStatus: 'active',
 		...overrides,

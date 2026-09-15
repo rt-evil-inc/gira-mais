@@ -1,0 +1,699 @@
+type Query {
+  getStations: [StationInfo]
+  getDocks(input: String): [Dock]
+  getBikes(input: String): [Bike]
+  getSubscriptions: [SubscriptionDetail]
+  canPayTripWithPoints(input: String): CanPayTripWithPoints_Out
+  getTrip(input: String): [Trip]
+  activeTrip: Trip
+  unratedTrips(pageInput: PageInput): [Trip]
+  tripHistory(pageInput: PageInput): [TripHistory_TripDetail]
+  activeTripCost: Float
+  activeSubscriptions: [UserSubscription]
+  activeUserSubscriptions: [ActiveUserSubscriptions_Out]
+  inactiveSubscriptions: [UserSubscription]
+  paidSubscriptions: [UserSubscription]
+  newPaidSubscriptions: [UserSubscriptionDetail]
+  newPendingPaymentSubscriptions: [UserSubscriptionDetail]
+  subscriptionHistory(pageInput: PageInput): [SubscriptionHistory_Out]
+  subscriptionGeneratePayPalBondToken(
+    input: String
+  ): SubscriptionGeneratePayPalBondToken_Out
+  getCreditCards(input: String): [GetCreditCards_Out]
+  getServerTime: DateTime
+  serviceStatus: Boolean
+  generatePayPalToken: GeneratePayPalToken_Out
+  getPayPalAccountDetails(input: String): GetPayPalAccountDetails_Out
+  bankReference(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+    client: String
+    amount: Float
+  ): [BankReference]
+  client(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+    code: String
+  ): [Client]
+  clientCreditCard(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+  ): [ClientCreditCard]
+  invoice(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+    client: String
+  ): [Invoice]
+  promotionInstance(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+    minAmount: Float
+    dateGreater: DateTime
+    active: Boolean
+  ): [PromotionInstance]
+  transaction(
+    _pageNum: Int
+    _pageSize: Int
+    _sort: [SortRule]
+    client: String
+    transactionType: String
+  ): [Transaction]
+}
+
+type StationInfo {
+  dockList: [Dock]
+  docks: Int
+  bikes: Int
+  stype: String
+  serialNumber: String
+  assetType: String
+  assetStatus: String
+  assetCondition: String
+  parent: String
+  warehouse: String
+  zone: String
+  location: String
+  latitude: Float
+  longitude: Float
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Dock {
+  ledStatus: String
+  lockStatus: String
+  serialNumber: String
+  assetType: String
+  assetStatus: String
+  assetCondition: String
+  parent: String
+  warehouse: String
+  zone: String
+  location: String
+  latitude: Float
+  longitude: Float
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+"""
+The `DateTime` scalar type represents a date and time. `DateTime` expects timestamps to be formatted in accordance with the [ISO-8601](https://en.wikipedia.org/wiki/ISO_8601) standard.
+"""
+scalar DateTime
+
+type Bike {
+  type: String
+  kms: String
+  battery: String
+  serialNumber: String
+  assetType: String
+  assetStatus: String
+  assetCondition: String
+  parent: String
+  warehouse: String
+  zone: String
+  location: String
+  latitude: Float
+  longitude: Float
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type SubscriptionDetail {
+  code: String
+  type: String
+  name: String
+  description: String
+  englishName: String
+  englishDescription: String
+  activationCost: Float
+  subscriptionCost: Float
+  subscriptionPeriod: Int
+  activationBonus: Float
+  message: String
+  bond: Float
+  periods: [SubscriptionDetail_Period]
+  paymentTypes: [String]
+}
+
+type SubscriptionDetail_Period {
+  timeValue: Float
+  classicValue: Float
+  electricValue: Float
+}
+
+type CanPayTripWithPoints_Out {
+  canPayWithMoney: Boolean
+  canUsePoints: Boolean
+  clientPoints: Int
+  tripCost: Float
+}
+
+type Trip {
+  user: String
+  asset: String
+  startDate: DateTime
+  endDate: DateTime
+  startLocation: String
+  endLocation: String
+  distance: Float
+  rating: Int
+  photo: String
+  cost: Float
+  startOccupation: Float
+  endOccupation: Float
+  totalBonus: Int
+  client: String
+  costBonus: Int
+  comment: String
+  compensationTime: Boolean
+  endTripDock: String
+  tripStatus: String
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+input PageInput {
+  _pageNum: Int
+  _pageSize: Int
+}
+
+type TripHistory_TripDetail {
+  code: String
+  startDate: DateTime
+  endDate: DateTime
+  rating: Int
+  bikeName: String
+  startLocation: String
+  endLocation: String
+  bonus: Int
+  usedPoints: Int
+  cost: Float
+  bikeType: String
+}
+
+type UserSubscription {
+  user: String
+  client: String
+  subscription: String
+  activationDate: DateTime
+  active: Boolean
+  cost: Float
+  expirationDate: DateTime
+  type: SubscriptionType
+  subscriptionStatus: String
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type SubscriptionType {
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type ActiveUserSubscriptions_Out {
+  code: String
+  cost: Float
+  expirationDate: DateTime
+  subscriptionStatus: String
+  nameEnglish: String
+  name: String
+  subscriptionCost: Float
+  subscriptionPeriod: Int
+  subscription: String
+  type: String
+  active: Boolean
+}
+
+type UserSubscriptionDetail {
+  subscriptionValues: Subscriptions
+  user: String
+  client: String
+  subscription: String
+  activationDate: DateTime
+  active: Boolean
+  cost: Float
+  expirationDate: DateTime
+  type: SubscriptionType
+  subscriptionStatus: String
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Subscriptions {
+  activationCost: Float
+  subscriptionCost: Float
+  banner: String
+  active: Boolean
+  subscriptionPeriod: Int
+  activationBonus: Float
+  type: SubscriptionType
+  englishName: String
+  englishDescription: String
+  subscriptionOrder: Int
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type SubscriptionHistory_Out {
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+  user: String
+  client: String
+  subscription: String
+  subscriptionValues: Subscriptions
+  activationDate: DateTime
+  active: Boolean
+  cost: Float
+  expirationDate: DateTime
+  type: SubscriptionType
+  subscriptionStatus: String
+  transactionId: String
+  released: Boolean
+  releaseDate: DateTime
+  ccReleaseDate: DateTime
+  authorizationId: String
+}
+
+type SubscriptionGeneratePayPalBondToken_Out {
+  token: String
+  url: String
+  returnUrl: String
+  cancelUrl: String
+}
+
+type GetCreditCards_Out {
+  code: String
+  brand: String
+  expirationDate: DateTime
+  last4Digits: String
+}
+
+type GeneratePayPalToken_Out {
+  token: String
+  url: String
+  returnUrl: String
+  cancelUrl: String
+}
+
+type GetPayPalAccountDetails_Out {
+  email: String
+  id: String
+}
+
+type BankReference {
+  entity: String
+  reference: String
+  amount: Float
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+input SortRule {
+  dir: String
+  attr: String
+}
+
+type Client {
+  code: String
+  name: String
+  balance: Float
+  fiscalNumber: String
+  paypalReference: String
+  address: String
+  postalCode: String
+  city: String
+  type: String
+  bonus: Int
+  transactionIdBond: String
+  easypayCustomer: String
+  lisboaVivaSn: String
+  nifCountry: String
+  numberNavegante: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type ClientCreditCard {
+  brand: String
+  last4Digits: String
+  expirationDate: DateTime
+  defaultCard: Boolean
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Invoice {
+  client: String
+  number: String
+  date: DateTime
+  amount: Float
+  creditAmount: Float
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type PromotionInstance {
+  amount: Float
+  minTopUpAmount: Float
+  expirationDate: DateTime
+  active: Boolean
+  emelUserPayee: String
+  emelUserTrigger: String
+  emelUserTriggerName: String
+  promotion: Promotion
+  promoCode: String
+  promotionType: PromotionType
+  productCode: Product
+  registerPromotion: Boolean
+  appPromotion: Boolean
+  userSubscription: String
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Promotion {
+  emelUser: String
+  promoCode: String
+  amount: Float
+  minTopUpAmount: Float
+  expirationDate: DateTime
+  registerPromotion: Boolean
+  paypalPayment: Boolean
+  mbPayment: Boolean
+  appPromotion: Boolean
+  vouchersLimit: Int
+  vouchersIssued: Int
+  limitPerUser: Int
+  productCode: String
+  promotionType: String
+  groupUserPromo: String
+  subscription: String
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type PromotionType {
+  productCodeSendys: String
+  active: Boolean
+  validityPeriod: Int
+  type: String
+  discount: Int
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Product {
+  active: Boolean
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Transaction {
+  client: String
+  invoice: String
+  parkingInstance: String
+  transactionType: String
+  amount: Float
+  transactionDate: DateTime
+  externalReference: String
+  externalTransactionDate: DateTime
+  transactionReason: String
+  transactionReasonDesc: String
+  transactionReasonAttach: String
+  origin: String
+  internalReference: String
+  userSubscription: String
+  creditNoteInvoice: String
+  isChecked: Boolean
+  code: String
+  name: String
+  description: String
+  creationDate: DateTime
+  createdBy: String
+  updateDate: DateTime
+  updatedBy: String
+  defaultOrder: Int
+  version: Int
+}
+
+type Mutation {
+  registerNavigatorCard(input: String): Boolean
+  clearNavigatorCard(input: String): Boolean
+  createUserSubscription(input: String): UserSubscription
+  reserveBike(input: String): Boolean
+  cancelBikeReserve: Boolean
+  startTrip: Boolean
+  rateTrip(in: RateTrip_In): Boolean
+  tripPayWithPoints(input: String): Int
+  tripPayWithNoPoints(input: String): Int
+  subscriptionEasyPay(in: SubscriptionEasyPay_In): Boolean
+  subscriptionTopUpPayPalBond(in: SubscriptionTopUpPayPalBond_In): Boolean
+  subscriptionTopUpPayPal(input: String): Boolean
+  subscriptionWallet(input: String): Boolean
+  acceptTermsAndConditions: Boolean
+  createCreditCardFrequentPayment: CreateCreditCardFrequentPayment_Out
+  updateCreditCardInfo(input: String): Boolean
+  removeCreditCard(input: String): Boolean
+  creditCardTopUp(in: CreditCardTopUp_In): Boolean
+  insertPromotionalCode(input: String): [PromotionInstance]
+  deleteClient: Boolean
+  registerClient(input: String): Boolean
+  validateLogin(in: ValidateLogin_In): LoginResult
+  topUpPayPal(input: Float): Boolean
+  updatePayPalAccount(input: String): Boolean
+  clearPayPalAccount: Boolean
+  emailInvoices(in: EmailInvoices_In): Boolean
+  emailReturns(in: EmailReturns_In): Boolean
+}
+
+input RateTrip_In {
+  code: String
+  rating: Int
+  description: String
+  attachment: Attachment
+}
+
+input Attachment {
+  bytes: [Byte!]
+  fileName: String
+  mimeType: String
+}
+
+scalar Byte
+
+input SubscriptionEasyPay_In {
+  ccCode: String
+  userSubscription: String
+}
+
+input SubscriptionTopUpPayPalBond_In {
+  userSubscriptionCode: String
+  token: String
+}
+
+type CreateCreditCardFrequentPayment_Out {
+  code: String
+  url: String
+  successUrl: String
+  failUrl: String
+}
+
+input CreditCardTopUp_In {
+  code: String
+  amount: Float
+}
+
+type LoginResult {
+  needsRgpdAcceptance: Boolean
+  needsTermsAcceptance: Boolean
+  messages: [LoginResult_LoginMessage]
+}
+
+type LoginResult_LoginMessage {
+  code: String
+  text: String
+}
+
+input ValidateLogin_In {
+  language: String
+  userAgent: String
+  firebaseToken: String
+}
+
+input EmailInvoices_In {
+  invoicesCodes: [String]
+  client: String
+  origin: String
+}
+
+input EmailReturns_In {
+  invoiceCodes: [String]
+  client: String
+}
+
+type Subscription {
+  serverDate(_access_token: String): DateType
+  activeTripSubscription(_access_token: String): TripDetailType
+  operationalStationsSubscription(_access_token: String): [StationInfoType]
+}
+
+type DateType {
+  date: DateTime!
+}
+
+type TripDetailType {
+  code: String!
+  bike: String!
+  startDate: DateTime!
+  endDate: DateTime
+  cost: Float
+  finished: Boolean!
+  canceled: Boolean!
+  canPayWithMoney: Boolean
+  canUsePoints: Boolean
+  clientPoints: Int
+  tripPoints: Int
+  period: String!
+  periodTime: String!
+  error: Int!
+}
+
+type StationInfoType {
+  code: String!
+  name: String
+  description: String
+  serialNumber: String!
+  zone: String
+  location: String
+  latitude: Float
+  longitude: Float
+  assetType: String!
+  assetStatus: String!
+  assetCondition: String!
+  bikes: Int!
+  docks: Int!
+  stype: String
+}
