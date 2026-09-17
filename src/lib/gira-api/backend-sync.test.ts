@@ -10,6 +10,7 @@ vi.mock('$lib/trip', () => ({
 	DEBUG_TRIP_CODE: 'DEBUG-TRIP',
 	refreshTripStatus: mocks.refreshTripStatus,
 	recoverRecentTripRating: mocks.recoverRecentTripRating,
+	abortPendingTrip: vi.fn(),
 }));
 vi.mock('$lib/vaimoo-api/firestore', () => ({ subscribeFirestoreBike: vi.fn((_id: string, onData: (bike: unknown) => void) => { mocks.bikeListener = onData; return () => {}; }) }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
