@@ -27,6 +27,10 @@
 	let { children }: Props = $props();
 	import { theme } from '$lib/theme';
 
+	// Getting a GPS fix is the slowest part of startup, so start the watcher
+	// right away instead of after the settings and the map have loaded
+	watchPosition();
+
 	function updateInsets() {
 		SafeArea.getSafeAreaInsets().then(({ insets }) => {
 			// Keep the old object when nothing changed, so subscribers (Floating

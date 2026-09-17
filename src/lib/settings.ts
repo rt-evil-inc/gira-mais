@@ -18,15 +18,21 @@ export type AppSettings = {
 export const appSettings = writable<AppSettings>();
 
 export async function loadSettings() {
-	const distanceLock = (await Preferences.get({ key: 'settings/distanceLock' })).value !== 'false'; // !== 'false' is so that it defaults to true if the key is not set
-	const mockUnlock = (await Preferences.get({ key: 'settings/mockUnlock' })).value !== 'false';
-	const backgroundLocation = (await Preferences.get({ key: 'settings/backgroundLocation' })).value !== 'false';
-	const analytics = (await Preferences.get({ key: 'settings/analytics' })).value !== 'false';
-	const reportRatings = (await Preferences.get({ key: 'settings/reportRatings' })).value !== 'false';
-	const theme = ((await Preferences.get({ key: 'settings/theme' })).value || 'system') as 'light'|'dark'|'system'|'daylight';
-	const locale = ((await Preferences.get({ key: 'settings/locale' })).value || 'system') as 'pt'|'en'|'system';
-	const updateWarning = (await Preferences.get({ key: 'settings/updateWarning' })).value !== 'false';
-	const markerSmoothing = (await Preferences.get({ key: 'settings/markerSmoothing' })).value !== 'false';
+	// Every read is a native bridge round trip and the whole UI waits on this
+	// (the layout renders nothing until the theme is known), so issue them all
+	// at once instead of one after the other
+	const keys = ['distanceLock', 'mockUnlock', 'backgroundLocation', 'analytics', 'reportRatings', 'theme', 'locale', 'updateWarning', 'markerSmoothing'] as const;
+	const values = await Promise.all(keys.map(key => Preferences.get({ key: `settings/${key}` }).then(r => r.value)));
+	const raw = Object.fromEntries(keys.map((key, i) => [key, values[i]])) as Record<typeof keys[number], string|null>;
+	const distanceLock = raw.distanceLock !== 'false'; // !== 'false' is so that it defaults to true if the key is not set
+	const mockUnlock = raw.mockUnlock !== 'false';
+	const backgroundLocation = raw.backgroundLocation !== 'false';
+	const analytics = raw.analytics !== 'false';
+	const reportRatings = raw.reportRatings !== 'false';
+	const theme = (raw.theme || 'system') as 'light'|'dark'|'system'|'daylight';
+	const locale = (raw.locale || 'system') as 'pt'|'en'|'system';
+	const updateWarning = raw.updateWarning !== 'false';
+	const markerSmoothing = raw.markerSmoothing !== 'false';
 	appSettings.set({ distanceLock, mockUnlock, backgroundLocation, analytics, theme, locale, updateWarning, reportRatings, markerSmoothing });
 
 	// Track previous values to only save changed settings

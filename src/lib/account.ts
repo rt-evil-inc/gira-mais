@@ -38,8 +38,10 @@ token.subscribe(async v => {
 });
 
 export async function loadUserCreds() {
-	const email = (await Preferences.get({ key: 'email' })).value;
-	const password = (await Preferences.get({ key: 'password' })).value;
+	const [email, password] = await Promise.all([
+		Preferences.get({ key: 'email' }).then(r => r.value),
+		Preferences.get({ key: 'password' }).then(r => r.value),
+	]);
 	if (email && password) {
 		userCredentials.set({ email, password });
 	} else {
