@@ -1,25 +1,27 @@
-// Bakes mock-data.json, the fixture the screenshot script serves to the app in
-// place of the real APIs.
+// Bakes mock-data.json, the fixture the screenshot script puts underneath the
+// app in place of the real backends.
+//
+//   node scripts/screenshots/fetch-mock-data.js
 //
 // Only the station data (locations, capacities and the bike list of the station
-// the screenshots open) is real, and fetching it needs a GIRA account:
-//
-//   GIRA_EMAIL=... GIRA_PASSWORD=... node scripts/screenshots/fetch-mock-data.js
-//
-// Everything about the account — the user, the balance, the subscription and the
-// trip history — is made up here, so the screenshots never show anyone's data.
-// Run this only when the fixture goes stale; screenshots themselves need no
-// credentials.
+// the screenshots open) is real. It comes out of the same Firestore collections
+// the app reads, which are readable with the VAIMOO app's public credentials,
+// so no GIRA account is needed. Everything about the account — the user, the
+// balance, the subscription and the trip history — is made up here, so the
+// screenshots never show anyone's data.
 import { writeFileSync } from 'fs';
 import { SCENES } from './config.js';
 
-const AUTH_URL = 'https://c2g091p01.emel.pt/auth';
-const GRAPHQL_URL = 'https://c2g091p01.emel.pt/ws/graphql';
+// Public client credentials of the official VAIMOO app, and the tenant that
+// scopes GIRA's data in it (see src/lib/vaimoo-api/firestore.ts)
+const FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/vaimoorotterdam/databases/(default)/documents:runQuery';
+const FIRESTORE_API_KEY = 'AIzaSyAmKfHdjYUhzYmg7qSZtRwwYE92HQQlmJ4';
+const GIRA_TENANT = 'P1/EML/EML/';
+
 const GIRA_MAIS_API_URL = 'https://gira-mais.app/api';
 const ROUTING_API_URL = 'https://routing.gira-mais.app';
 /** Same area the app limits its searches to (see src/lib/constants.ts). */
 const ROUTING_BBOX = '-9.55,38.55,-8.85,38.95';
-const USER_AGENT = 'Gira/3.4.3 (Android 34)';
 
 const OUTPUT = new URL('./mock-data.json', import.meta.url);
 
@@ -27,75 +29,68 @@ const OUTPUT = new URL('./mock-data.json', import.meta.url);
 const BIKES_SHOWN = 4;
 
 const MOCK_USER = {
-	name: 'João Silva',
+	userId: 700001,
+	firstName: 'João',
+	lastName: 'Silva',
+	userName: 'joao.silva',
 	email: 'joao.silva@example.com',
+	tenantId: GIRA_TENANT,
 };
 
-const MOCK_ACCOUNT = {
-	balance: 0,
-	bonus: 3390,
-};
+const MOCK_WALLET = { remainingCredit: 0 };
 
 const MOCK_SUBSCRIPTION = {
 	name: 'Passe Anual',
-	type: 'anual',
-	subscriptionStatus: 'paid',
-	active: true,
+	membershipType: 'anual',
 	expiresInDays: 214,
 };
 
-/** Made-up trips, filled in with the names of real stations. */
+/** Made-up trips, filled in with the names of real stations. Stations are named
+  * by the number they carry in the app, which is the head of their name. */
 const MOCK_TRIPS = [
-	{ daysAgo: 1, startTime: '18:32', minutes: 19, bike: 'E0593', bikeType: 'electric', from: '1000307', to: '1000421', bonus: 10, rating: 5 },
-	{ daysAgo: 1, startTime: '08:47', minutes: 13, bike: 'E1108', bikeType: 'electric', from: '1000421', to: '1000307', bonus: 110, rating: 5 },
-	{ daysAgo: 2, startTime: '19:05', minutes: 24, bike: 'C0217', bikeType: 'classic', from: '1000305', to: '1000219', bonus: 10, rating: 4 },
-	{ daysAgo: 2, startTime: '08:52', minutes: 16, bike: 'E0771', bikeType: 'electric', from: '1000219', to: '1000305', bonus: 110, rating: 5 },
-	{ daysAgo: 4, startTime: '13:41', minutes: 9, bike: 'E1873', bikeType: 'electric', from: '1000403', to: '1000407', bonus: 10, rating: 5 },
-	{ daysAgo: 5, startTime: '17:26', minutes: 31, bike: 'E0264', bikeType: 'electric', from: '1000261', to: '1000211', bonus: 10, rating: 3 },
+	{ daysAgo: 1, startTime: '18:32', minutes: 19, bike: 'E0593', from: '307', to: '421', distanceMeters: 3980 },
+	{ daysAgo: 1, startTime: '08:47', minutes: 13, bike: 'E1108', from: '421', to: '307', distanceMeters: 3870 },
+	{ daysAgo: 2, startTime: '19:05', minutes: 24, bike: 'C0217', from: '305', to: '219', distanceMeters: 2640 },
+	{ daysAgo: 2, startTime: '08:52', minutes: 16, bike: 'E0771', from: '219', to: '305', distanceMeters: 2710 },
+	{ daysAgo: 4, startTime: '13:41', minutes: 9, bike: 'E1873', from: '403', to: '407', distanceMeters: 1120 },
+	{ daysAgo: 5, startTime: '17:26', minutes: 31, bike: 'E0264', from: '261', to: '211', distanceMeters: 4530 },
 ];
 
-const MOCK_TRIP_CODES = ['6JWFVI9O8N', 'JWA8FQ1PFL', '5BRNS2SR5A', 'DIIOWVFVSL', 'K2QM7XZ4T1', 'P9LDR3VHB6'];
+const MOCK_TRIP_IDS = [2058311, 2057964, 2055102, 2054778, 2049213, 2046840];
 
 /** The active trip of the trip scene. */
 const MOCK_ACTIVE_TRIP = {
-	code: 'H7TQ2NMD4V',
+	tripId: 2059724,
+	bikeId: 25837,
 	bike: 'E1108',
+	communicationId: '7F2E0D14AC',
+	category: 'E-Bike',
+	battery: 78,
 };
 
 async function main() {
-	const email = process.env.GIRA_EMAIL;
-	const password = process.env.GIRA_PASSWORD;
-	if (!email || !password) throw new Error('Set GIRA_EMAIL and GIRA_PASSWORD to fetch the station data');
-
-	const accessToken = await login(email, password);
-	console.log('Logged in');
-
-	const stations = await graphql(accessToken, {
-		operationName: 'getStations',
-		variables: {},
-		query: 'query getStations {getStations {code, description, latitude, longitude, name, bikes, docks, serialNumber, assetStatus }}',
-	}).then(data => data.getStations);
+	const stations = await firestore('docking-stations');
 	console.log(`Fetched ${stations.length} stations`);
 
-	const station = stations.find(s => s.serialNumber === SCENES.station.stationSerial);
-	if (!station) throw new Error(`Station ${SCENES.station.stationSerial} is gone — pick another one in config.js`);
-	if (station.assetStatus !== 'active') throw new Error(`${station.name} is ${station.assetStatus} — pick another one in config.js`);
-	// The app asks for a station's bikes by serial number, so the fixture is
-	// keyed by it too
-	const stationInfo = await graphql(accessToken, {
-		variables: { input: station.serialNumber },
-		query: `query {
-			getBikes(input: "${station.serialNumber}") { battery, code, name, kms, serialNumber, type, parent }
-			getDocks(input: "${station.serialNumber}") { ledStatus, lockStatus, serialNumber, code, name }
-		}`,
-	});
-	const bikes = (stationInfo.getBikes ?? []).slice(0, BIKES_SHOWN);
-	if (bikes.length < 2) throw new Error(`${station.name} only has ${bikes.length} bike(s) — pick a busier station in config.js`);
-	// The sheet counts the bikes it lists, so keep the marker's count in step
-	station.bikes = bikes.length;
-	console.log(`Kept ${bikes.length} of ${stationInfo.getBikes.length} bikes at ${station.name}`);
+	const station = stations.find(s => s.DockingStationId === SCENES.station.stationId);
+	if (!station) throw new Error(`Station ${SCENES.station.stationId} is gone — pick another one in config.js`);
+	if (!station.IsActive || station.ServiceStatus !== 'AVAILABLE') {
+		throw new Error(`${station.Name} is ${station.ServiceStatus} — pick another one in config.js`);
+	}
 
-	const bikeRatings = await fetchBikeRatings(bikes.map(b => b.name));
+	const parked = await firestore('bikes', { field: 'DockingStationId', value: { integerValue: String(station.DockingStationId) } });
+	// The same bikes the app would list: the sheet leaves out anything booked,
+	// out of service or without a lock to talk to
+	const bikes = parked
+		.filter(bike => bike.IsAvaliable && !bike.IsBooked && bike.CommunicationId)
+		.sort((a, b) => dockOrder(a.DockingPointVisualId) - dockOrder(b.DockingPointVisualId))
+		.slice(0, BIKES_SHOWN);
+	if (bikes.length < 2) throw new Error(`${station.Name} only has ${bikes.length} bike(s) — pick a busier station in config.js`);
+	// The sheet counts the bikes it lists, so keep the marker's count in step
+	station.AvailableBikes = bikes.length;
+	console.log(`Kept ${bikes.length} of ${parked.length} bikes at ${station.Name}`);
+
+	const bikeRatings = await fetchBikeRatings(bikes.map(b => b.VisualId));
 	const destinations = {
 		route: await searchDestination(SCENES.route.destinationQuery),
 		trip: await searchDestination(SCENES.trip.destinationQuery),
@@ -105,17 +100,24 @@ async function main() {
 	const data = {
 		generatedAt: (new Date).toISOString(),
 		user: MOCK_USER,
-		account: MOCK_ACCOUNT,
+		wallet: MOCK_WALLET,
 		subscription: MOCK_SUBSCRIPTION,
 		stations,
-		stationInfo: { [station.serialNumber]: { getBikes: bikes, getDocks: stationInfo.getDocks ?? [] } },
+		stationBikes: { [station.DockingStationId]: bikes },
 		bikeRatings,
-		tripHistory: MOCK_TRIPS.map((trip, i) => ({
-			...trip,
-			code: MOCK_TRIP_CODES[i % MOCK_TRIP_CODES.length],
-			from: stationName(stations, trip.from),
-			to: stationName(stations, trip.to),
-		})),
+		tripHistory: MOCK_TRIPS.map((trip, i) => {
+			const from = namedStation(stations, trip.from);
+			const to = namedStation(stations, trip.to);
+			return {
+				...trip,
+				tripId: MOCK_TRIP_IDS[i % MOCK_TRIP_IDS.length],
+				category: trip.bike.startsWith('E') ? 'E-Bike' : 'Bike',
+				from: from.Name,
+				fromId: from.DockingStationId,
+				to: to.Name,
+				toId: to.DockingStationId,
+			};
+		}),
 		activeTrip: { ...MOCK_ACTIVE_TRIP, ...tripPath },
 		destinations,
 	};
@@ -124,30 +126,49 @@ async function main() {
 	console.log(`Wrote ${OUTPUT.pathname}`);
 }
 
-async function login(email, password) {
-	const res = await fetch(`${AUTH_URL}/login`, {
+/** Every document of a tenant's collection, optionally narrowed by one field.
+  * Firestore's REST API answers the same queries the app's listeners run. */
+async function firestore(collectionId, extraFilter = null) {
+	const filters = [{ fieldFilter: { field: { fieldPath: 'Tenant' }, op: 'EQUAL', value: { stringValue: GIRA_TENANT } } }];
+	if (extraFilter) {
+		filters.push({ fieldFilter: { field: { fieldPath: extraFilter.field }, op: 'EQUAL', value: extraFilter.value } });
+	}
+	const res = await fetch(`${FIRESTORE_URL}?key=${FIRESTORE_API_KEY}`, {
 		method: 'POST',
-		headers: { 'User-Agent': USER_AGENT, 'Content-Type': 'application/json' },
-		body: JSON.stringify({ Provider: 'EmailPassword', CredentialsEmailPassword: { email, password } }),
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			structuredQuery: {
+				from: [{ collectionId }],
+				where: { compositeFilter: { op: 'AND', filters } },
+			},
+		}),
 	});
 	const body = await res.json();
-	if (body.error?.code !== 0) throw new Error(`Login failed: ${body.error?.message ?? res.status}`);
-	return body.data.accessToken;
+	if (!Array.isArray(body)) throw new Error(`Firestore refused the query: ${JSON.stringify(body)}`);
+	return body.filter(entry => entry.document).map(entry => decodeFields(entry.document.fields));
 }
 
-async function graphql(accessToken, body) {
-	const res = await fetch(GRAPHQL_URL, {
-		method: 'POST',
-		headers: {
-			'User-Agent': USER_AGENT,
-			'content-type': 'application/json',
-			'authorization': `Bearer ${accessToken}`,
-		},
-		body: JSON.stringify(body),
-	});
-	const json = await res.json();
-	if (json.errors) throw new Error(`GraphQL error: ${JSON.stringify(json.errors)}`);
-	return json.data;
+/** Firestore's REST API tags every value with its type; the SDK the app uses
+  * hands the documents over as plain objects, so unwrap them the same way. */
+function decodeFields(fields) {
+	return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeValue(value)]));
+}
+
+function decodeValue(value) {
+	const [type, raw] = Object.entries(value)[0];
+	switch (type) {
+	case 'integerValue': case 'doubleValue': return Number(raw);
+	case 'nullValue': return null;
+	case 'geoPointValue': return { latitude: raw.latitude ?? 0, longitude: raw.longitude ?? 0 };
+	case 'arrayValue': return (raw.values ?? []).map(decodeValue);
+	case 'mapValue': return decodeFields(raw.fields ?? {});
+	default: return raw;
+	}
+}
+
+function dockOrder(dock) {
+	const number = dock == null ? NaN : parseInt(dock, 10);
+	return Number.isNaN(number) ? Number.POSITIVE_INFINITY : number;
 }
 
 /** Real community ratings for the bikes on show, with the unrated ones filled
@@ -203,10 +224,10 @@ async function searchDestination(query) {
 	return { query, features };
 }
 
-function stationName(stations, serialNumber) {
-	const station = stations.find(s => s.serialNumber === serialNumber);
-	if (!station) throw new Error(`Station ${serialNumber} used by the trip history is gone`);
-	return station.name;
+function namedStation(stations, number) {
+	const station = stations.find(s => s.Name.startsWith(`${number} -`));
+	if (!station) throw new Error(`Station ${number} used by the trip history is gone`);
+	return station;
 }
 
 function pathLength(coordinates) {

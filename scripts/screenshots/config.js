@@ -1,7 +1,7 @@
 // What the screenshots show: the device to emulate, and where in Lisbon each
-// map scene takes place. The scenes are pinned to real stations (by serial
-// number, which is stable) and real places, so the mock data baked by
-// fetch-mock-data.js keeps matching them.
+// map scene takes place. The scenes are pinned to real stations (by VAIMOO
+// docking station id, which is stable) and real places, so the mock data baked
+// by fetch-mock-data.js keeps matching them.
 
 /** iPhone 13/14 logical size — 1170x2532 native, what the app stores expect. */
 export const DEVICE = {
@@ -16,8 +16,8 @@ export const SCENES = {
 	  * enough for their markers to overlap, tapped from a couple of minutes'
 	  * walk away so the sheet shows a distance. */
 	station: {
-		stationSerial: '1000305',
-		position: { lat: 38.72278, lng: -9.14500 },
+		stationId: 4621,
+		position: { lat: 38.72080, lng: -9.14437 },
 	},
 	/** Campo Grande down to the bullring at Campo Pequeno: a short trip, and
 	  * still one where taking a bike beats walking, which downtown only happens

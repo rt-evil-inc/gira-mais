@@ -5,9 +5,9 @@
 //                                     [--url http://localhost:5173] [--headed]
 //
 // Starts `vite dev`, drives it in a phone-sized Chromium and saves a PNG per
-// scene, language and theme. The GIRA APIs are replayed from mock-data.json
-// (see fetch-mock-data.js), so no account is needed; map tiles and routes are
-// fetched for real.
+// scene, language and theme. The VAIMOO and Gira+ backends are replaced by
+// mock-data.json (see mock-api.js and fetch-mock-data.js), so no account is
+// needed; map tiles and routes are fetched for real.
 import { chromium } from '@playwright/test';
 import { spawn } from 'child_process';
 import { mkdirSync, readFileSync } from 'fs';
@@ -94,12 +94,12 @@ async function historyScene({ context, url, locale, file }) {
 async function stationScene({ context, url, file }) {
 	const scene = SCENES.station;
 	const page = await openApp({ context, url, position: scene.position });
-	const station = data.stations.find(s => s.serialNumber === scene.stationSerial);
-	if (!station) throw new Error(`Station ${scene.stationSerial} is not in mock-data.json`);
+	const station = data.stations.find(s => s.DockingStationId === scene.stationId);
+	if (!station) throw new Error(`Station ${scene.stationId} is not in mock-data.json`);
 
 	await tapStation(page, station);
-	const bikes = data.stationInfo[scene.stationSerial].getBikes;
-	for (const bike of bikes) await page.getByText(bike.name).waitFor();
+	const bikes = data.stationBikes[scene.stationId];
+	for (const bike of bikes) await page.getByText(bike.VisualId).waitFor();
 	// The second bike, a quarter of the way towards unlocking, held there for
 	// the screenshot
 	await holdUnlockSlider(page, 1, 0.25);
@@ -134,8 +134,8 @@ async function tripScene({ context, url, file }) {
 		trip: { startedAt },
 		destination: data.destinations.trip,
 	});
-	// The plate only comes over the websocket, so it doubles as proof the trip
-	// is fully ingested
+	// The plate comes with the active trip, so it doubles as proof the trip is
+	// fully ingested
 	await page.getByText(data.activeTrip.bike).waitFor();
 
 	await ride(page, path, startedAt, elapsedSeconds);
@@ -176,6 +176,11 @@ function openProfile(page) {
   * neighbouring ones can cover it, so this looks for a spot where the app would
   * see this station on top — the same query its own tap handler uses. */
 async function tapStation(page, station) {
+	const marker = {
+		serialNumber: String(station.DockingStationId),
+		longitude: station.Location.longitude,
+		latitude: station.Location.latitude,
+	};
 	const point = await page.evaluate(({ serialNumber, longitude, latitude }) => {
 		const { x, y } = window.map.project([longitude, latitude]);
 		for (const dy of [45, 35, 55, 25, 65, 15, 5]) {
@@ -187,8 +192,8 @@ async function tapStation(page, station) {
 			}
 		}
 		return null;
-	}, station);
-	if (!point) throw new Error(`No tappable marker on screen for ${station.name}`);
+	}, marker);
+	if (!point) throw new Error(`No tappable marker on screen for ${station.Name}`);
 	await page.mouse.click(point.x, point.y);
 }
 
@@ -226,11 +231,18 @@ function waitForRoute(page) {
 /** Replays the fixes of the ride so far. They are dated back to the start of
   * the trip, so the HUD adds up to the distance and pace of a real ride. */
 async function ride(page, path, startedAt, elapsedSeconds) {
-	for (let i = 1; i < path.length; i++) {
+	// The app only starts watching once it knows it is on a trip, and a fix
+	// published before that is one the ride never covered
+	await page.waitForFunction(() => window.__watching());
+	// Starting from where the ride did, rather than from the second fix, is what
+	// makes the distance on the HUD the distance of the baked path: the app
+	// measures between the fixes it was given, so the first leg would go missing
+	for (let i = 0; i < path.length; i++) {
 		const progress = i / (path.length - 1);
+		const [from, to] = i === 0 ? [path[0], path[1]] : [path[i - 1], path[i]];
 		await page.evaluate(fix => window.__setPosition(fix), {
 			...coord(path[i]),
-			heading: bearing(path[i - 1], path[i]),
+			heading: bearing(from, to),
 			speed: 3.9,
 			timestamp: startedAt + progress * elapsedSeconds * 1000,
 		});
@@ -314,6 +326,7 @@ function fakeGeolocation(start) {
 		fix = next;
 		if (fix) for (const watcher of watchers.values()) watcher(position());
 	};
+	window.__watching = () => watchers.size > 0;
 	Object.defineProperty(navigator, 'geolocation', {
 		configurable: true,
 		value: {
