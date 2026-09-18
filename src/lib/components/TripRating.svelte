@@ -57,7 +57,7 @@
 				</svg>
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" ontouchstart={() => setRating(1)}>
+			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" onpointerdown={() => setRating(1)}>
 				<IconMoodWrrr size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -67,7 +67,7 @@
 				<IconMoodConfuzedFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" ontouchstart={() => setRating(2)}>
+			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" onpointerdown={() => setRating(2)}>
 				<IconMoodConfuzed size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -77,7 +77,7 @@
 				<IconMoodEmptyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" ontouchstart={() => setRating(3)}>
+			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" onpointerdown={() => setRating(3)}>
 				<IconMoodEmpty size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -87,7 +87,7 @@
 				<IconMoodSmileFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" ontouchstart={() => setRating(4)}>
+			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" onpointerdown={() => setRating(4)}>
 				<IconMoodSmile size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -97,7 +97,7 @@
 				<IconMoodHappyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" ontouchstart={() => setRating(5)}>
+			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" onpointerdown={() => setRating(5)}>
 				<IconMoodHappy size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}

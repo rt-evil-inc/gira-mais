@@ -7,7 +7,7 @@
 	import { safeInsets } from '$lib/ui.svelte';
 	import { KeepAwake } from '@capacitor-community/keep-awake';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { cubicInOut } from 'svelte/easing';
 	import { fade, fly } from 'svelte/transition';
 
@@ -38,7 +38,7 @@
 			lockOrientation = true;
 		}
 	}
-	trip.subscribe(reserve);
+	onDestroy(trip.subscribe(reserve));
 	$effect(() => reserve($trip));
 
 	$effect(() => {

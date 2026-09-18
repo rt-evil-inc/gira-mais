@@ -665,16 +665,14 @@
 
 	theme.subscribe(currentTheme => {
 		if (map && currentTheme) {
-			map.once('styledata', () => {
-				console.debug('style.load fired');
-				loadImages(map);
+			map.once('styledata', async () => {
+				await loadImages(map);
 				setSourceData(map);
 				addLayers(map);
 				applyStationDisplayState();
 				renderUserMarker();
 				updateMarkerScale();
 				applyRouteData(get(currentRoute));
-				console.debug(map, map.getStyle(), map.getSource('points'));
 			});
 			map.setStyle(getMapStyle(currentTheme), { diff: true });
 		}

@@ -17,6 +17,7 @@
 	import { refreshTripStatus } from '$lib/trip';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
 	import { loadSettings } from '$lib/settings';
+	import { getLocale } from '$lib/translations';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
 	import { startDebugControls } from '$lib/debug';
@@ -60,6 +61,7 @@
 		loadSettings().then(() => {
 			reportAppUsageEvent();
 			appSettings.subscribe(() => {
+				document.documentElement.lang = getLocale();
 				watchPosition();
 			});
 		});

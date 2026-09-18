@@ -29,6 +29,14 @@ export const t = derived(appSettings, () => {
 });
 
 const translations = {
+	background_tracking_title: {
+		en: 'Trip in progress',
+		pt: 'Viagem em curso',
+	},
+	background_tracking_message: {
+		en: 'Tracking your location in the background',
+		pt: 'A registar a sua localização em segundo plano',
+	},
 	ok_button: {
 		en: 'Ok',
 		pt: 'Ok',
@@ -92,10 +100,6 @@ const translations = {
 	selected_location: {
 		en: 'Selected location',
 		pt: 'Local selecionado',
-	},
-	rate_trip_error: {
-		en: 'Error rating trip',
-		pt: 'Erro ao avaliar viagem',
 	},
 	last_trip_question: {
 		en: 'How was your last trip?',
@@ -168,10 +172,6 @@ const translations = {
 	not_official_disclaimer: {
 		en: 'The application is unofficial and not affiliated in any way with EMEL or Câmara Municipal de Lisboa.',
 		pt: 'A aplicação não é oficial, não estando afiliada de modo algum à EMEL ou à Câmara Municipal de Lisboa.',
-	},
-	find_out_more_at: {
-		en: 'Find out more at ',
-		pt: 'Saiba mais em ',
 	},
 	made_by: {
 		en: 'Made by',
@@ -397,18 +397,6 @@ const translations = {
 		en: 'Development',
 		pt: 'Desenvolvimento',
 	},
-	no_tokens_available_error: {
-		en: 'No tokens available',
-		pt: 'Sem tokens disponíveis',
-	},
-	token_encryption_error: {
-		en: 'Error encrypting the token',
-		pt: 'Erro ao encriptar o token',
-	},
-	token_fetch_error: {
-		en: 'Error obtaining a token',
-		pt: 'Erro ao obter um token',
-	},
 	auth_api_communication_error: {
 		en: 'Could not communicate with the authentication API. The service may be temporarily unavailable.',
 		pt: 'Não foi possível comunicar com a API de autenticação da Gira. O serviço pode estar temporariamente indisponível.',
@@ -448,10 +436,6 @@ const translations = {
 	bike_unlock_no_serial_error: {
 		en: 'Bike identification number not found',
 		pt: 'Numero de identificação da bicicleta não encontrado',
-	},
-	service_hours_error: {
-		en: 'Service unavailable. Hours of operation between 06:00 and 02:00.',
-		pt: 'Serviço indisponível. Horário de utilização entre as 06:00 e as 02:00.',
 	},
 	trip_interval_limit_error: {
 		en: 'You have to wait 5 minutes between trips',
