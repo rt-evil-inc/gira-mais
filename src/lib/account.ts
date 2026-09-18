@@ -192,7 +192,16 @@ async function doRefreshToken() {
 		for (let i = 0; i < attempts && !success; i++) {
 			const creds = get(userCredentials);
 			if (!creds) return false;
-			const res = await login(creds.email, creds.password);
+			let res: number;
+			try {
+				res = await login(creds.email, creds.password);
+			} catch (error) {
+				// Network or server trouble; keep the session and try again rather than
+				// rejecting, so callers that fire and forget don't leak unhandled errors
+				console.error('Credentials fallback login failed', error);
+				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
+				continue;
+			}
 			if (res !== 0) {
 				// Invalid credentials
 				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
