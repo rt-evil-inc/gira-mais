@@ -65,7 +65,10 @@ jobs:
 
   prepare_release:
     runs-on: ubuntu-latest
-    needs: build_mobile
+    # bump_version is listed explicitly: the needs context only exposes
+    # outputs of direct dependencies, so gira_version was empty before and
+    # the draft release was created without a tag.
+    needs: [bump_version, build_mobile]
 
     steps:
       - name: Checkout
@@ -89,7 +92,7 @@ jobs:
           git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" > commit_messages.txt
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           draft: true
           tag_name: ${{ needs.bump_version.outputs.gira_version }}
