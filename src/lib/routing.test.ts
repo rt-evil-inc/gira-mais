@@ -5,9 +5,7 @@ import { selectedStation, stations } from '$lib/map.svelte';
 import { ROUTING_API_URL } from '$lib/constants';
 import { get } from 'svelte/store';
 
-beforeAll(() => {
-	vi.mock('$lib/gira-api/api');
-});
+vi.mock('$lib/gira-api/api');
 
 // Real GIRA station locations in Lisbon
 const testStations = [
