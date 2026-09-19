@@ -90,12 +90,12 @@ export function startDebugControls() {
 	const fakeJwtPayload = window.btoa(JSON.stringify({ exp: 4102444800, iat: 0, nbf: 0, jti: 'debug', sub: 'debug', loginProvider: 'debug', services: [], iss: 'debug', aud: 'debug' }));
 	(window as unknown as { giraDebug: unknown }).giraDebug = {
 		addError: (msg: string, delay?: number) => errorMessages.add(msg, delay),
-		fakeLogin: () => token.set({ accessToken: `debug.${fakeJwtPayload}.debug`, refreshToken: 'debug', expiration: 4102444800 }),
+		fakeLogin: () => token.set({ accessToken: `debug.${fakeJwtPayload}.debug`, refreshToken: 'debug', expiration: 4102444800, userId: 0, tenantId: 'debug' }),
 		fakeStations: (select = true) => {
 			stations.value = [
-				{ code: '101', name: '101 - Cais do Sodré', description: null, latitude: 38.7064, longitude: -9.1449, bikes: 12, docks: 20, serialNumber: '101', assetStatus: 'active' },
-				{ code: '202', name: '202 - Marquês de Pombal', description: null, latitude: 38.7255, longitude: -9.1503, bikes: 5, docks: 15, serialNumber: '202', assetStatus: 'active' },
-				{ code: '303', name: '303 - Saldanha', description: null, latitude: 38.7336, longitude: -9.1450, bikes: 0, docks: 18, serialNumber: '303', assetStatus: 'active' },
+				{ code: '101', name: '101 - Cais do Sodré', description: null, latitude: 38.7064, longitude: -9.1449, bikes: 12, docks: 20, freeDocks: 8, serialNumber: '101', assetStatus: 'active' },
+				{ code: '202', name: '202 - Marquês de Pombal', description: null, latitude: 38.7255, longitude: -9.1503, bikes: 5, docks: 15, freeDocks: 10, serialNumber: '202', assetStatus: 'active' },
+				{ code: '303', name: '303 - Saldanha', description: null, latitude: 38.7336, longitude: -9.1450, bikes: 0, docks: 18, freeDocks: 18, serialNumber: '303', assetStatus: 'active' },
 			];
 			if (select) selectedStation.set('101');
 		},
