@@ -6,13 +6,8 @@
 	let { onclick }: {onclick: () => void} = $props();
 
 	let offHours = $state((new Date).getHours() >= 2 && (new Date).getHours() < 6);
-	let noSubscription = $state(false);
-	let negativeBalance = $state(false);
-
-	$effect(() => {
-		noSubscription = $accountInfo?.subscription === null;
-		negativeBalance = ($accountInfo?.balance ?? 0) < 0;
-	});
+	const noSubscription = $derived($accountInfo?.subscription === null);
+	const negativeBalance = $derived(($accountInfo?.balance ?? 0) < 0);
 
 	const interval = setInterval(() => {
 		offHours = (new Date).getHours() >= 2 && (new Date).getHours() < 6;

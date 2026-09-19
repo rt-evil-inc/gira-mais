@@ -1,3 +1,4 @@
+import forms from '@tailwindcss/forms';
 import theme from 'tailwindcss/defaultTheme';
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -26,5 +27,5 @@ export default {
 		},
 	},
 	darkMode: ['class', '[data-theme="dark"]'],
-	plugins: [require('@tailwindcss/forms')],
+	plugins: [forms],
 };

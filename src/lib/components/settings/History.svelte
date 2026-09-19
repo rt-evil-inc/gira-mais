@@ -91,7 +91,7 @@
 		<div class="flex flex-col gap-6 p-5">
 			{#each new Array(4).fill(0) as _}
 				<div class="flex flex-col gap-3">
-					<div class="font-semibold text-label text-sm h-3 my-1 bg-neutral-100 rounded-xl animate-pulse dark:bg-background-secondary"
+					<div class="font-semibold text-label text-sm h-3 my-1 bg-background-tertiary rounded-xl animate-pulse dark:bg-background-secondary"
 						style:width={(Math.random() * 15 + 40) + '%'}
 					></div>
 					{#each new Array(Math.floor(Math.random() * 3 + 1)).fill(0) as _}

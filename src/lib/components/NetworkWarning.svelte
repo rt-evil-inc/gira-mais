@@ -4,8 +4,7 @@
 	import IconWifiOff from '@tabler/icons-svelte/icons/wifi-off';
 	import { t } from '$lib/translations';
 
-	export let tripStatusHeight: number = 0;
-	export let tripStatusWidth: number = 0;
+	let { tripStatusHeight = 0, tripStatusWidth = 0 }: { tripStatusHeight?: number, tripStatusWidth?: number } = $props();
 </script>
 
 <div

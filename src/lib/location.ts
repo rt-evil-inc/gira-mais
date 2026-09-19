@@ -8,6 +8,7 @@ import { compassOffset } from '$lib/compass-offset';
 import { bearingBetweenCoords, distanceBetweenCoords } from '$lib/utils';
 import { MIN_TRAVEL_DISTANCE_m } from '$lib/constants';
 import { appSettings } from './settings';
+import { t } from '$lib/translations';
 
 export const currentPos = writable<Position|null>(null);
 export const bearingNorth = writable<boolean>(false);
@@ -112,8 +113,18 @@ async function requestInitialFix() {
 	}
 }
 
-export async function watchPosition() {
-	if (simulatedLocationActive) return;
+// Several callers (launch, trip start, settings changes, the location button)
+// can overlap; a second call while one is still awaiting the plugin would
+// register a duplicate watcher, so they all share the in-flight setup
+let watchSetup: Promise<void>|null = null;
+
+export function watchPosition(): Promise<void> {
+	if (simulatedLocationActive) return Promise.resolve();
+	watchSetup ??= setupWatcher().finally(() => watchSetup = null);
+	return watchSetup;
+}
+
+async function setupWatcher() {
 	const permission = (await Geolocation.checkPermissions()).location;
 	if (permission !== 'granted') return;
 
@@ -127,8 +138,8 @@ export async function watchPosition() {
 		}
 
 		backgroundWatchId = await BackgroundGeolocation.addWatcher({
-			backgroundTitle: 'Active Trip',
-			backgroundMessage: 'Tracking location in background',
+			backgroundTitle: get(t)('background_tracking_title'),
+			backgroundMessage: get(t)('background_tracking_message'),
 		}, position => {
 			if (position && !simulatedLocationActive) {
 				currentPos.set({ coords: { ...position, heading: position.bearing }, timestamp: position.time ?? Date.now() });
