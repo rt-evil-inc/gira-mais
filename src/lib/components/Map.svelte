@@ -14,7 +14,7 @@
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
 	import maplibregl, { type ExpressionSpecification } from 'maplibre-gl';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 
@@ -23,6 +23,8 @@
 		bottomPadding?: number;
 		topPadding?: number;
 		leftPadding?: number;
+		// Bottom edge of the search bar UI, which the top-down framings clear
+		searchBarBottom?: number;
 	}
 
 	let {
@@ -30,6 +32,7 @@
 		bottomPadding = $bindable(0),
 		topPadding = $bindable(0),
 		leftPadding = $bindable(0),
+		searchBarBottom = 0,
 	}: Props = $props();
 
 	let mapElem: HTMLDivElement;
@@ -132,7 +135,7 @@
 	}
 
 	function standardPadding() {
-		return { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding };
+		return { top: topPadding, bottom: bottomPadding, left: leftPadding };
 	}
 
 	function enterNavView() {
@@ -315,27 +318,34 @@
 				(route.destination.type === 'station' && route.destination.stationSerial === props.serialNumber)
 			);
 			if (!partOfRoute) {
-				routeDestination.set({
-					type: 'station',
-					lat: feature.geometry.coordinates[1],
-					lng: feature.geometry.coordinates[0],
-					name: props.name,
-					stationSerial: props.serialNumber,
-				});
+				// The route to a tapped station is drawn without reframing the map:
+				// the user is looking at that station (often just to check its
+				// bikes), and zooming out to the whole route pulled them away from
+				// it (#111). Only destinations picked from the search bar or by
+				// dropping a pin fit the route
+				fitSuppressed = true;
+				try {
+					routeDestination.set({
+						type: 'station',
+						lat: feature.geometry.coordinates[1],
+						lng: feature.geometry.coordinates[0],
+						name: props.name,
+						stationSerial: props.serialNumber,
+					});
+				} finally {
+					fitSuppressed = false;
+				}
 			}
+			// Once the menu has rendered and reported its height, keep the zoom
+			// and center the station in the map area between the search bar and
+			// the menu
 			await tick();
 			await tick();
-			// With no active trip the camera moves once, when the computed route is
-			// fit to the view; during a trip, without a location (when no route can
-			// be computed) or when the route is kept, no fit happens, so center the
-			// station instead
-			if (get(currentTrip) !== null || get(currentPos) === null || partOfRoute) {
-				map.flyTo({
-					center: feature.geometry.coordinates as [number, number],
-					padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
-					curve: 0,
-				});
-			}
+			map.flyTo({
+				center: feature.geometry.coordinates as [number, number],
+				padding: { top: searchBarBottom, bottom: bottomPadding, left: leftPadding },
+				curve: 0,
+			});
 		}
 		for (const layer of STATION_LAYERS) map.on('click', layer, onStationClick);
 		// on dragging map, remove user tracking
@@ -504,11 +514,10 @@
 		map.setPaintProperty('docks', 'icon-opacity', markerOpacity);
 	}
 
-	// The station menu height passed as bottomPadding only measures the bike
-	// list; the sheet header (drag handle + station info) adds roughly this much
-	const SHEET_HEADER_px = 110;
-
 	let pendingFit = false;
+	// Set around a routeDestination update whose route must not be fit to the
+	// view (a station tapped on the map)
+	let fitSuppressed = false;
 	let lastFitAt = 0;
 	let refitTimeout: ReturnType<typeof setTimeout>;
 
@@ -519,14 +528,10 @@
 		const bounds = new maplibregl.LngLatBounds;
 		bounds.extend([route.origin.lng, route.origin.lat]);
 		route.legs.forEach(leg => leg.coordinates.forEach(c => bounds.extend(c)));
-		// Clear the search bar + route summary chip at the top, and the bottom
-		// sheet (bike list is CSS-capped at 50vh) plus its header at the bottom,
+		// Clear the search bar UI at the top and the bottom sheet at the bottom,
 		// while always keeping a minimum strip of the map visible
-		const top = topPadding + 130;
-		const bottom = Math.min(
-			Math.min(bottomPadding, window.innerHeight / 2) + SHEET_HEADER_px,
-			window.innerHeight - top - 150,
-		);
+		const top = searchBarBottom + 20;
+		const bottom = Math.min(bottomPadding, window.innerHeight - top - 150);
 		// fitBounds adds the map's persistent padding (left behind by flyTo calls
 		// with a padding option) on top of the requested one, so subtract it to
 		// avoid zooming out much further than the route needs
@@ -568,8 +573,9 @@
 		}
 		const route = get(currentRoute);
 		applyRouteData(route);
-		if (!destination) {
+		if (!destination || fitSuppressed) {
 			pendingFit = false;
+			lastFitAt = 0; // nor may the bottom sheet's resize re-fit an older route
 			return;
 		}
 		pendingFit = true;
@@ -721,8 +727,16 @@
 		northWasActive = active;
 	});
 
+	// Closing the menu also drops the padding its centering left on the map;
+	// the ground stays put, only the camera's perspective (visible on the 3D
+	// buildings) returns to the full view. While following, the follow's own
+	// camera moves re-apply their padding
 	$effect(() => {
-		if ($selectedStation == null) bottomPadding = 0;
+		if ($selectedStation != null) return;
+		bottomPadding = 0;
+		if (mapLoaded && !get(following) && map.getPadding().bottom > 0) {
+			map.easeTo({ padding: untrack(standardPadding) });
+		}
 	});
 </script>
 

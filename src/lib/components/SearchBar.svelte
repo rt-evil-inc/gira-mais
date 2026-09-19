@@ -1,4 +1,7 @@
 <script lang="ts" module>
+	// The vertical space the bar claims below its anchor: the pill (h-12) plus
+	// the route summary strip (h-10) hanging from it once a route is shown
+	export const SEARCH_BAR_EXTENT_px = 48 + 40;
 	let dismiss: (() => boolean)|null = null;
 
 	/** Unfocus the search bar, closing its results; true if it was focused */

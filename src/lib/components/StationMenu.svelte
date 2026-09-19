@@ -16,12 +16,14 @@
 	import { fade } from 'svelte/transition';
 
 	interface Props {
-		bikeListHeight?: number;
+		// The sheet's full height once open (header + list), for padding the map
+		height?: number;
 		posTop?: number|undefined;
 		anchorTop?: number|undefined;
 	}
 
-	let { bikeListHeight = $bindable(0), posTop = $bindable<number|undefined>(0), anchorTop = $bindable<number|undefined>(undefined) }: Props = $props();
+	let { height = $bindable(0), posTop = $bindable<number|undefined>(0), anchorTop = $bindable<number|undefined>(undefined) }: Props = $props();
+	let bikeListHeight = $state(0);
 
 	let initPos = 0;
 	let pos = new Tween($selectedStation != null ? 0 : 9999, {
@@ -94,7 +96,8 @@
 	$effect(() => {
 		if (pos.current !== null && !dragging && windowHeight !== undefined && dragged && listWrapper) {
 			const chrome = dragged.clientHeight - listWrapper.clientHeight;
-			anchorTop = Math.min(windowHeight - chrome - Math.min(windowHeight / 2, bikeListHeight) + pos.current, windowHeight);
+			height = chrome + Math.min(windowHeight / 2, bikeListHeight);
+			anchorTop = Math.min(windowHeight - height + pos.current, windowHeight);
 		} else {
 			anchorTop = undefined;
 		}
@@ -155,6 +158,10 @@
 			pos.set(0);
 			bikeInfo = [];
 			manualBike = null;
+			// The list is skeleton-sized from the station's bike count as soon as
+			// it renders, so report that height now rather than when the bikes
+			// arrive: the map pads its centering with it right after the tap
+			tick().then(() => bikeListHeight = bikeList.clientHeight);
 			return subscribeStationBikes(
 				stationId,
 				info => void updateInfo(stationId, info),
