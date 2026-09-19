@@ -28,6 +28,10 @@
 	let { children }: Props = $props();
 	import { theme } from '$lib/theme';
 
+	// Getting a GPS fix is the slowest part of startup, so start the watcher
+	// right away instead of after the settings and the map have loaded
+	watchPosition();
+
 	function updateInsets() {
 		SafeArea.getSafeAreaInsets().then(({ insets }) => {
 			// Keep the old object when nothing changed, so subscribers (Floating
@@ -68,7 +72,7 @@
 		App.addListener('resume', async () => {
 			if ($token != null && $token.refreshToken != null) {
 				console.debug('Refreshing token because app was reopened');
-				await refreshToken();
+				await refreshToken().catch(error => console.error('Resume token refresh failed', error));
 			}
 			refreshTripStatus('app-resume');
 		});

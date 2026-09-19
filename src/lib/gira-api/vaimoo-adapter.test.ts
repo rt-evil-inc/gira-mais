@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('$lib/account', () => ({
 	token: writable({ accessToken: 'access', refreshToken: 'refresh', expiration: Date.now() + 60_000, userId: 42, tenantId: 'P1/EML/EML/' }),
+	currentSession: () => ({ accessToken: 'access', refreshToken: 'refresh', expiresAt: Date.now() + 60_000, userId: 42, user: { userId: 42, tenantId: 'P1/EML/EML/' } }),
 	refreshToken: mocks.refreshToken,
 }));
 vi.mock('$lib/vaimoo-api/firestore', () => mocks);
@@ -36,7 +37,7 @@ vi.mock('$lib/vaimoo-api/client', () => ({
 }));
 
 import { VaimooApiError } from '$lib/vaimoo-api/client';
-import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, quickStartBike, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
+import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, parseVaimooDate, quickStartBike, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
 
 const station = {
 	DockingStationId: 4551,
@@ -94,6 +95,15 @@ describe('VAIMOO app-domain adapter', () => {
 		mocks.quickStartVaimooTrip.mockResolvedValue(undefined);
 		await quickStartBike('communication-id');
 		expect(mocks.quickStartVaimooTrip).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), 'communication-id');
+	});
+
+	it('reads zone-less VAIMOO timestamps as UTC', async () => {
+		expect(parseVaimooDate('2026-09-15T21:20:22.308').toISOString()).toBe('2026-09-15T21:20:22.308Z');
+		expect(parseVaimooDate('2026-09-15T21:20:22Z').toISOString()).toBe('2026-09-15T21:20:22.000Z');
+		expect(parseVaimooDate('2026-09-15T22:20:22+01:00').toISOString()).toBe('2026-09-15T21:20:22.000Z');
+
+		mocks.getCurrentVaimooTrip.mockResolvedValue({ activeTripId: 7, visualId: 'E0980', tripStartDate: '2026-09-15T21:20:22.308', bikePcbBikeState: 'RUNNING' });
+		expect((await getActiveTrip())?.startedAt.toISOString()).toBe('2026-09-15T21:20:22.308Z');
 	});
 
 	it('treats VAIMOO activeTripId zero as no active trip', async () => {
@@ -186,6 +196,34 @@ describe('VAIMOO app-domain adapter', () => {
 		// Once the server counter moves, the observation is stale and the server value wins again.
 		emitStations([{ ...station, AvailableBikes: 4 }]);
 		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 4 })]);
+		unsubscribe();
+	});
+
+	it('does not re-emit stations when the unlockable count matches the server counter', () => {
+		let emitStations: (stations: unknown[]) => void = () => {};
+		let emitBikes: (bikes: unknown[]) => void = () => {};
+		mocks.subscribeFirestoreStations.mockImplementation((onData: typeof emitStations) => {
+			emitStations = onData;
+			return () => {};
+		});
+		mocks.subscribeFirestoreBikes.mockImplementation((_: number, onData: typeof emitBikes) => {
+			emitBikes = onData;
+			return () => {};
+		});
+		const onStations = vi.fn();
+		const unsubscribe = subscribeStations(onStations);
+		subscribeStationBikes('4551', () => {});
+
+		emitStations([{ ...station, AvailableBikes: 2 }]);
+		expect(onStations).toHaveBeenCalledTimes(1);
+
+		emitBikes([bike, { ...bike, VisualId: 'E0002' }]);
+		expect(onStations).toHaveBeenCalledTimes(1);
+
+		// Once a bike becomes unavailable the displayed count changes, so the map is updated.
+		emitBikes([bike, { ...bike, VisualId: 'E0002', IsAvaliable: false }]);
+		expect(onStations).toHaveBeenCalledTimes(2);
+		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 1 })]);
 		unsubscribe();
 	});
 });

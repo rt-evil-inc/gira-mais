@@ -42,15 +42,13 @@
 	onMount(() => {
 		Geolocation.checkPermissions().then(({ location }) => {
 			locationPermission = location == 'granted';
-			setTimeout(() => {
-				if (locationPermission) {
-					$following = true;
-					// watchPosition();
-					currentTrip.subscribe(trip => {
-						if (trip === null) watchPosition(); // Remove background watcher when no trip is active
-					});
-				}
-			}, 500);
+			if (locationPermission) {
+				// The map centers on the user as soon as both it and a fix are ready
+				$following = true;
+				currentTrip.subscribe(trip => {
+					if (trip === null) watchPosition(); // Remove background watcher when no trip is active
+				});
+			}
 		});
 
 		App.addListener('backButton', () => {

@@ -7,6 +7,7 @@
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import { getTripHistory } from '$lib/gira-api/api';
 	import { getLocale, t } from '$lib/translations';
+	import { errorMessages } from '$lib/ui.svelte';
 
 	let trips:CompletedTrip[] = $state([]);
 	let observed:HTMLDivElement|undefined = $state();
@@ -16,13 +17,21 @@
 	const loadedPerPage = 15;
 
 	async function loadMoreTripHistory() {
-		if (loading) return;
+		if (loading || loadedAll) return;
 		loading = true;
-		const res = await getTripHistory(Math.floor(trips.length / loadedPerPage) + 1, loadedPerPage);
-		didFirstRequest = true;
-		if (res.length < loadedPerPage) loadedAll = true;
-		trips = trips.concat(res);
-		loading = false;
+		try {
+			const res = await getTripHistory(Math.floor(trips.length / loadedPerPage) + 1, loadedPerPage);
+			if (res.length < loadedPerPage) loadedAll = true;
+			trips = trips.concat(res);
+		} catch (error) {
+			console.error('Failed to load trip history', error);
+			errorMessages.add($t('gira_api_communication_error'), 5000);
+			// Stop the intersection observer from hammering a failing endpoint; reopening the page retries.
+			loadedAll = true;
+		} finally {
+			didFirstRequest = true;
+			loading = false;
+		}
 	}
 
 	let observer:IntersectionObserver;
