@@ -80,13 +80,15 @@
 		};
 	});
 
-	// Keep the input in sync with destinations set elsewhere (map tap, station tap)
-	routeDestination.subscribe(destination => {
+	// Keep the input in sync with destinations set elsewhere (map tap, station tap).
+	// Subscribed inside an effect so remounts (the floating anchor re-keys its
+	// children whenever it moves) don't pile up subscriptions
+	$effect(() => routeDestination.subscribe(destination => {
 		clearTimeout(debounce);
 		results = null;
 		stationResults = [];
 		query = destination?.name ?? '';
-	});
+	}));
 
 	function onInput() {
 		clearTimeout(debounce);
@@ -182,9 +184,9 @@
 	// Snapshot of the last non-null route, so the summary still has content to
 	// render while it slides back behind the bar after the route is dismissed
 	let lastRoute = $state<PlannedRoute|null>(null);
-	currentRoute.subscribe(route => {
+	$effect(() => currentRoute.subscribe(route => {
 		if (route) lastRoute = route;
-	});
+	}));
 
 	// Slides the summary strip rigidly out from / back behind the bar, like a
 	// drawer: translating (instead of growing height, as slide does) keeps the
@@ -286,7 +288,7 @@
 											<IconBike class="text-label shrink-0" size="20" stroke="2" />
 											<div class="flex flex-col min-w-0">
 												<span class="text-info font-semibold text-sm truncate">{station.name}</span>
-												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: Math.max(station.docks - station.bikes, 0).toString() })}</span>
+												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: station.freeDocks.toString() })}</span>
 											</div>
 										</button>
 									{/each}

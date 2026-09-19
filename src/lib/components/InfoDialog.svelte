@@ -1,6 +1,8 @@
-<script>
+<script lang="ts">
 	import { getMessage } from '$lib/gira-mais-api/gira-mais-api';
 	import { Preferences } from '@capacitor/preferences';
+	import { appSettings } from '$lib/settings';
+	import { get } from 'svelte/store';
 	import { t } from '$lib/translations';
 	import { fade } from 'svelte/transition';
 	import { onMount } from 'svelte';
@@ -12,13 +14,8 @@
 	let messageTimestamp = $state('');
 	let latestVersion = $state('');
 
-	/**
-	 * Compare two semantic versions
-	 * @param {string} version1 - First version (e.g., "1.2.3" or "v1.2.3")
-	 * @param {string} version2 - Second version (e.g., "1.3.0" or "v1.3.0")
-	 * @returns {number} - Returns 1 if version1 > version2, -1 if version1 < version2, 0 if equal
-	 */
-	function compareSemanticVersions(version1, version2) {
+	/** Compare two semantic versions (with or without a 'v' prefix): 1 if version1 > version2, -1 if lower, 0 if equal */
+	function compareSemanticVersions(version1: string, version2: string) {
 		// Clean versions by removing 'v' prefix if present
 		const cleanV1 = version1.startsWith('v') ? version1.slice(1) : version1;
 		const cleanV2 = version2.startsWith('v') ? version2.slice(1) : version2;
@@ -49,7 +46,9 @@
 				}
 			}
 
-			if ((await Preferences.get({ key: 'settings/updateWarning' })).value === 'true') {
+			// The setting defaults to on and is only persisted once toggled, so read
+			// the loaded settings rather than the raw preference
+			if (get(appSettings)?.updateWarning) {
 				httpRequestWithRetry({
 					method: 'GET',
 					url: 'https://api.github.com/repos/rt-evil-inc/gira-mais/releases/latest',

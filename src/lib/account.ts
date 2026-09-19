@@ -1,75 +1,79 @@
-import { dev, version } from '$app/environment';
-import { encryptToken } from '$lib/crypto';
-import { getTokensLogin, getTokensRefresh, getUserInfo } from '$lib/emel-api/emel-api';
-import { startWS } from '$lib/gira-api/ws';
-import { reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
-import { updateOnetimeInfo } from '$lib/injest-api-data';
+import { startBackendSync, stopBackendSync } from '$lib/gira-api/backend-sync';
+import { getAccountSnapshot } from '$lib/gira-api/api';
+import type { AccountSnapshot, SubscriptionInfo } from '$lib/gira-api/models';
 import { selectedStation } from '$lib/map.svelte';
 import { currentTrip, tripRating } from '$lib/trip';
-import { httpRequestWithRetry } from '$lib/utils';
 import { Network } from '@capacitor/network';
 import { Preferences } from '@capacitor/preferences';
 import { get, writable } from 'svelte/store';
-import { GIRA_MAIS_API_URL } from './constants';
+import { getVaimooUser, InvalidCredentialsError, loginWithEmel, refreshVaimooSession, VaimooApiError } from '$lib/vaimoo-api/client';
+import type { VaimooSession } from '$lib/vaimoo-api/types';
 
 export type Token = {
-  accessToken: string;
+	accessToken: string;
 	refreshToken: string;
 	expiration: number;
-};
-export type JWT = {
-	jti: string;
-	sub: string;
-	loginProvider: string;
-	services: string[];
-	nbf: number;
-	exp: number;
-	iat: number;
-	iss: string;
-	aud: string;
+	userId: number;
+	tenantId: string;
 };
 export type User = {
 	email: string;
 	name: string;
 }
-export type Subscription = {
-	active: boolean;
-	expirationDate: Date;
-	name: string;
-	subscriptionStatus: string;
-	type:string
-}
-export type AccountInfo = {
-	bonus: number;
-	balance: number;
-	subscription: Subscription|null;
-}
+export type Subscription = SubscriptionInfo;
+export type AccountInfo = AccountSnapshot;
 
 export const token = writable<Token|null|undefined>(undefined);
-export const encryptedFirebaseToken = writable<string|null>(null);
-export const firebaseToken = writable<string|null>(null);
 export const userCredentials = writable<{email: string, password: string}|null>(null);
 export const user = writable<User|null>(null);
 export const accountInfo = writable<AccountInfo|null>(null);
 
+const REFRESH_RETRY_DELAY_MS = 30_000;
 let tokenRefreshTimeout: ReturnType<typeof setTimeout>|null = null;
-token.subscribe(async v => {
-	if (!v) return;
-	const jwt:JWT = JSON.parse(window.atob(v.accessToken.split('.')[1]));
 
-	startWS();
-	if (get(user) === null) {
-		updateOnetimeInfo();
-		updateUserInfo();
+function scheduleTokenRefresh(delayMs: number) {
+	if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
+	tokenRefreshTimeout = setTimeout(async () => {
+		let refreshed = false;
+		try {
+			refreshed = await refreshToken();
+		} catch (error) {
+			console.error('Scheduled token refresh failed', error);
+		}
+		// A successful refresh sets a new token, which re-arms the timer; otherwise keep trying.
+		if (!refreshed && get(token)) scheduleTokenRefresh(REFRESH_RETRY_DELAY_MS);
+	}, delayMs);
+}
+
+token.subscribe(v => {
+	if (!v) {
+		if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
+		tokenRefreshTimeout = null;
+		return;
 	}
 
-	if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
-	tokenRefreshTimeout = setTimeout(refreshToken, jwt.exp * 1000 - Date.now() - 1000 * 30);
+	startBackendSync();
+	scheduleTokenRefresh(Math.max(1_000, v.expiration - Date.now() - 30_000));
 });
 
+/** The VAIMOO session for the current token, or null when logged out. */
+export function currentSession(): VaimooSession | null {
+	const current = get(token);
+	if (!current?.accessToken || !current.refreshToken || current.userId == null) return null;
+	return {
+		accessToken: current.accessToken,
+		refreshToken: current.refreshToken,
+		userId: current.userId,
+		expiresAt: current.expiration,
+		user: { userId: current.userId, tenantId: current.tenantId },
+	};
+}
+
 export async function loadUserCreds() {
-	const email = (await Preferences.get({ key: 'email' })).value;
-	const password = (await Preferences.get({ key: 'password' })).value;
+	const [email, password] = await Promise.all([
+		Preferences.get({ key: 'email' }).then(r => r.value),
+		Preferences.get({ key: 'password' }).then(r => r.value),
+	]);
 	if (email && password) {
 		userCredentials.set({ email, password });
 	} else {
@@ -83,7 +87,20 @@ export async function loadUserCreds() {
 			Preferences.remove({ key: 'password' });
 			return;
 		}
-		const responseCode = await login(v.email, v.password);
+		if (get(token)) {
+			Preferences.set({ key: 'email', value: v.email });
+			Preferences.set({ key: 'password', value: v.password });
+			return;
+		}
+		let responseCode: number;
+		try {
+			responseCode = await login(v.email, v.password);
+		} catch (error) {
+			// Network or server trouble: show the login screen but keep the credentials for the next attempt.
+			console.error('Login failed', error);
+			token.set(null);
+			return;
+		}
 		if (responseCode !== 0) {
 			console.error('Login failed!');
 			token.set(null);
@@ -100,78 +117,34 @@ export async function loadUserCreds() {
 	});
 }
 
-function isTokenExpired(token: string) {
-	const jwt: JWT = JSON.parse(window.atob(token.split('.')[1]));
-	return jwt.exp * 1000 < Date.now() + 1000 * 30;
-}
-
-export async function fetchFirebaseToken(userId: string, accessToken: string) {
-	// Check if we already have a token that's not expired
-	const currentToken = get(firebaseToken);
-	if (currentToken && !isTokenExpired(currentToken)) {
-		// Token is still valid, just re-encrypt it
-		const encryptedToken = await encryptToken(currentToken, accessToken);
-		if (encryptedToken) {
-			await encryptedFirebaseToken.set(encryptedToken);
-			return true;
-		} else {
-			// errorMessages.add(get(t)('token_encryption_error'));
-			reportErrorEvent('token_encryption_error');
-		}
-	}
-
-	// No valid token found, fetch a new one
-	try {
-		const response = await httpRequestWithRetry({
-			method: 'get',
-			url: GIRA_MAIS_API_URL + '/token',
-			headers: {
-				'User-Agent': `Gira+/${dev ? 'dev' : version}`,
-				'x-user-id': userId,
-			},
-		});
-		if (response?.status === 404) {
-			// errorMessages.add(get(t)('no_tokens_available_error'));
-			// reportErrorEvent('no_tokens_available_error');
-			return false;
-		} else if (!response || response.status !== 200 || !response.data) {
-			// errorMessages.add(get(t)('token_fetch_error'));
-			// reportErrorEvent('token_fetch_error', 'Response status: ' + response?.status);
-			return false;
-		}
-
-		// Encrypt the token
-		const encryptedToken = await encryptToken(response.data, accessToken);
-		if (!encryptedToken) {
-			// errorMessages.add(get(t)('token_encryption_error'));
-			// reportErrorEvent('token_encryption_error');
-			return false;
-		}
-
-		firebaseToken.set(response.data);
-		await encryptedFirebaseToken.set(encryptedToken);
-	} catch (e) {
-		// errorMessages.add(get(t)('token_fetch_error'));
-		// reportErrorEvent('token_fetch_error', (e as Error).message);
-		return false;
-	}
-	return true;
-}
-
 export async function login(email: string, password: string) {
-	const response = await getTokensLogin(email, password);
-	if (response.error.code !== 0) return response.error.code;
-	const { accessToken, refreshToken, expiration } = response.data;
-	if (!accessToken || !refreshToken) return response.error.code;
-	// await fetchFirebaseToken(await hash(email), accessToken);
-	token.set({ accessToken, refreshToken, expiration });
-	return 0;
+	try {
+		const session = await loginWithEmel(email, password);
+		token.set({
+			accessToken: session.accessToken,
+			refreshToken: session.refreshToken,
+			expiration: session.expiresAt,
+			userId: session.userId,
+			tenantId: session.user.tenantId,
+		});
+		user.set({
+			email: session.user.email ?? email,
+			name: [session.user.firstName, session.user.lastName].filter(Boolean).join(' ') || session.user.userName || email,
+		});
+		const initialLoads = await Promise.allSettled([refreshAccountInfo(), updateUserInfo()]);
+		for (const result of initialLoads) {
+			if (result.status === 'rejected') console.error('Failed to load VAIMOO account data', result.reason);
+		}
+		return 0;
+	} catch (error) {
+		if (error instanceof InvalidCredentialsError) return 100;
+		throw error;
+	}
 }
 
 export async function logOut() {
+	stopBackendSync();
 	token.set(null);
-	firebaseToken.set(null);
-	encryptedFirebaseToken.set(null);
 	userCredentials.set(null);
 	accountInfo.set(null);
 	currentTrip.set(null);
@@ -183,35 +156,60 @@ export async function logOut() {
 
 const msBetweenRefreshAttempts = 2000;
 const attempts = 5;
-export async function refreshToken() {
+let refreshRequest: Promise<boolean>|null = null;
+
+/**
+ * Refresh the VAIMOO session, falling back to a full login with the saved credentials.
+ * Concurrent callers (app resume, network reconnect, a 401 mid-request) share one attempt: the
+ * refresh token rotates on every use, so a second parallel refresh would fail and log the user out.
+ */
+export function refreshToken(): Promise<boolean> {
+	refreshRequest ??= doRefreshToken().finally(() => refreshRequest = null);
+	return refreshRequest;
+}
+
+async function doRefreshToken() {
 	if (await Network.getStatus().then(status => !status.connected)) return false;
 	const tokens = get(token);
 	if (!tokens) return false;
 	let success = false;
 	for (let i = 0; i < attempts && !success; i++) {
-		const creds = get(userCredentials);
-		if (!creds) return false;
-		const response = await getTokensRefresh(tokens);
-		if (!response.error || response.error.code !== 0 || !response.data.accessToken || !response.data.refreshToken) {
+		try {
+			const session = await refreshVaimooSession(tokens.refreshToken);
+			token.set({
+				accessToken: session.accessToken,
+				refreshToken: session.refreshToken,
+				expiration: session.expiresAt,
+				userId: session.userId,
+				tenantId: session.user.tenantId,
+			});
+			success = true;
+		} catch (error) {
+			// A rejected refresh token will not become valid by retrying; go straight to the credentials.
+			if (error instanceof VaimooApiError && (error.status === 400 || error.status === 401)) break;
 			await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
-			continue;
 		}
-		const { accessToken, refreshToken, expiration } = response.data;
-		// await fetchFirebaseToken(await hash(creds.email), accessToken);
-		token.set({ accessToken, refreshToken, expiration });
-		success = true;
 	}
 	if (!success) {
-		const success = false;
 		for (let i = 0; i < attempts && !success; i++) {
 			const creds = get(userCredentials);
 			if (!creds) return false;
-			const res = await login(creds.email, creds.password);
+			let res: number;
+			try {
+				res = await login(creds.email, creds.password);
+			} catch (error) {
+				// Network or server trouble; keep the session and try again rather than
+				// rejecting, so callers that fire and forget don't leak unhandled errors
+				console.error('Credentials fallback login failed', error);
+				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
+				continue;
+			}
 			if (res !== 0) {
 				// Invalid credentials
 				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
 				continue;
 			} else {
+				success = true;
 				break;
 			}
 		}
@@ -221,9 +219,16 @@ export async function refreshToken() {
 }
 
 export async function updateUserInfo() {
-	const tokens = get(token);
-	if (!tokens) return;
-	const response = await getUserInfo(tokens);
-	const { email, name } = response.data;
+	const session = currentSession();
+	if (!session) return;
+	const response = await getVaimooUser(session);
+	const email = response.email ?? '';
+	const name = [response.firstName, response.lastName].filter(Boolean).join(' ') || response.userName || email;
 	user.set({ email, name });
+}
+
+export async function refreshAccountInfo() {
+	const snapshot = await getAccountSnapshot();
+	accountInfo.set(snapshot);
+	return snapshot;
 }

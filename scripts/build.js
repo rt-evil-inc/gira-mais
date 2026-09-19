@@ -75,23 +75,6 @@ async function syncNetworkConfig() {
 	await cleanupNetworkConfig();
 }
 
-function getIp() {
-	const ifaces = os.networkInterfaces();
-	let ip = 'localhost';
-	Object.keys(ifaces).forEach(ifname => {
-		let alias = 0;
-		const iface = ifaces[ifname];
-		if (!iface || ifname.includes('vEthernet') || ifname.startsWith('veth') || ifname.startsWith('tailscale') || ifname.startsWith('br-') || ifname.startsWith('docker') || ifname == 'lo') return;
-		iface.forEach(iface2 => {
-			if ('IPv4' !== iface2.family || iface2.internal !== false) return;
-			if (alias >= 1) ip = iface2.address;
-			else ip = iface2.address;
-			++alias;
-		});
-	});
-	return ip;
-}
-
 async function getPort() {
 	const file = await fs.readFile('./vite.config.ts');
 	const match = String(file).match(/port:\s*(\d+)/);

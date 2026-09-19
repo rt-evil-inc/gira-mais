@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { currentRoute } from '$lib/routing';
 	import { t } from '$lib/translations';
-	import { errorMessages, safeInsets } from '$lib/ui.svelte';
+	import { safeInsets } from '$lib/ui.svelte';
 
-	import { rateTrip } from '$lib/gira-api/api';
+	import { submitTripRating } from '$lib/gira-api/api';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
-	import { tripRating } from '$lib/trip';
+	import { markTripRated, tripRating } from '$lib/trip';
 	import IconMoodConfuzed from '@tabler/icons-svelte/icons/mood-confuzed';
 	import IconMoodConfuzedFilled from '@tabler/icons-svelte/icons/mood-confuzed-filled';
 	import IconMoodEmpty from '@tabler/icons-svelte/icons/mood-empty';
@@ -26,19 +26,22 @@
 	let { tripCode, bikePlate, date }: Props = $props();
 	let rating:number|undefined = $state();
 
-	async function rate(tripCode: string, bikePlate:string, rating:number) {
-		postBikeRating(tripCode, bikePlate, rating, date?.toISOString());
-		return (await rateTrip(tripCode, rating)).rateTrip;
-	}
-
 	async function setRating(ratingValue: number) {
 		rating = ratingValue;
-		const result = await rate(tripCode, bikePlate, rating);
-		$tripRating.currentRating = null;
-		if (!result) {
-			errorMessages.add($t('rate_trip_error'));
-			reportErrorEvent('rate_trip_error');
+		try {
+			await submitTripRating(tripCode, bikePlate, rating);
+		} catch (error) {
+			// VAIMOO currently rejects otherwise valid opinion feedback. Rating is optional,
+			// so do not block or repeatedly prompt the rider when its backend is unavailable.
+			console.warn('VAIMOO trip rating was not accepted; continuing', error);
 		}
+		await markTripRated(tripCode).catch(error => console.warn('Could not remember handled trip rating', error));
+		// Keep the optional Gira+ aggregate for bike-condition hints regardless of VAIMOO's result.
+		void postBikeRating(tripCode, bikePlate, rating, date?.toISOString()).catch(error => {
+			console.warn('Could not mirror bike rating to Gira+', error);
+			reportErrorEvent('bike_rating_mirror_error');
+		});
+		$tripRating.currentRating = null;
 	}
 </script>
 
@@ -54,7 +57,8 @@
 				</svg>
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" ontouchstart={() => setRating(1)}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div transition:fade={{ duration: 150 }} class="col-start-1 col-end-1 row-start-1 row-end-1" onpointerdown={() => setRating(1)}>
 				<IconMoodWrrr size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -64,7 +68,8 @@
 				<IconMoodConfuzedFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" ontouchstart={() => setRating(2)}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div transition:fade={{ duration: 150 }} class="col-start-2 col-end-2 row-start-1 row-end-1" onpointerdown={() => setRating(2)}>
 				<IconMoodConfuzed size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -74,7 +79,8 @@
 				<IconMoodEmptyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" ontouchstart={() => setRating(3)}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div transition:fade={{ duration: 150 }} class="col-start-3 col-end-3 row-start-1 row-end-1" onpointerdown={() => setRating(3)}>
 				<IconMoodEmpty size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -84,7 +90,8 @@
 				<IconMoodSmileFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" ontouchstart={() => setRating(4)}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div transition:fade={{ duration: 150 }} class="col-start-4 col-end-4 row-start-1 row-end-1" onpointerdown={() => setRating(4)}>
 				<IconMoodSmile size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}
@@ -94,7 +101,8 @@
 				<IconMoodHappyFilled size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{:else}
-			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" ontouchstart={() => setRating(5)}>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div transition:fade={{ duration: 150 }} class="col-start-5 col-end-5 row-start-1 row-end-1" onpointerdown={() => setRating(5)}>
 				<IconMoodHappy size={40} stroke={1.7} class="text-primary" />
 			</div>
 		{/if}

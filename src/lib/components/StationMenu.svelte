@@ -3,15 +3,13 @@
 	import BikeSkeleton from '$lib/components/BikeSkeleton.svelte';
 	import { getStationBikeRatings } from '$lib/gira-mais-api/gira-mais-api';
 	import type { StationBikeRating } from '$lib/gira-mais-api/types';
-	import { getStationInfo } from '$lib/gira-api/api';
-	import { IdToSerial } from '$lib/gira-api/bikeMapping';
+	import { subscribeStationBikes } from '$lib/gira-api/api';
+	import type { AvailableBike } from '$lib/gira-api/models';
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
-	import { enqueueDialog, errorMessages, safeInsets } from '$lib/ui.svelte';
-	import { distanceBetweenCoords, formatDistance, getCssVariable } from '$lib/utils';
-	import { IconX } from '@tabler/icons-svelte';
-	import Search from '@tabler/icons-svelte/icons/search';
+	import { safeInsets } from '$lib/ui.svelte';
+	import { distanceBetweenCoords, formatDistance } from '$lib/utils';
 	import { onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { Tween } from 'svelte/motion';
@@ -42,10 +40,12 @@
 		return undefined;
 	});
 
-	let name = $derived(station?.name ? station.name.split(/-|–/, 2)[1].trim() : '');
+	// Station names look like "777 - Emel Station"; tolerate names without a dash.
+	let nameParts = $derived((station?.name ?? '').split(/-|–/, 2).map(part => part.trim()));
+	let code = $derived(nameParts[0] ?? '');
+	let name = $derived(nameParts[1] ?? '');
 	let bikes = $derived(station?.bikes ?? 0);
-	let freeDocks = $derived(station ? Math.max(station.docks - station.bikes, 0) : 0);
-	let code = $derived(station?.name ? station.name.split(/-|–/, 2)[0].trim() : '');
+	let freeDocks = $derived(station?.freeDocks ?? 0);
 	let distance = $derived.by(() => {
 		if ($currentPos && station) {
 			return distanceBetweenCoords(station.latitude, station.longitude, $currentPos.coords.latitude, $currentPos.coords.longitude);
@@ -53,10 +53,8 @@
 		return undefined;
 	});
 
-	let bikeInfo:({type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string, rating?:StationBikeRating}|{id:string, serial: string, rating?:StationBikeRating})[] = $state([]);
-	function isRealBike(bike: typeof bikeInfo[number]): bike is {type:'electric'|'classic', id:string, battery:number|null, dock:string, serial:string, rating?:StationBikeRating} {
-		return 'type' in bike === true;
-	}
+	let bikeInfo:(AvailableBike & { rating?: StationBikeRating })[] = $state([]);
+	let manualBike: AvailableBike | null = $state(null);
 
 	async function loadBikeRatings(bikeIds: string[]) {
 		try {
@@ -121,7 +119,7 @@
 		}
 	}
 
-	async function updateInfo(stationId:string) {
+	async function updateInfo(stationId:string, bikesAtStation: AvailableBike[]) {
 		updating = true;
 		clearTimeout(timeout);
 		if (stations.value) {
@@ -129,34 +127,15 @@
 		}
 		await tick();
 		bikeListHeight = bikeList.clientHeight;
-		let info = await getStationInfo(stationId);
-		let tmpBikeInfo = info.getBikes?.filter(v => v != null).map<typeof bikeInfo[number]>(bike => {
-			let dock = info.getDocks?.filter(v => v != null).find(d => d!.code == bike!.parent);
-			if (dock == null || !dock.name) console.error('Dock not found', bike, info.getDocks);
-			return {
-				type: bike.type == 'electric' ?
-					'electric' : bike.type == null ?
-						bike.name?.[0] == 'E' ?
-							'electric' : 'classic' : 'classic',
-				id: bike.name!,
-				battery: parseInt(bike.battery!) ?? null,
-				dock: dock!.name!,
-				serial: bike.serialNumber!,
-			};
-		});
-		let tmpDocks = info.getDocks?.filter(v => v != null && v.ledStatus !== 'red')?.length ?? 0;
-		let tmpBikes = tmpBikeInfo?.length ?? 0;
-		let thisStation = stations.value.find(s => s.serialNumber == stationId);
-		if (thisStation) {
-			thisStation.bikes = tmpBikes;
-			thisStation.docks = tmpDocks;
-		}
-		if (tmpBikeInfo && stationId === $selectedStation) {
-			bikeInfo = tmpBikeInfo;
-			freeDocks = Math.max(tmpDocks - tmpBikes, 0);
-			bikes = tmpBikes;
-			loadBikeRatings(tmpBikeInfo.map(bike => bike.id));
-		// $stations = $stations;
+		const extraBike = manualBike;
+		const visibleBikes = extraBike && !bikesAtStation.some(bike => bike.id === extraBike.id) ? [...bikesAtStation, extraBike] : bikesAtStation;
+		if (stationId === $selectedStation) {
+			// Snapshots arrive on every bike-document change at the station; keep the ratings already
+			// loaded so the badges don't flicker, and only fetch ratings for bikes we haven't seen.
+			const knownRatings = new Map(bikeInfo.map(bike => [bike.id, bike.rating]));
+			bikeInfo = visibleBikes.map(bike => ({ ...bike, rating: knownRatings.get(bike.id) }));
+			const newBikeIds = visibleBikes.filter(bike => !knownRatings.has(bike.id)).map(bike => bike.id);
+			if (newBikeIds.length) loadBikeRatings(newBikeIds);
 		}
 		await tick();
 		bikeListHeight = bikeList.clientHeight;
@@ -172,9 +151,15 @@
 
 	$effect(() => {
 		if ($selectedStation != null) {
+			const stationId = $selectedStation;
 			pos.set(0);
 			bikeInfo = [];
-			updateInfo($selectedStation);
+			manualBike = null;
+			return subscribeStationBikes(
+				stationId,
+				info => void updateInfo(stationId, info),
+				error => console.error('Failed to listen for station bikes', error),
+			);
 		} else if (dragged) {
 			dismiss();
 		}
@@ -200,6 +185,7 @@
 		return s;
 	}
 
+/* Ghost-bike lookup disabled: the VAIMOO backend lists every dockable bike, so the legacy "missing bike" workaround is not needed.
 	function getSelectArrowBackground() {
 		const primaryColor = getCssVariable('--color-primary').slice(1);
 		return `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23${primaryColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`;
@@ -223,11 +209,11 @@
 				bikeIdInput?.focus();
 				return;
 			}
-			let serial = IdToSerial.get(bikeId);
-			if (serial) {
-				const addedBikeId = bikeId;
-				bikeInfo.push({ id: addedBikeId, serial: serial });
-				loadBikeRatings([addedBikeId]);
+			const foundBike = await findAvailableBike(bikeId);
+			if (foundBike) {
+				manualBike = foundBike;
+				if (!bikeInfo.some(bike => bike.id === foundBike.id)) bikeInfo.push(foundBike);
+				loadBikeRatings([foundBike.id]);
 			} else {
 				errorMessages.add(
 					$t('bike_unlock_no_serial_error'),
@@ -249,10 +235,12 @@
 			bikeIdInput.focus();
 		}
 	});
+	*/
 </script>
 
 <svelte:window bind:innerHeight={windowHeight} />
 
+<!--
 {#snippet addGhostBike(dismiss:() => void)}
 	<div class="w-[340px] max-w-md mx-auto p-6 bg-background rounded-2xl shadow-lg text-left flex flex-col gap-3">
 		<div class="flex justify-between">
@@ -282,12 +270,15 @@
 		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={makeExtraBikeFunction(dismiss)}>{$t('ghost_dismiss_label')}</button>
 	</div>
 {/snippet}
+-->
 
 <div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{pos.current}px)" >
 	<div bind:this={dragged} class="bg-background rounded-t-4xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="w-full h-6 pt-2" ontouchstart={onTouchStart} ontouchend={onTouchEnd} ontouchmove={onTouchMove}>
 			<div class="mx-auto bg-background-tertiary w-16 h-[6px] rounded-full"></div>
 		</div>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="flex p-9 pt-0 pb-2 gap-4" ontouchstart={onTouchStart} ontouchend={onTouchEnd} ontouchmove={onTouchMove}>
 			<div class="flex flex-col grow">
 				<div class="flex items-center gap-2">
@@ -307,8 +298,9 @@
 				<span class="font-bold text-[7px] text-center leading-none">{$t('free_docks_label')}</span>
 			</div>
 		</div>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div bind:this={listWrapper} class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
-			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom={$safeInsets.bottom + 'px'}>
+			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom="max(1.25rem, {$safeInsets.bottom}px)">
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
 						<BikeSkeleton />
@@ -319,17 +311,14 @@
 				{#if $selectedStation !== null}
 					{@const station = getStationFromSerial($selectedStation)}
 					{#each bikeInfo as bike}
-						{#if isRealBike(bike)}
-							<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.serial} rating={bike.rating} disabled={isScrolling} station={station} />
-						{:else}
-							<Bike type={null} id={bike.id} battery={null} dock={null} serial={bike.serial} rating={bike.rating} disabled={isScrolling} station={station} />
-						{/if}
-
+						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.manual ? null : bike.dock} serial={bike.communicationId} rating={bike.rating} disabled={isScrolling} station={station} />
 					{/each}
 				{/if}
+				<!-- Ghost-bike lookup disabled, see the commented-out addGhostBike snippet above.
 				<button class="py-4 pb-2 px-8 w-full flex justify-center text-primary items-center font-semibold gap-2" onclick={() => enqueueDialog(addGhostBike)}>
 					<Search size="16px" stroke="2"/> {$t('search_other_bikes')}
 				</button>
+				-->
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>
 		</div>

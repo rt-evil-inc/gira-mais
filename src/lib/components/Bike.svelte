@@ -114,6 +114,7 @@
 			</div>
 		{/if}
 	</div>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="absolute flex items-center bg-background rounded-2xl h-full w-full px-5 gap-5 touch-pan-y dark:bg-background-secondary" style:box-shadow="0px 0px 12px 0px var(--color-shadow)"
 
 		onpointerdown={onPointerDown}

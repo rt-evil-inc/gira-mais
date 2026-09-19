@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { TripHistory_TripDetail } from '$lib/gira-api/api-types';
+	import type { CompletedTrip } from '$lib/gira-api/models';
 	import { onMount } from 'svelte';
 	import HistoryItem from '$lib/components/settings/HistoryItem.svelte';
 	import { safeInsets } from '$lib/ui.svelte';
@@ -7,8 +7,9 @@
 	import MenuPage from '$lib/components/MenuPage.svelte';
 	import { getTripHistory } from '$lib/gira-api/api';
 	import { getLocale, t } from '$lib/translations';
+	import { errorMessages } from '$lib/ui.svelte';
 
-	let trips:TripHistory_TripDetail[] = $state([]);
+	let trips:CompletedTrip[] = $state([]);
 	let observed:HTMLDivElement|undefined = $state();
 	let didFirstRequest = $state(false);
 	let loading = false;
@@ -16,17 +17,21 @@
 	const loadedPerPage = 15;
 
 	async function loadMoreTripHistory() {
-		if (loading) return;
+		if (loading || loadedAll) return;
 		loading = true;
-		const res = await getTripHistory(Math.floor(trips.length / loadedPerPage) + 1, loadedPerPage);
-		didFirstRequest = true;
-		if (res.tripHistory == null) return;
-		if (res.tripHistory.length < loadedPerPage) loadedAll = true;
-		trips = trips.concat(res.tripHistory.reduce((acc, cur) => {
-			if (cur != null) acc.push(cur);
-			return acc;
-		}, [] as TripHistory_TripDetail[]));
-		loading = false;
+		try {
+			const res = await getTripHistory(Math.floor(trips.length / loadedPerPage) + 1, loadedPerPage);
+			if (res.length < loadedPerPage) loadedAll = true;
+			trips = trips.concat(res);
+		} catch (error) {
+			console.error('Failed to load trip history', error);
+			errorMessages.add($t('gira_api_communication_error'), 5000);
+			// Stop the intersection observer from hammering a failing endpoint; reopening the page retries.
+			loadedAll = true;
+		} finally {
+			didFirstRequest = true;
+			loading = false;
+		}
 	}
 
 	let observer:IntersectionObserver;
@@ -48,12 +53,12 @@
 
 	let aggregate = $derived(Object.entries(trips.reduce((acc, cur) => {
 		if (cur == null) return acc;
-		const date = new Date(cur.startDate);
+		const date = cur.startedAt;
 		const key = `${date.getDate()}/${date.getMonth()}/${date.getFullYear()}`;
 		if (acc[key] == null) acc[key] = [date.getTime(), []];
 		acc[key][1].push(cur);
 		return acc;
-	}, {} as Record<string, [number, TripHistory_TripDetail[]]>)).sort((a, b) => {
+	}, {} as Record<string, [number, CompletedTrip[]]>)).sort((a, b) => {
 		const aDate = new Date(a[0]);
 		const bDate = new Date(b[0]);
 		return bDate.getTime() - aDate.getTime();
@@ -86,7 +91,7 @@
 		<div class="flex flex-col gap-6 p-5">
 			{#each new Array(4).fill(0) as _}
 				<div class="flex flex-col gap-3">
-					<div class="font-semibold text-label text-sm h-3 my-1 bg-neutral-100 rounded-xl animate-pulse dark:bg-background-secondary"
+					<div class="font-semibold text-label text-sm h-3 my-1 bg-background-tertiary rounded-xl animate-pulse dark:bg-background-secondary"
 						style:width={(Math.random() * 15 + 40) + '%'}
 					></div>
 					{#each new Array(Math.floor(Math.random() * 3 + 1)).fill(0) as _}

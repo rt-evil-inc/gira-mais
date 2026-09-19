@@ -1,6 +1,6 @@
 {
   "name": "gira",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "vite dev",
@@ -13,16 +13,16 @@
     "build-app": "node scripts/build.js",
     "build-app-dev": "node scripts/build.js --dev",
     "install-app": "node scripts/build.js --install",
-    "install-app-dev": "node scripts/build.js --dev --install && vite dev --host"
+    "install-app-dev": "node scripts/build.js --dev --install && vite dev --host",
+    "screenshots": "node scripts/screenshots/index.js",
+    "screenshots:mock-data": "node scripts/screenshots/fetch-mock-data.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.3",
-    "@fontsource/poppins": "^5.2.6",
     "@playwright/test": "^1.55.0",
-    "@sveltejs/adapter-auto": "^3.3.1",
     "@sveltejs/adapter-static": "^3.0.8",
-    "@sveltejs/kit": "^2.49.2",
-    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tailwindcss/forms": "^0.5.10",
     "@types/node": "^20.19.11",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -33,14 +33,14 @@
     "eslint-plugin-svelte": "^2.46.1",
     "happy-dom": "^20.10.6",
     "postcss": "^8.5.3",
-    "svelte": "^5.46.1",
+    "svelte": "^5.57.0",
     "svelte-check": "^4.0.0",
     "tailwindcss": "^3.4.17",
     "tslib": "^2.8.1",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.40.0",
-    "vite": "^7.2.6",
-    "vitest": "^3"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   },
   "type": "module",
   "dependencies": {
@@ -53,14 +53,10 @@
     "@capacitor/geolocation": "^7.1.5",
     "@capacitor/ios": "^7.4.3",
     "@capacitor/keyboard": "^7.0.2",
-    "@capacitor/local-notifications": "^7.0.2",
     "@capacitor/network": "^7.0.2",
     "@capacitor/preferences": "^7.0.2",
     "@capacitor/screen-orientation": "^7.0.2",
     "@capacitor/status-bar": "^7.0.2",
-    "@capacitor/toast": "^7.0.2",
-    "@fontsource-variable/inter": "^5.2.6",
-    "@fontsource-variable/roboto-mono": "^5.2.6",
     "@fontsource/inter": "^5.2.6",
     "@fontsource/roboto-mono": "^5.2.6",
     "@mauricewegner/capacitor-navigation-bar": "^2.0.3",
@@ -70,6 +66,7 @@
     "@turf/nearest-point-on-line": "^7.3.5",
     "@types/suncalc": "^1.9.2",
     "capacitor-plugin-safe-area": "^2.0.6",
+    "firebase": "^12.19.0",
     "maplibre-gl": "^4.7.1",
     "suncalc": "^1.9.0"
   },

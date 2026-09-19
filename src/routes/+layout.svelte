@@ -14,9 +14,10 @@
 	import '../app.css';
 	import { App } from '@capacitor/app';
 	import { loadUserCreds, refreshToken, token } from '$lib/account';
-	import { updateActiveTripInfo, updateStations } from '$lib/injest-api-data';
+	import { refreshTripStatus } from '$lib/trip';
 	import { ScreenOrientation } from '@capacitor/screen-orientation';
 	import { loadSettings } from '$lib/settings';
+	import { getLocale } from '$lib/translations';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { watchPosition } from '$lib/location';
 	import { startDebugControls } from '$lib/debug';
@@ -26,6 +27,10 @@
 
 	let { children }: Props = $props();
 	import { theme } from '$lib/theme';
+
+	// Getting a GPS fix is the slowest part of startup, so start the watcher
+	// right away instead of after the settings and the map have loaded
+	watchPosition();
 
 	function updateInsets() {
 		SafeArea.getSafeAreaInsets().then(({ insets }) => {
@@ -60,16 +65,16 @@
 		loadSettings().then(() => {
 			reportAppUsageEvent();
 			appSettings.subscribe(() => {
+				document.documentElement.lang = getLocale();
 				watchPosition();
 			});
 		});
 		App.addListener('resume', async () => {
 			if ($token != null && $token.refreshToken != null) {
 				console.debug('Refreshing token because app was reopened');
-				await refreshToken();
+				await refreshToken().catch(error => console.error('Resume token refresh failed', error));
 			}
-			updateActiveTripInfo();
-			updateStations();
+			refreshTripStatus('app-resume');
 		});
 
 		theme.subscribe(currentTheme => {
@@ -80,7 +85,9 @@
 			}
 		});
 
-		ScreenOrientation.lock({ orientation: 'portrait' });
+		if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+			ScreenOrientation.lock({ orientation: 'portrait' });
+		}
 
 		return () => {
 			stopDebugControls?.();

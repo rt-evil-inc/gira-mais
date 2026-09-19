@@ -21,6 +21,10 @@
 		try {
 			errorCode = await login(email, password);
 			if (errorCode === 0) userCredentials.set({ email, password });
+		} catch (error) {
+			// Network or server trouble rather than bad credentials
+			console.error('Login failed', error);
+			errorCode = -1;
 		} finally {
 			loading = false;
 		}

@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { shortestAngleDelta } from '$lib/marker-animation';
+import { compassOffset } from '$lib/compass-offset';
 
 /** Direction the top of the screen points, in degrees clockwise from north,
  * from the device orientation sensors; null while unavailable or denied. */
@@ -19,6 +20,8 @@ let lastValue: number|null = null;
 
 function publish(heading: number) {
 	const now = Date.now();
+	// every raw reading feeds the error estimate, throttled or not
+	compassOffset.observeCompass(heading, now);
 	if (lastValue !== null) {
 		if (now - lastUpdate < MIN_INTERVAL_ms) return;
 		if (Math.abs(shortestAngleDelta(lastValue, heading)) < MIN_CHANGE_deg) return;
