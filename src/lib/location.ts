@@ -88,13 +88,38 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('Backg
 
 let watchId: string|null = null;
 let backgroundWatchId: string|null = null;
+let initialFixRequested = false;
+
+// A fresh GPS fix takes a few seconds after launch, so the OS's last known
+// position (typically from the previous session or another app) is shown in
+// the meantime as long as it isn't too old; the first real fix replaces it
+const INITIAL_FIX_MAX_AGE_ms = 10 * 60 * 1000;
+const INITIAL_FIX_TIMEOUT_ms = 3000;
+
+async function requestInitialFix() {
+	if (initialFixRequested) return;
+	initialFixRequested = true;
+	try {
+		const position = await Geolocation.getCurrentPosition({
+			enableHighAccuracy: false,
+			maximumAge: INITIAL_FIX_MAX_AGE_ms,
+			timeout: INITIAL_FIX_TIMEOUT_ms,
+		});
+		// The watcher may already have delivered a real fix by now
+		if (position && !simulatedLocationActive && get(currentPos) === null) currentPos.set(position);
+	} catch {
+		// Nothing cached and no quick fix; the watcher will deliver one
+	}
+}
 
 export async function watchPosition() {
 	if (simulatedLocationActive) return;
 	const permission = (await Geolocation.checkPermissions()).location;
 	if (permission !== 'granted') return;
 
-	if (get(currentTrip) !== null && get(appSettings).backgroundLocation) {
+	// Called at launch before the settings are loaded, in which case there's no
+	// trip yet either and the foreground watcher is the right one
+	if (get(currentTrip) !== null && get(appSettings)?.backgroundLocation) {
 		if (backgroundWatchId !== null) return;
 		if (watchId !== null) {
 			await Geolocation.clearWatch({ id: watchId });
@@ -117,6 +142,7 @@ export async function watchPosition() {
 			backgroundWatchId = null;
 		}
 
+		if (get(currentPos) === null) void requestInitialFix();
 		watchId = await Geolocation.watchPosition({
 			enableHighAccuracy: true,
 			timeout: 2000,
