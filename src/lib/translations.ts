@@ -429,6 +429,15 @@ const translations = {
 		en: 'You\'re not close enough to the station',
 		pt: 'Não está perto o suficiente da estação',
 	},
+	// Not wired up yet: VAIMOO's error codes for these are still being mapped (see knownErrors)
+	service_hours_error: {
+		en: 'Service unavailable. Hours of operation between 06:00 and 02:00.',
+		pt: 'Serviço indisponível. Horário de utilização entre as 06:00 e as 02:00.',
+	},
+	rate_trip_error: {
+		en: 'Error rating trip',
+		pt: 'Erro ao avaliar viagem',
+	},
 	bike_unlock_error: {
 		en: 'It was not possible to unlock the bicycle',
 		pt: 'Não foi possível desbloquear a bicicleta',
