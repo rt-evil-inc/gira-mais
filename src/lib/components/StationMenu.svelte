@@ -18,9 +18,10 @@
 	interface Props {
 		bikeListHeight?: number;
 		posTop?: number|undefined;
+		anchorTop?: number|undefined;
 	}
 
-	let { bikeListHeight = $bindable(0), posTop = $bindable<number|undefined>(0) }: Props = $props();
+	let { bikeListHeight = $bindable(0), posTop = $bindable<number|undefined>(0), anchorTop = $bindable<number|undefined>(undefined) }: Props = $props();
 
 	let initPos = 0;
 	let pos = new Tween($selectedStation != null ? 0 : 9999, {
@@ -71,6 +72,7 @@
 	let dragging = $state(false);
 	let timeout:ReturnType<typeof setTimeout>;
 	let bikeList:HTMLDivElement;
+	let listWrapper:HTMLDivElement;
 	let menu:HTMLDivElement;
 	let updating = $state(false);
 	let windowHeight:number|undefined = $state();
@@ -81,6 +83,20 @@
 			posTop = newPosTop;
 		} else {
 			posTop = undefined;
+		}
+	});
+
+	// Where the sheet's top edge is headed, available while station info is
+	// still loading: the list is already skeleton-sized from the station's bike
+	// count, so the target height is known before the fetch returns. Computed
+	// from the list's height cap rather than a rect so the in-flight resize
+	// animation doesn't leak intermediate positions
+	$effect(() => {
+		if (pos.current !== null && !dragging && windowHeight !== undefined && dragged && listWrapper) {
+			const chrome = dragged.clientHeight - listWrapper.clientHeight;
+			anchorTop = Math.min(windowHeight - chrome - Math.min(windowHeight / 2, bikeListHeight) + pos.current, windowHeight);
+		} else {
+			anchorTop = undefined;
 		}
 	});
 
@@ -155,6 +171,7 @@
 			tick: (_:number) => {
 				dismiss();
 				posTop = windowHeight;
+				anchorTop = windowHeight;
 			},
 		};
 	}
@@ -282,7 +299,7 @@
 			</div>
 		</div>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
+		<div bind:this={listWrapper} class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
 			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom="max(1.25rem, {$safeInsets.bottom}px)">
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
