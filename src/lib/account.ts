@@ -6,10 +6,11 @@ import { currentTrip, tripRating } from '$lib/trip';
 import { Network } from '@capacitor/network';
 import { Preferences } from '@capacitor/preferences';
 import { get, writable } from 'svelte/store';
-import { getVaimooUser, loginWithEmel, refreshVaimooSession, VaimooApiError } from '$lib/vaimoo-api/client';
+import { getVaimooUser, InvalidCredentialsError, loginWithEmel, refreshVaimooSession, VaimooApiError } from '$lib/vaimoo-api/client';
+import type { VaimooSession } from '$lib/vaimoo-api/types';
 
 export type Token = {
-  accessToken: string;
+	accessToken: string;
 	refreshToken: string;
 	expiration: number;
 	userId: number;
@@ -27,15 +28,46 @@ export const userCredentials = writable<{email: string, password: string}|null>(
 export const user = writable<User|null>(null);
 export const accountInfo = writable<AccountInfo|null>(null);
 
+const REFRESH_RETRY_DELAY_MS = 30_000;
 let tokenRefreshTimeout: ReturnType<typeof setTimeout>|null = null;
-token.subscribe(async v => {
-	if (!v) return;
+
+function scheduleTokenRefresh(delayMs: number) {
+	if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
+	tokenRefreshTimeout = setTimeout(async () => {
+		let refreshed = false;
+		try {
+			refreshed = await refreshToken();
+		} catch (error) {
+			console.error('Scheduled token refresh failed', error);
+		}
+		// A successful refresh sets a new token, which re-arms the timer; otherwise keep trying.
+		if (!refreshed && get(token)) scheduleTokenRefresh(REFRESH_RETRY_DELAY_MS);
+	}, delayMs);
+}
+
+token.subscribe(v => {
+	if (!v) {
+		if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
+		tokenRefreshTimeout = null;
+		return;
+	}
 
 	startBackendSync();
-
-	if (tokenRefreshTimeout) clearTimeout(tokenRefreshTimeout);
-	tokenRefreshTimeout = setTimeout(refreshToken, Math.max(1_000, v.expiration - Date.now() - 30_000));
+	scheduleTokenRefresh(Math.max(1_000, v.expiration - Date.now() - 30_000));
 });
+
+/** The VAIMOO session for the current token, or null when logged out. */
+export function currentSession(): VaimooSession | null {
+	const current = get(token);
+	if (!current?.accessToken || !current.refreshToken || current.userId == null) return null;
+	return {
+		accessToken: current.accessToken,
+		refreshToken: current.refreshToken,
+		userId: current.userId,
+		expiresAt: current.expiration,
+		user: { userId: current.userId, tenantId: current.tenantId },
+	};
+}
 
 export async function loadUserCreds() {
 	const [email, password] = await Promise.all([
@@ -60,7 +92,15 @@ export async function loadUserCreds() {
 			Preferences.set({ key: 'password', value: v.password });
 			return;
 		}
-		const responseCode = await login(v.email, v.password);
+		let responseCode: number;
+		try {
+			responseCode = await login(v.email, v.password);
+		} catch (error) {
+			// Network or server trouble: show the login screen but keep the credentials for the next attempt.
+			console.error('Login failed', error);
+			token.set(null);
+			return;
+		}
 		if (responseCode !== 0) {
 			console.error('Login failed!');
 			token.set(null);
@@ -97,7 +137,7 @@ export async function login(email: string, password: string) {
 		}
 		return 0;
 	} catch (error) {
-		if (error instanceof VaimooApiError && error.status === 401) return 100;
+		if (error instanceof InvalidCredentialsError) return 100;
 		throw error;
 	}
 }
@@ -116,7 +156,19 @@ export async function logOut() {
 
 const msBetweenRefreshAttempts = 2000;
 const attempts = 5;
-export async function refreshToken() {
+let refreshRequest: Promise<boolean>|null = null;
+
+/**
+ * Refresh the VAIMOO session, falling back to a full login with the saved credentials.
+ * Concurrent callers (app resume, network reconnect, a 401 mid-request) share one attempt: the
+ * refresh token rotates on every use, so a second parallel refresh would fail and log the user out.
+ */
+export function refreshToken(): Promise<boolean> {
+	refreshRequest ??= doRefreshToken().finally(() => refreshRequest = null);
+	return refreshRequest;
+}
+
+async function doRefreshToken() {
 	if (await Network.getStatus().then(status => !status.connected)) return false;
 	const tokens = get(token);
 	if (!tokens) return false;
@@ -132,7 +184,9 @@ export async function refreshToken() {
 				tenantId: session.user.tenantId,
 			});
 			success = true;
-		} catch {
+		} catch (error) {
+			// A rejected refresh token will not become valid by retrying; go straight to the credentials.
+			if (error instanceof VaimooApiError && (error.status === 400 || error.status === 401)) break;
 			await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
 		}
 	}
@@ -140,7 +194,16 @@ export async function refreshToken() {
 		for (let i = 0; i < attempts && !success; i++) {
 			const creds = get(userCredentials);
 			if (!creds) return false;
-			const res = await login(creds.email, creds.password);
+			let res: number;
+			try {
+				res = await login(creds.email, creds.password);
+			} catch (error) {
+				// Network or server trouble; keep the session and try again rather than
+				// rejecting, so callers that fire and forget don't leak unhandled errors
+				console.error('Credentials fallback login failed', error);
+				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
+				continue;
+			}
 			if (res !== 0) {
 				// Invalid credentials
 				await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));
@@ -156,15 +219,9 @@ export async function refreshToken() {
 }
 
 export async function updateUserInfo() {
-	const tokens = get(token);
-	if (!tokens) return;
-	const response = await getVaimooUser({
-		accessToken: tokens.accessToken,
-		refreshToken: tokens.refreshToken,
-		expiresAt: tokens.expiration,
-		userId: tokens.userId,
-		user: { userId: tokens.userId, tenantId: tokens.tenantId },
-	});
+	const session = currentSession();
+	if (!session) return;
+	const response = await getVaimooUser(session);
 	const email = response.email ?? '';
 	const name = [response.firstName, response.lastName].filter(Boolean).join(' ') || response.userName || email;
 	user.set({ email, name });

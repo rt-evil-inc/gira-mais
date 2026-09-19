@@ -3,8 +3,6 @@ import { dev } from '$app/environment';
 export const LOCK_DISTANCE_m = 35;
 export const MIN_TRAVEL_DISTANCE_m = 20;
 
-export const GIRA_AUTH_URL = 'https://login.emel.pt';
-export const GIRA_API_URL = 'https://emel-consumerapp.vaimoo.com';
 // VAIMOO tenant that scopes GIRA data in the shared Firestore project and API
 export const GIRA_TENANT = 'P1/EML/EML/';
 

@@ -445,6 +445,10 @@ const translations = {
 		en: 'It was not possible to unlock the bicycle',
 		pt: 'Não foi possível desbloquear a bicicleta',
 	},
+	trip_end_error: {
+		en: 'The bicycle reported a problem ending the trip. Make sure it is locked in a dock.',
+		pt: 'A bicicleta reportou um problema ao terminar a viagem. Certifique-se de que está bloqueada numa doca.',
+	},
 	bike_unlock_no_serial_error: {
 		en: 'Bike identification number not found',
 		pt: 'Numero de identificação da bicicleta não encontrado',

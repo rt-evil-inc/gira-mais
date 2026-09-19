@@ -1,6 +1,4 @@
-import { get } from 'svelte/store';
-import { refreshToken, token } from '$lib/account';
-import { GIRA_TENANT } from '$lib/constants';
+import { currentSession, refreshToken } from '$lib/account';
 import type { StationInfo } from '$lib/map.svelte';
 import type { Translations } from '$lib/translations';
 import {
@@ -41,17 +39,9 @@ export const knownErrors = {
 } as const satisfies Record<string, { message?: keyof Translations; retry: boolean }>;
 
 function session(): VaimooSession {
-	const current = get(token);
-	if (!current?.accessToken || !current.refreshToken || current.userId == null) {
-		throw new Error('Not authenticated with VAIMOO');
-	}
-	return {
-		accessToken: current.accessToken,
-		refreshToken: current.refreshToken,
-		userId: current.userId,
-		expiresAt: current.expiration,
-		user: { userId: current.userId, tenantId: current.tenantId ?? GIRA_TENANT },
-	};
+	const current = currentSession();
+	if (!current) throw new Error('Not authenticated with VAIMOO');
+	return current;
 }
 
 /** Run a VAIMOO call with the current session, refreshing the token and retrying once if it was rejected. */
@@ -93,7 +83,11 @@ function recordObservedBikeCount(stationId: string, bikes: number) {
 	const serverBikes = serverBikeCount(station);
 	const previous = observedBikeCounts.get(stationId);
 	if (previous?.serverBikes === serverBikes && previous.bikes === bikes) return;
+	const shownBefore = stationBikeCount(station);
 	observedBikeCounts.set(stationId, { serverBikes, bikes });
+	// Re-emitting rebuilds every map marker; skip it when the displayed count is unchanged, which
+	// is the common case on the first snapshot of a station and would otherwise stutter the menu opening.
+	if (stationBikeCount(station) === shownBefore) return;
 	stationListener?.(mapStations(lastStations));
 }
 
@@ -179,13 +173,23 @@ export async function quickStartBike(communicationId: string): Promise<void> {
 	await withSession(currentSession => quickStartVaimooTrip(currentSession, communicationId));
 }
 
+/**
+ * VAIMOO trip timestamps are UTC but carry no zone designator ("2026-09-15T21:20:22.308"); the official
+ * app parses them with an explicit UTC formatter. `new Date` would read them as local time, an hour off
+ * in Lisbon summer time, so append the designator when it is missing.
+ */
+export function parseVaimooDate(value: string): Date {
+	const hasOffset = /(Z|[+-]\d{2}:?\d{2})$/i.test(value);
+	return new Date(hasOffset ? value : value + 'Z');
+}
+
 export async function getActiveTrip(): Promise<ServerActiveTrip | null> {
 	const trip = await withSession(getCurrentVaimooTrip);
 	if (trip.activeTripId == null || trip.activeTripId <= 0) return null;
 	return {
 		id: String(trip.activeTripId),
 		bikeId: trip.visualId,
-		startedAt: trip.tripStartDate ? new Date(trip.tripStartDate) : new Date,
+		startedAt: trip.tripStartDate ? parseVaimooDate(trip.tripStartDate) : new Date,
 		bikeState: trip.bikePcbBikeState,
 	};
 }
@@ -193,8 +197,8 @@ export async function getActiveTrip(): Promise<ServerActiveTrip | null> {
 function mapCompletedTrip(trip: VaimooTripDetails): CompletedTrip {
 	return {
 		id: String(trip.tripId ?? ''),
-		startedAt: new Date(trip.startDate),
-		endedAt: new Date(trip.endDate),
+		startedAt: parseVaimooDate(trip.startDate),
+		endedAt: parseVaimooDate(trip.endDate),
 		bikeId: trip.vehicle?.visualId ?? null,
 		bikeType: trip.vehicle?.vehicleCategoryCode ?? null,
 		startStation: trip.startStation?.name ?? null,

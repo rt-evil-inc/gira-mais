@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { token } from '$lib/account';
 import { stations } from '$lib/map.svelte';
-import { currentTrip, DEBUG_TRIP_CODE, recoverRecentTripRating, refreshTripStatus } from '$lib/trip';
+import { abortPendingTrip, currentTrip, DEBUG_TRIP_CODE, recoverRecentTripRating, refreshTripStatus } from '$lib/trip';
 import { subscribeFirestoreBike } from '$lib/vaimoo-api/firestore';
 import { subscribeStations } from './api';
 import { errorMessages } from '$lib/ui.svelte';
@@ -39,9 +39,12 @@ function scheduleTripCheck(confirmed: boolean) {
 		logBackendSync('poll-fired', { confirmed, hasToken: Boolean(get(token)) });
 		if (!get(token)) return;
 		try {
-			await refreshTripStatus('scheduled-poll');
-		} catch (error) {
-			console.error('VAIMOO trip status refresh failed', error);
+			const serverTrip = await refreshTripStatus('scheduled-poll');
+			// The bike document said the trip was over but VAIMOO disagrees; go back to the relaxed cadence.
+			if (serverTrip && tripEndSignalled) {
+				logBackendSync('trip-end-signal-cleared', { tripId: serverTrip.id });
+				tripEndSignalled = false;
+			}
 		} finally {
 			const trip = get(currentTrip);
 			if (tripTimer === timer && trip && trip.code !== DEBUG_TRIP_CODE) scheduleTripCheck(trip.confirmed);
@@ -89,10 +92,17 @@ function followActiveBike(bikeId: string | null) {
 			} else if (previousState !== undefined && previousState !== nextState) {
 				void refreshTripStatus(`firestore-state:${previousState ?? 'null'}->${nextState ?? 'null'}`);
 			}
-			// The official app surfaces these codes straight from the bike document (100 = start timeout, 4xx = end failures).
-			if (previousErrorCode !== undefined && previousErrorCode !== nextErrorCode && nextErrorCode != null) {
+			// The official app surfaces these codes straight from the bike document (100 = start timeout, 2xx/4xx = end failures).
+			if (previousErrorCode !== undefined && previousErrorCode !== nextErrorCode && nextErrorCode != null && nextErrorCode !== 0) {
 				console.warn('VAIMOO bike reported trip error code', nextErrorCode);
-				if (nextErrorCode === FIRESTORE_START_TRIP_TIMEOUT) errorMessages.add(get(t)('bike_unlock_error'));
+				if (nextErrorCode === FIRESTORE_START_TRIP_TIMEOUT) {
+					// Clear the unconfirmed trip right away instead of waiting for the 30 s confirmation timeout,
+					// which would otherwise show the same error a second time.
+					abortPendingTrip(`firestore-error:${nextErrorCode}`);
+					errorMessages.add(get(t)('bike_unlock_error'));
+				} else if (trip?.confirmed) {
+					errorMessages.add(get(t)('trip_end_error'), 5000);
+				}
 				void refreshTripStatus(`firestore-error:${nextErrorCode}`);
 			}
 			previousState = nextState;
@@ -145,14 +155,18 @@ export function startBackendSync() {
 			}
 		});
 	}
-	void (async () => {
-		try {
-			const activeTrip = await refreshTripStatus('backend-sync-start');
-			if (firstStart && !activeTrip) await recoverRecentTripRating();
-		} catch (error) {
-			console.error('Initial VAIMOO trip status refresh failed', error);
-		}
-	})();
+	// Only on the first start: this also runs on every token refresh, and the scheduled poll,
+	// the app-resume and network-reconnect hooks already cover an existing session.
+	if (firstStart) {
+		void (async () => {
+			try {
+				const activeTrip = await refreshTripStatus('backend-sync-start');
+				if (!activeTrip) await recoverRecentTripRating();
+			} catch (error) {
+				console.error('Initial VAIMOO trip status refresh failed', error);
+			}
+		})();
+	}
 }
 
 export function stopBackendSync() {

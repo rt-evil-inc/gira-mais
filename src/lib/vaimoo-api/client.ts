@@ -1,5 +1,9 @@
 import { dev } from '$app/environment';
 import { CapacitorHttp, type HttpOptions } from '@capacitor/core';
+import { Network } from '@capacitor/network';
+import { get } from 'svelte/store';
+import { t } from '$lib/translations';
+import { errorMessages } from '$lib/ui.svelte';
 import type {
 	VaimooCurrentTrip,
 	VaimooLoginResponse,
@@ -17,7 +21,9 @@ export const VAIMOO_APP_VERSION = 'A1.0.0';
 export const EMEL_LOGIN_URL = 'https://login.emel.pt/';
 export const EMEL_REDIRECT_URI = 'vaimoo://auth/callback';
 
-function serviceUrl(service: 'emel' | 'vaimoo', path: string) {
+type Service = 'emel' | 'vaimoo';
+
+function serviceUrl(service: Service, path: string) {
 	const normalizedPath = path.replace(/^\/+/, '');
 	// CapacitorHttp is a native client, so unlike fetch it cannot resolve a relative URL.
 	// Development builds load from the Vite server through adb reverse; preserve that
@@ -29,6 +35,9 @@ function serviceUrl(service: 'emel' | 'vaimoo', path: string) {
 export class VaimooApiError extends Error {
 	readonly errors: { message: string }[];
 
+	/** VAIMOO's numeric `responseStatus.errorCode`, which is what the official app switches on. */
+	readonly code: number | null;
+
 	constructor(
 		message: string,
 		readonly status: number,
@@ -36,39 +45,110 @@ export class VaimooApiError extends Error {
 	) {
 		super(message);
 		this.name = 'VaimooApiError';
-		this.errors = errorMessages(body, message).map(message => ({ message }));
+		this.code = errorCode(body);
+		this.errors = apiErrorMessages(body, message).map(message => ({ message }));
 	}
 }
 
-function errorMessages(body: unknown, fallback: string): string[] {
+/** The EMEL account rejected the email/password; the only failure that should discard saved credentials. */
+export class InvalidCredentialsError extends VaimooApiError {
+	constructor(message: string, body: unknown) {
+		super(message, 401, body);
+		this.name = 'InvalidCredentialsError';
+	}
+}
+
+type VaimooErrorBody = {
+	message?: unknown;
+	error?: unknown;
+	errors?: unknown;
+	responseStatus?: { errorCode?: unknown; message?: unknown; errors?: unknown };
+};
+
+function errorCode(body: unknown): number | null {
+	if (!body || typeof body !== 'object') return null;
+	const code = (body as VaimooErrorBody).responseStatus?.errorCode;
+	return typeof code === 'number' ? code : null;
+}
+
+function messagesFrom(errors: unknown): string[] {
+	if (!Array.isArray(errors)) return [];
+	return errors.flatMap(error => {
+		if (typeof error === 'string') return [error];
+		if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+			return [(error as { message: string }).message];
+		}
+		return [];
+	});
+}
+
+function apiErrorMessages(body: unknown, fallback: string): string[] {
 	if (typeof body === 'string' && body) return [body];
 	if (!body || typeof body !== 'object') return [fallback];
-	const data = body as { message?: unknown; error?: unknown; errors?: unknown };
-	if (Array.isArray(data.errors)) {
-		const messages = data.errors.flatMap(error => {
-			if (typeof error === 'string') return [error];
-			if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
-				return [(error as { message: string }).message];
-			}
-			return [];
-		});
-		if (messages.length) return messages;
-	}
+	const data = body as VaimooErrorBody;
+	// VAIMOO wraps failures as { responseStatus: { errorCode, message, errors: [{ errorCode, message }] } }.
+	const nested = messagesFrom(data.responseStatus?.errors);
+	if (nested.length) return nested;
+	if (typeof data.responseStatus?.message === 'string' && data.responseStatus.message) return [data.responseStatus.message];
+	const flat = messagesFrom(data.errors);
+	if (flat.length) return flat;
 	if (typeof data.message === 'string') return [data.message];
 	if (typeof data.error === 'string') return [data.error];
 	return [fallback];
 }
 
-async function http<T>(options: HttpOptions): Promise<T> {
-	const response = await CapacitorHttp.request({
-		connectTimeout: 10_000,
-		readTimeout: 10_000,
-		...options,
-	});
-	if (response.status < 200 || response.status >= 300) {
-		throw new VaimooApiError(`VAIMOO request failed with HTTP ${response.status}`, response.status, response.data);
+/** The request never got an HTTP response (offline, DNS, timeout); the server may or may not have processed it. */
+export class VaimooNetworkError extends Error {
+	constructor(message: string, readonly cause: unknown) {
+		super(message);
+		this.name = 'VaimooNetworkError';
 	}
-	return response.data as T;
+}
+
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 1_000;
+const COMMUNICATION_ERROR_KEYS = {
+	emel: { retry: 'auth_api_communication_error_retry', final: 'auth_api_communication_error' },
+	vaimoo: { retry: 'gira_api_communication_error_retry', final: 'gira_api_communication_error' },
+} as const;
+
+async function isOnline() {
+	return Network.getStatus().then(status => status.connected, () => true);
+}
+
+/**
+ * Perform a request, retrying network-level failures with linear backoff and telling the user when the
+ * service is unreachable. HTTP error responses are never retried: the server has answered.
+ * `retry: false` is for non-idempotent calls (the unlock), where a timed-out request may already have
+ * taken effect and repeating it would fail even though it succeeded.
+ */
+async function http<T>(service: Service, options: HttpOptions, { retry = true } = {}): Promise<T> {
+	const maxAttempts = retry ? MAX_ATTEMPTS : 1;
+	for (let attempt = 1; ; attempt++) {
+		let response;
+		try {
+			response = await CapacitorHttp.request({
+				connectTimeout: 10_000,
+				readTimeout: 10_000,
+				...options,
+			});
+		} catch (error) {
+			console.error(`${service} request to ${options.url} failed (attempt ${attempt}/${maxAttempts})`, error);
+			// Offline is reported by the network banner already; only warn when the service itself is unreachable.
+			const notify = retry && await isOnline();
+			if (attempt < maxAttempts) {
+				if (notify && attempt === 1) errorMessages.add(get(t)(COMMUNICATION_ERROR_KEYS[service].retry), 5000);
+				await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+				continue;
+			}
+			if (notify) errorMessages.add(get(t)(COMMUNICATION_ERROR_KEYS[service].final), 5000);
+			throw new VaimooNetworkError(`${service} request failed: ${error instanceof Error ? error.message : String(error)}`, error);
+		}
+		if (response.status < 200 || response.status >= 300) {
+			throw new VaimooApiError(`VAIMOO request failed with HTTP ${response.status}`, response.status, response.data);
+		}
+		return response.data as T;
+	}
 }
 
 function jwtExpiration(token: string): number | null {
@@ -106,24 +186,27 @@ export async function loginWithEmel(email: string, password: string): Promise<Va
 	const auth = await http<{
 		data: { accessToken: string; refreshToken: string; expiration: string | number };
 		error: { code: number; message?: string };
-	}>({
+	}>('emel', {
 		url: serviceUrl('emel', 'emel-api/auth'),
 		method: 'POST',
 		headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
 		data: { provider: 'EmailPassword', credentialsEmailPassword: { email, password } },
+	}).catch(error => {
+		if (error instanceof VaimooApiError && error.status === 401) throw new InvalidCredentialsError(error.message, error.body);
+		throw error;
 	});
-	if (auth.error.code !== 0) throw new VaimooApiError(auth.error.message ?? 'EMEL login failed', 401, auth.error);
+	if (auth.error.code !== 0) throw new InvalidCredentialsError(auth.error.message ?? 'EMEL login failed', auth.error);
 
-	const emelUser = await http<{ data: { id: string | number }; error: { code: number; message?: string } }>({
+	const emelUser = await http<{ data: { id: string | number }; error: { code: number; message?: string } }>('emel', {
 		url: serviceUrl('emel', 'emel-api/user'),
 		method: 'GET',
 		headers: { Accept: 'application/json', Authorization: `Bearer ${auth.data.accessToken}` },
 	});
 	if (emelUser.error.code !== 0) {
-		throw new VaimooApiError(emelUser.error.message ?? 'EMEL user lookup failed', 401, emelUser.error);
+		throw new VaimooApiError(emelUser.error.message ?? 'EMEL user lookup failed', 502, emelUser.error);
 	}
 
-	const secureCode = await http<{ code: string }>({
+	const secureCode = await http<{ code: string }>('emel', {
 		url: serviceUrl('emel', 'api/auth/code'),
 		method: 'POST',
 		headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -150,7 +233,7 @@ export async function refreshVaimooSession(refreshToken: string): Promise<Vaimoo
 
 export async function vaimooRequest<T>(
 	path: string,
-	options: { method?: string; token?: string; userId?: number; params?: Record<string, string | number | boolean>; data?: unknown; headers?: Record<string, string> } = {},
+	options: { method?: string; token?: string; userId?: number; params?: Record<string, string | number | boolean>; data?: unknown; headers?: Record<string, string>; retry?: boolean } = {},
 ): Promise<T> {
 	const params: Record<string, string> = {
 		userId: String(options.userId ?? null),
@@ -158,7 +241,7 @@ export async function vaimooRequest<T>(
 		t: String(Date.now()),
 	};
 	for (const [key, value] of Object.entries(options.params ?? {})) params[key] = String(value);
-	return http<T>({
+	return http<T>('vaimoo', {
 		url: serviceUrl('vaimoo', path),
 		method: options.method ?? (options.data === undefined ? 'GET' : 'POST'),
 		params,
@@ -171,10 +254,11 @@ export async function vaimooRequest<T>(
 			...options.headers,
 		},
 		...options.data === undefined ? {} : { data: options.data },
-	});
+	}, { retry: options.retry });
 }
 
-export const defaultQuery = (pageIndex = 1, pageSize = 20) => JSON.stringify({ pageIndex, pageSize, filter: { filters: [] } });
+// Newest first, like the official app; without an explicit sort the server order is undefined.
+export const defaultQuery = (pageIndex = 1, pageSize = 20) => JSON.stringify({ pageIndex, pageSize, sort: [{ field: 'startDate', dir: 'desc' }], filter: { filters: [] } });
 
 export const getVaimooUser = (session: VaimooSession) => vaimooRequest<VaimooUser>('user', { token: session.accessToken, userId: session.userId, params: { IncludeUserAppSettings: true } });
 
@@ -202,6 +286,8 @@ export const getVaimooSubscriptionUsage = (session: VaimooSession) => vaimooRequ
 
 export const getVaimooRemainingCredit = (session: VaimooSession) => vaimooRequest<{ remainingCredit: number }>('wallet/remaining-credit', { token: session.accessToken, userId: session.userId });
 
+// Not retried: if the request times out after the server unlocked the bike, a repeat would be rejected
+// as "already in a trip"; tryStartTrip checks the active trip instead.
 export const quickStartVaimooTrip = (session: VaimooSession, communicationId: string) => vaimooRequest<void>(`trip/v2/quick-start/${encodeURIComponent(communicationId)}`, {
-	method: 'POST', token: session.accessToken, userId: session.userId,
+	method: 'POST', token: session.accessToken, userId: session.userId, retry: false,
 });

@@ -24,17 +24,43 @@ async function queryOnce<T>(collectionId: string, ...constraints: QueryConstrain
 	return snapshot.docs.map(document => document.data() as DocumentData as T);
 }
 
+const RESUBSCRIBE_BASE_DELAY_MS = 5_000;
+const RESUBSCRIBE_MAX_DELAY_MS = 60_000;
+
+// Firestore stops delivering snapshots after the error callback fires, so a single failure would
+// otherwise freeze the station map for the rest of the session. Report it and resubscribe with backoff.
 function subscribeToQuery<T>(
 	collectionId: string,
 	constraints: QueryConstraint[],
 	onData: (documents: T[]) => void,
 	onError?: (error: Error) => void,
 ) {
-	return onSnapshot(
-		tenantQuery(collectionId, ...constraints),
-		snapshot => onData(snapshot.docs.map(document => document.data() as DocumentData as T)),
-		error => onError?.(error),
-	);
+	let stopped = false;
+	let failures = 0;
+	let unsubscribe = () => {};
+	let retry: ReturnType<typeof setTimeout> | null = null;
+	const subscribe = () => {
+		unsubscribe = onSnapshot(
+			tenantQuery(collectionId, ...constraints),
+			snapshot => {
+				failures = 0;
+				onData(snapshot.docs.map(document => document.data() as DocumentData as T));
+			},
+			error => {
+				onError?.(error);
+				if (stopped) return;
+				const delay = Math.min(RESUBSCRIBE_MAX_DELAY_MS, RESUBSCRIBE_BASE_DELAY_MS * 2 ** failures++);
+				console.warn(`Firestore listener on ${collectionId} failed, resubscribing in ${delay}ms`);
+				retry = setTimeout(subscribe, delay);
+			},
+		);
+	};
+	subscribe();
+	return () => {
+		stopped = true;
+		if (retry) clearTimeout(retry);
+		unsubscribe();
+	};
 }
 
 export function getFirestoreStations(): Promise<VaimooStation[]> {

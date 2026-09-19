@@ -1,7 +1,7 @@
 import { LOCK_DISTANCE_m } from '$lib/constants';
 import { getActiveTrip, getTripHistory, knownErrors, quickStartBike } from '$lib/gira-api/api';
 import type { ServerActiveTrip } from '$lib/gira-api/models';
-import { VaimooApiError } from '$lib/vaimoo-api/client';
+import { VaimooApiError, VaimooNetworkError } from '$lib/vaimoo-api/client';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
 import { currentPos, setDebugPosition, watchPosition } from '$lib/location';
 import { appSettings } from '$lib/settings';
@@ -129,8 +129,21 @@ export async function markTripRated(tripCode: string): Promise<void> {
 	await Preferences.set({ key: LAST_RATED_TRIP_KEY, value: tripCode });
 }
 
-/** Reconcile local state with VAIMOO's authoritative active-trip endpoint. */
+/** Drop a trip that VAIMOO never confirmed, e.g. after the bike reported a start timeout. */
+export function abortPendingTrip(source = 'unspecified') {
+	const trip = get(currentTrip);
+	if (!trip || trip.confirmed || trip.code === DEBUG_TRIP_CODE) return false;
+	logTripLifecycle('pending-trip-aborted', { source, trip: tripSummary(trip) });
+	currentTrip.set(null);
+	return true;
+}
+
+/**
+ * Reconcile local state with VAIMOO's authoritative active-trip endpoint.
+ * Failures are logged and resolve to null: most callers fire and forget, and the next poll retries anyway.
+ */
 export async function refreshTripStatus(source = 'unspecified'): Promise<ServerActiveTrip | null> {
+	if (!get(token)) return null;
 	if (statusRequest) {
 		logTripLifecycle('refresh-coalesced', { source, localTrip: tripSummary(get(currentTrip)) });
 		return statusRequest;
@@ -168,7 +181,8 @@ export async function refreshTripStatus(source = 'unspecified'): Promise<ServerA
 			source,
 			message: error instanceof Error ? error.message : String(error),
 		});
-		throw error;
+		console.error(`VAIMOO trip status refresh failed (${source})`, error);
+		return null;
 	} finally {
 		statusRequest = null;
 		logTripLifecycle('refresh-finished', { source });
@@ -184,7 +198,8 @@ function addKnownApiError(error: unknown) {
 				errorMessages.add(get(t)(known.message as keyof Translations));
 				added = true;
 			}
-			reportErrorEvent('gira_api_error', item.message);
+			// Include VAIMOO's numeric code so the real codes can be learned from the reports and mapped above.
+			reportErrorEvent('gira_api_error', error.code != null ? `${error.code}: ${item.message}` : item.message);
 		}
 	}
 	if (!added) errorMessages.add(get(t)('bike_unlock_error'));
@@ -234,9 +249,18 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 		void refreshTripStatus('quick-start-response');
 		return true;
 	} catch (error) {
+		console.error(error);
+		if (error instanceof VaimooNetworkError) {
+			// The unlock is not retried, so the connection may have dropped after VAIMOO started the trip.
+			const serverTrip = await refreshTripStatus('quick-start-network-error');
+			if (serverTrip) {
+				logTripLifecycle('trip-started-despite-network-error', { serverTripId: serverTrip.id });
+				reportTripStartEvent(communicationId, station.serialNumber);
+				return true;
+			}
+		}
 		currentTrip.set(null);
 		addKnownApiError(error);
-		console.error(error);
 		return false;
 	}
 }

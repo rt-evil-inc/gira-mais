@@ -70,7 +70,7 @@
 		App.addListener('resume', async () => {
 			if ($token != null && $token.refreshToken != null) {
 				console.debug('Refreshing token because app was reopened');
-				await refreshToken();
+				await refreshToken().catch(error => console.error('Resume token refresh failed', error));
 			}
 			refreshTripStatus('app-resume');
 		});
