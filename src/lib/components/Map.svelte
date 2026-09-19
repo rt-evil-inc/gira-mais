@@ -528,10 +528,11 @@
 		const bounds = new maplibregl.LngLatBounds;
 		bounds.extend([route.origin.lng, route.origin.lat]);
 		route.legs.forEach(leg => leg.coordinates.forEach(c => bounds.extend(c)));
-		// Clear the search bar UI at the top and the bottom sheet at the bottom,
-		// while always keeping a minimum strip of the map visible
+		// Clear the search bar UI at the top and the bottom sheet (if open) at the
+		// bottom, with a margin, while always keeping a minimum strip of the map
+		// visible
 		const top = searchBarBottom + 20;
-		const bottom = Math.min(bottomPadding, window.innerHeight - top - 150);
+		const bottom = Math.min(bottomPadding + 40, window.innerHeight - top - 150);
 		// fitBounds adds the map's persistent padding (left behind by flyTo calls
 		// with a padding option) on top of the requested one, so subtract it to
 		// avoid zooming out much further than the route needs

@@ -96,8 +96,10 @@
 	$effect(() => {
 		if (pos.current !== null && !dragging && windowHeight !== undefined && dragged && listWrapper) {
 			const chrome = dragged.clientHeight - listWrapper.clientHeight;
-			height = chrome + Math.min(windowHeight / 2, bikeListHeight);
-			anchorTop = Math.min(windowHeight - height + pos.current, windowHeight);
+			const sheet = chrome + Math.min(windowHeight / 2, bikeListHeight);
+			// the sheet keeps its size while sliding out, but no longer claims map space
+			height = $selectedStation != null ? sheet : 0;
+			anchorTop = Math.min(windowHeight - sheet + pos.current, windowHeight);
 		} else {
 			anchorTop = undefined;
 		}
