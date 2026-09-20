@@ -179,6 +179,16 @@ jobs:
       - run: bun --bun run build
       - run: bunx cap sync ios
 
+      # The committed project uses automatic signing with no team so contributors
+      # can run the app on their own devices (#18). Switch the App target to the
+      # release team/profile here; the Pods framework targets must stay untouched,
+      # which is why this isn't passed as an xcodebuild argument.
+      - name: Configure release signing
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        run: |
+          sed -i '' -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual; DEVELOPMENT_TEAM = CWY6HA7572; PROVISIONING_PROFILE_SPECIFIER = "Github CI";/' ios/App/App.xcodeproj/project.pbxproj
+          grep -c 'PROVISIONING_PROFILE_SPECIFIER = "Github CI"' ios/App/App.xcodeproj/project.pbxproj | grep -qx 2
+
       - name: Build project
         if: ${{ !github.event.pull_request.head.repo.fork }}
         run: xcodebuild -workspace './ios/App/App.xcworkspace' -scheme GiraMais -destination generic/platform=iOS -archivePath App.xcarchive archive
