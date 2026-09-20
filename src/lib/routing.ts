@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { currentPos } from '$lib/location';
 import { currentTrip } from '$lib/trip';
+import { token } from '$lib/account';
 import { LOCK_DISTANCE_m } from '$lib/constants';
 import { selectedStation, stations, type StationInfo } from '$lib/map.svelte';
 import { distanceBetweenCoords } from '$lib/utils';
@@ -333,6 +334,15 @@ routeDestination.subscribe(destination => {
 		return;
 	}
 	recomputeRoute();
+});
+
+// A planned route must not outlive the session: position updates keep coming
+// while the login screen is up, and the auto-open above would otherwise slide
+// the pickup station's menu out behind it once the user reaches the station.
+// `undefined` is the not-yet-restored state at startup, so only react to an
+// actual logout
+token.subscribe(session => {
+	if (session === null) routeDestination.set(null);
 });
 
 currentPos.subscribe(pos => {
