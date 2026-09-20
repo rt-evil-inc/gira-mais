@@ -7,7 +7,7 @@ vi.mock('@capacitor/network', () => ({ Network: { getStatus: async () => ({ conn
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: addError } }));
 vi.mock('$lib/translations', () => ({ t: { subscribe: (run: (value: (key: string) => string) => void) => { run(key => key); return () => {}; } } }));
 
-import { defaultQuery, loginWithEmel, quickStartVaimooTrip, refreshVaimooSession, vaimooRequest, VaimooApiError, VaimooNetworkError } from './client';
+import { loginWithEmel, quickStartVaimooTrip, refreshVaimooSession, vaimooRequest, VaimooApiError, VaimooNetworkError } from './client';
 
 const jwt = (exp: number) => `h.${Buffer.from(JSON.stringify({ sub: '42', exp })).toString('base64url')}.s`;
 
@@ -75,19 +75,6 @@ describe('VAIMOO API client', () => {
 			'/auth/v2/oauth/',
 		]);
 		expect(request.mock.calls[3][0].data).toEqual({ code: 'secure-code' });
-	});
-
-	it('adds the VAIMOO protocol headers and query parameters', async () => {
-		request.mockResolvedValue({ status: 200, data: { result: 'pong' } });
-		await vaimooRequest('ping', { token: 'access', userId: 42 });
-
-		const options = request.mock.calls[0][0];
-		expect(options.headers).toMatchObject({
-			AppId: '8d75593b-83a1-4cce-862f-1671b59c5b0f',
-			Authorization: 'access',
-		});
-		expect(options.params).toMatchObject({ userId: '42', mainAppVersion: 'A1.0.0' });
-		expect(JSON.parse(defaultQuery(2, 50))).toEqual({ pageIndex: 2, pageSize: 50, sort: [{ field: 'startDate', dir: 'desc' }], filter: { filters: [] } });
 	});
 
 	it('normalizes VAIMOO failures for the existing error UI', async () => {

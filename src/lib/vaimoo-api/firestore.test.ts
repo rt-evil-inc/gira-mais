@@ -16,7 +16,7 @@ vi.mock('firebase/firestore', () => ({
 	where: mocks.where,
 }));
 
-import { findFirestoreBike, getFirestoreBikes, getFirestoreStations, subscribeFirestoreBike } from './firestore';
+import { findFirestoreBike, getFirestoreBikes, getFirestoreStations, subscribeFirestoreBike, subscribeFirestoreStations } from './firestore';
 
 const snapshot = (documents: unknown[]) => ({ docs: documents.map(data => ({ data: () => data })) });
 
@@ -39,6 +39,43 @@ describe('VAIMOO Firestore adapter', () => {
 
 		expect(mocks.query.mock.calls[0].slice(1)).toContainEqual({ field: 'DockingStationId', op: '==', value: 4551 });
 		expect(mocks.query.mock.calls[1].slice(1)).toContainEqual({ field: 'VisualId', op: '==', value: 'E0980' });
+	});
+
+	it('resubscribes with backoff after a listener error and stops once unsubscribed', () => {
+		vi.useFakeTimers();
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		try {
+			const errors: ((error: Error) => void)[] = [];
+			mocks.onSnapshot.mockImplementation((_query: unknown, _next: unknown, onError: (error: Error) => void) => {
+				errors.push(onError);
+				return () => {};
+			});
+			const onError = vi.fn();
+			const unsubscribe = subscribeFirestoreStations(() => {}, onError);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(1);
+
+			errors[0](new Error('permission-denied'));
+			expect(onError).toHaveBeenCalledOnce();
+			vi.advanceTimersByTime(4_999);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(1);
+			vi.advanceTimersByTime(1);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(2);
+
+			// the delay doubles while failures keep coming
+			errors[1](new Error('permission-denied'));
+			vi.advanceTimersByTime(9_999);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(2);
+			vi.advanceTimersByTime(1);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(3);
+
+			// unsubscribing while a retry is pending cancels it
+			errors[2](new Error('permission-denied'));
+			unsubscribe();
+			vi.advanceTimersByTime(120_000);
+			expect(mocks.onSnapshot).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('reports a missing bike as null when following a single bike', () => {

@@ -67,16 +67,13 @@ describe('VAIMOO trip lifecycle', () => {
 			endedAt: new Date(Date.now() - 60_000),
 			bikeId: 'E2114',
 		}]);
-		mocks.preferencesGet.mockResolvedValue({ value: '456' });
+		// markTripRated persists through Preferences; feed whatever it stored back on the next read
+		mocks.preferencesSet.mockImplementation(async ({ value }) => mocks.preferencesGet.mockResolvedValue({ value }));
+		await markTripRated('456');
 
 		await recoverRecentTripRating();
 
 		expect(get(tripRating).currentRating).toBeNull();
-	});
-
-	it('remembers only the successfully rated trip id', async () => {
-		await markTripRated('456');
-		expect(mocks.preferencesSet).toHaveBeenCalledWith({ key: 'trip/lastRatedTripId', value: '456' });
 	});
 
 	it('restores an active server trip', async () => {

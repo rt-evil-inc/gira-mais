@@ -19,6 +19,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bunx vitest run
+
   build-sign-android:
     name: Build and sign Android
     # Fork PRs build an unsigned debug APK (secrets aren't available to forks);

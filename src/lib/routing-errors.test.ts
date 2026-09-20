@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapacitorHttp } from '@capacitor/core';
 import { computeRoute } from '$lib/routing';
 import { stations } from '$lib/map.svelte';
@@ -33,18 +33,32 @@ describe('computeRoute against a failing routing server', () => {
 
 	beforeEach(() => {
 		httpGet.mockReset();
+		vi.useFakeTimers();
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	/** Runs a route computation while the retry backoff timers fire. */
+	async function settle<T>(computation: Promise<T>) {
+		const outcome = computation.then(value => ({ value }), (error: unknown) => ({ error }));
+		await vi.advanceTimersByTimeAsync(30_000);
+		return outcome;
+	}
 
 	it('throws instead of returning a bike route when foot requests keep failing', async () => {
 		// The direct-walk comparison cannot be made, so no route must be shown
 		httpGet.mockImplementation(async ({ url }) => url.includes('/foot/') ?
 			{ status: 502, data: 'Bad Gateway', headers: {}, url } :
 			{ status: 200, data: okResponse(url), headers: {}, url });
-		await expect(computeRoute(origin, dest, false)).rejects.toThrow();
+		const outcome = await settle(computeRoute(origin, dest, false));
+		expect(outcome).toHaveProperty('error');
 
 		// and each failing request was retried (the computation rejects as soon as
-		// the first request gives up, so let the in-flight retries settle)
-		await new Promise(resolve => setTimeout(resolve, 1500));
+		// the first request gives up; settle() lets the in-flight retries finish)
 		const footCalls = httpGet.mock.calls.filter(([options]) => options.url.includes('/foot/'));
 		const perUrl = new Map<string, number>;
 		for (const [options] of footCalls) perUrl.set(options.url, (perUrl.get(options.url) ?? 0) + 1);
@@ -60,15 +74,17 @@ describe('computeRoute against a failing routing server', () => {
 			}
 			return { status: 200, data: okResponse(url), headers: {}, url };
 		});
-		const route = await computeRoute(origin, dest, false);
+		const outcome = await settle(computeRoute(origin, dest, false));
+		expect(outcome).not.toHaveProperty('error');
+		const route = (outcome as { value: Awaited<ReturnType<typeof computeRoute>> }).value;
 		expect(route).not.toBeNull();
 		expect(route!.legs.length).toBeGreaterThan(0);
 	});
 
 	it('does not retry legitimate no-route responses', async () => {
 		httpGet.mockImplementation(async ({ url }) => ({ status: 400, data: { code: 'NoRoute' }, headers: {}, url }));
-		const route = await computeRoute(origin, dest, false);
-		expect(route).toBeNull();
+		const outcome = await settle(computeRoute(origin, dest, false));
+		expect(outcome).toEqual({ value: null });
 		const perUrl = new Map<string, number>;
 		for (const [options] of httpGet.mock.calls) perUrl.set(options.url, (perUrl.get(options.url) ?? 0) + 1);
 		for (const attempts of perUrl.values()) expect(attempts).toBe(1);
