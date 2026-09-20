@@ -105,6 +105,82 @@ const translations = {
 		en: 'How was your last trip?',
 		pt: 'Como foi a sua última viagem?',
 	},
+	rating_problem_question: {
+		en: 'What went wrong?',
+		pt: 'O que correu mal?',
+	},
+	rating_details_question: {
+		en: 'Anything else you\'d like to add?',
+		pt: 'Quer acrescentar alguma coisa?',
+	},
+	rating_reason_brakes: {
+		en: 'Brakes',
+		pt: 'Travões',
+	},
+	rating_reason_tires: {
+		en: 'Tires',
+		pt: 'Pneus',
+	},
+	rating_reason_pedal_assist: {
+		en: 'Pedal assist',
+		pt: 'Assistência elétrica',
+	},
+	rating_reason_battery: {
+		en: 'Battery',
+		pt: 'Bateria',
+	},
+	rating_reason_gears: {
+		en: 'Gears',
+		pt: 'Mudanças',
+	},
+	rating_reason_saddle: {
+		en: 'Saddle',
+		pt: 'Selim',
+	},
+	rating_reason_handlebar: {
+		en: 'Handlebar',
+		pt: 'Guiador',
+	},
+	rating_reason_dirty: {
+		en: 'Dirty bike',
+		pt: 'Bicicleta suja',
+	},
+	rating_reason_unlocking: {
+		en: 'Unlocking',
+		pt: 'Desbloqueio',
+	},
+	rating_reason_docking: {
+		en: 'Docking',
+		pt: 'Doca',
+	},
+	rating_reason_app: {
+		en: 'Gira+ app',
+		pt: 'Aplicação Gira+',
+	},
+	rating_comment_placeholder: {
+		en: 'Add a comment…',
+		pt: 'Adicione um comentário…',
+	},
+	rating_submit_button: {
+		en: 'Submit',
+		pt: 'Enviar',
+	},
+	rating_thank_you: {
+		en: 'Thanks for your feedback!',
+		pt: 'Obrigado pela avaliação!',
+	},
+	undo_button: {
+		en: 'Undo',
+		pt: 'Anular',
+	},
+	rating_drag_handle_label: {
+		en: 'Drag down for details or up to dismiss',
+		pt: 'Arraste para baixo para detalhes ou para cima para fechar',
+	},
+	rating_drag_hint: {
+		en: 'Drag down for details\nor up to dismiss',
+		pt: 'Puxe para baixo para detalhar\nou para cima para fechar',
+	},
 	station_label: {
 		en: 'Station',
 		pt: 'Estação',
@@ -374,8 +450,8 @@ const translations = {
 		pt: 'Partilhar avaliações de viagens',
 	},
 	report_ratings_setting_description: {
-		en: 'Share your trip ratings with us so we can warn about bike conditions',
-		pt: 'Partilhar as suas avaliações de viagens connosco para que possamos avisar sobre o estado das bicicletas',
+		en: 'Share your trip ratings and comments with us so we can warn about bike conditions',
+		pt: 'Partilhar as suas avaliações e comentários de viagens connosco para que possamos avisar sobre o estado das bicicletas',
 	},
 	ui_settings_section: {
 		en: 'Interface',

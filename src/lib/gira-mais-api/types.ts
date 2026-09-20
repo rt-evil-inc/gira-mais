@@ -41,6 +41,10 @@ export type BikeRatingPostRequest = {
   bikePlate: string;
   rating: number;
   timestamp?: string;
+  /** Codes from TRIP_RATING_REASONS the rider picked, when the details step was used. */
+  reasons?: string[];
+  /** Free text the rider wrote, when any. */
+  comment?: string;
 }
 
 export type BikeRatingPostResponse = {

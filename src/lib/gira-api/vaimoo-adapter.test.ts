@@ -129,7 +129,7 @@ describe('VAIMOO app-domain adapter', () => {
 		});
 		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
 
-		await submitTripRating('123', 'E0980', 5, new Date(2026, 8, 15, 21, 20, 22, 308));
+		await submitTripRating('123', 'E0980', 5, undefined, new Date(2026, 8, 15, 21, 20, 22, 308));
 
 		expect(mocks.getVaimooTripDetails).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), 123);
 		expect(mocks.submitVaimooTripFeedback).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), {
@@ -143,6 +143,19 @@ describe('VAIMOO app-domain adapter', () => {
 			geoFenceId: 1084,
 			tripId: 123,
 		});
+	});
+
+	it('sends the chosen reasons and comment in the feedback comment list', async () => {
+		mocks.getVaimooTripDetails.mockResolvedValue({ tripId: 123, endStation: null });
+		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
+
+		await submitTripRating('123', 'E0980', 2, { reasons: ['brakes', 'saddle'], comment: 'Loose saddle' });
+
+		expect(mocks.submitVaimooTripFeedback).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+			rating: 2,
+			comment: ['Braking issue', 'Saddle issue', 'Loose saddle'],
+			geoFenceId: null,
+		}));
 	});
 
 	it('maps credit and infers subscription status when isExpired is omitted', async () => {

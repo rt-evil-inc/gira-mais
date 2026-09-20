@@ -1,6 +1,7 @@
 import { currentSession, refreshToken } from '$lib/account';
 import type { StationInfo } from '$lib/map.svelte';
 import type { Translations } from '$lib/translations';
+import { vaimooFeedbackComment, type TripRatingDetails } from '$lib/trip-rating';
 import {
 	getCurrentVaimooTrip,
 	getVaimooTripDetails,
@@ -218,23 +219,23 @@ function vaimooLocalTimestamp(date: Date) {
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
 }
 
-/** Submit the same trip feedback payload as the official Gira Android app. */
-export async function submitTripRating(tripCode: string, bikePlate: string, rating: number, createdAt = new Date): Promise<void> {
+/** Submit the same trip feedback payload as the official Gira Android app, reasons and comment included. */
+export async function submitTripRating(tripCode: string, bikePlate: string, rating: number, details?: TripRatingDetails, createdAt = new Date): Promise<void> {
 	const tripId = Number(tripCode);
 	if (!Number.isInteger(tripId) || tripId <= 0) throw new Error('Cannot rate a trip without a valid VAIMOO trip id');
 	if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('Trip rating must be between 1 and 5');
 
 	await withSession(async currentSession => {
-		const details = await getVaimooTripDetails(currentSession, tripId);
+		const trip = await getVaimooTripDetails(currentSession, tripId);
 		await submitVaimooTripFeedback(currentSession, {
 			createDate: vaimooLocalTimestamp(createdAt),
 			osVersion: 'Android',
 			appVersion: '1.0.0',
 			rating,
-			comment: [''],
+			comment: vaimooFeedbackComment(details),
 			reportType: 'Opinion',
 			vehicleVisualId: bikePlate,
-			geoFenceId: details.endStation?.stationId ?? null,
+			geoFenceId: trip.endStation?.stationId ?? null,
 			tripId,
 		});
 	});
