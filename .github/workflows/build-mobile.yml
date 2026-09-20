@@ -70,6 +70,8 @@ jobs:
       - run: bun install
 
       - run: bun run build
+        env:
+          GIRA_RELEASE: ${{ inputs.release }}
       - run: bunx cap sync android
 
       - name: Build signed Android App Bundle
@@ -188,6 +190,8 @@ jobs:
       - run: bun install
 
       - run: bun --bun run build
+        env:
+          GIRA_RELEASE: ${{ inputs.release }}
       - run: bunx cap sync ios
 
       - name: Build project

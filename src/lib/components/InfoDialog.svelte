@@ -14,11 +14,11 @@
 	let messageTimestamp = $state('');
 	let latestVersion = $state('');
 
-	/** Compare two semantic versions (with or without a 'v' prefix): 1 if version1 > version2, -1 if lower, 0 if equal */
+	/** Compare two semantic versions (with or without a 'v' prefix or a `-dev (hash)` suffix): 1 if version1 > version2, -1 if lower, 0 if equal */
 	function compareSemanticVersions(version1: string, version2: string) {
-		// Clean versions by removing 'v' prefix if present
-		const cleanV1 = version1.startsWith('v') ? version1.slice(1) : version1;
-		const cleanV2 = version2.startsWith('v') ? version2.slice(1) : version2;
+		// Keep only the numeric x.y.z part
+		const cleanV1 = version1.match(/\d+(\.\d+)*/)?.[0] ?? '';
+		const cleanV2 = version2.match(/\d+(\.\d+)*/)?.[0] ?? '';
 
 		const v1Parts = cleanV1.split('.').map(Number);
 		const v2Parts = cleanV2.split('.').map(Number);

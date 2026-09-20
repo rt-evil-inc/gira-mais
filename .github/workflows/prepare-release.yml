@@ -62,6 +62,7 @@ jobs:
     secrets: inherit
     with:
       ref: ${{ needs.bump_version.outputs.ref }}
+      release: true
 
   prepare_release:
     runs-on: ubuntu-latest
