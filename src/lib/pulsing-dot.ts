@@ -39,6 +39,53 @@ export function navigationMarker(size = 100): ImageData {
 	return context.getImageData(0, 0, size, size);
 }
 
+/**
+ * The heading beam shown behind the dot outside of trips, like Google Maps'
+ * flashlight: a fan of the primary colour spreading from the dot in the
+ * direction the device points and fading with distance. Its sides run tangent
+ * to the dot rather than meeting at its centre, so the beam appears to leave
+ * the dot's rim. Drawn pointing north at the given half-angle; the map layer
+ * rotates it to the heading. Scaled for the same pixel ratio as the dot.
+ */
+export function headingCone(halfAngleDeg: number, size = 200): ImageData {
+	const canvas = document.createElement('canvas');
+	canvas.width = size;
+	canvas.height = size;
+	const context = canvas.getContext('2d')!;
+	const s = size / 200;
+	const cx = size / 2;
+	const cy = size / 2;
+	// the dot's outer rim (its fill plus the white stroke) and the beam's reach
+	const dotRadius = 17 * s;
+	const reach = 98 * s;
+	const halfAngle = halfAngleDeg * Math.PI / 180;
+	// The sides are tangent to the dot, meeting behind its centre; the tangent
+	// points sit just behind the centre line, at the half-angle below it
+	const apex = dotRadius / Math.sin(halfAngle);
+	const tangentRight = { x: cx + dotRadius * Math.cos(halfAngle), y: cy + dotRadius * Math.sin(halfAngle) };
+	const tangentLeft = { x: cx - dotRadius * Math.cos(halfAngle), y: tangentRight.y };
+	// where each side meets the arc that closes the beam, `reach` from the centre
+	const side = apex * Math.cos(halfAngle) + Math.sqrt(reach ** 2 - dotRadius ** 2);
+	const farRight = { x: cx + side * Math.sin(halfAngle), y: cy + apex - side * Math.cos(halfAngle) };
+	const farAngle = Math.atan2(farRight.y - cy, farRight.x - cx);
+	const gradient = context.createRadialGradient(cx, cy, dotRadius, cx, cy, reach);
+	const color = getCssVariable('--color-primary');
+	gradient.addColorStop(0, `${color}99`);
+	gradient.addColorStop(0.3, `${color}59`);
+	gradient.addColorStop(1, `${color}00`);
+	context.beginPath();
+	context.moveTo(tangentRight.x, tangentRight.y);
+	context.lineTo(farRight.x, farRight.y);
+	// over the top from the right side to the left
+	context.arc(cx, cy, reach, farAngle, Math.PI - farAngle, true);
+	context.lineTo(tangentLeft.x, tangentLeft.y);
+	// the chord between the tangent points lies under the dot
+	context.closePath();
+	context.fillStyle = gradient;
+	context.fill();
+	return context.getImageData(0, 0, size, size);
+}
+
 // This implements `StyleImageInterface`
 // to draw a pulsing dot icon on the map.
 export function pulsingDot(map: maplibregl.Map, size = 100, animationDuration = 1500) : StyleImageInterface {

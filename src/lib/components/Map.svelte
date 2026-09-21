@@ -5,6 +5,8 @@
 	import { addLayers, following, loadImages, selectedStation, setSourceData, STATION_MARKER_FADE_END, STATION_MARKER_FADE_START, stationDotColor, stationDotStrokeColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
 	import { appSettings } from '$lib/settings';
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
+	import { compassAccuracy, compassHeading } from '$lib/compass';
+	import { beamHalfAngle } from '$lib/heading-beam';
 	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
@@ -94,6 +96,15 @@
 		}
 	});
 
+	// During a trip the marker turns with the traveling direction (the GPS
+	// course, with the compass standing in at stops), which is what the chevron
+	// and the navigation camera are about. Off a trip it's about where the
+	// phone points while standing or strolling, where the course is noise, so
+	// the compass alone drives the beam
+	function markerHeading(): number|null {
+		return get(currentTrip) !== null ? get(currentHeading) : get(compassHeading);
+	}
+
 	// The animator only starts tracking once the map has loaded, so fall back to
 	// the raw position for anything that needs a location before then
 	function markerState(): MarkerState|null {
@@ -101,18 +112,21 @@
 		if (state) return state;
 		const pos = get(currentPos);
 		if (!pos) return null;
-		return { lng: pos.coords.longitude, lat: pos.coords.latitude, heading: get(currentHeading) ?? 0 };
+		return { lng: pos.coords.longitude, lat: pos.coords.latitude, heading: markerHeading() ?? 0 };
 	}
 
 	function renderUserMarker(state: MarkerState|null = markerState()) {
 		if (!mapLoaded || !state) return;
 		const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
 		if (src == null) return;
+		// the animator holds the last heading (or north) while none is known,
+		// so the beam is gated on the compass store, not the displayed value
+		const beam = get(compassHeading) !== null ? { beam: beamHalfAngle(get(compassAccuracy)) } : {};
 		src.setData({
 			type: 'FeatureCollection',
 			features: [{
 				type: 'Feature',
-				properties: { nav: get(currentTrip) !== null, heading: state.heading },
+				properties: { nav: get(currentTrip) !== null, heading: state.heading, ...beam },
 				geometry: {
 					type: 'Point',
 					coordinates: [state.lng, state.lat],
@@ -407,17 +421,25 @@
 			marker.setTarget({
 				lng: pos.coords.longitude,
 				lat: pos.coords.latitude,
-				heading: get(currentHeading),
+				heading: markerHeading(),
 			});
 		}
 		applyRouteData(get(currentRoute), pos);
 	});
 
-	// Compass-driven heading changes arrive between GPS fixes (e.g. turning on
-	// the spot) — rotate the marker without disturbing the position glide
+	// Heading changes arrive between GPS fixes (e.g. turning on the spot) —
+	// rotate the marker without disturbing the position glide
 	currentHeading.subscribe(heading => {
-		if (heading !== null) marker.setHeading(heading);
+		if (heading !== null && get(currentTrip) !== null) marker.setHeading(heading);
 	});
+	compassHeading.subscribe(heading => {
+		if (heading === null || get(currentTrip) !== null) return;
+		marker.setHeading(heading);
+		// the first reading may equal the heading the animator already holds, in
+		// which case nothing else re-renders the marker to reveal the beam
+		renderUserMarker();
+	});
+	compassAccuracy.subscribe(() => renderUserMarker());
 
 	// Smoothing can be turned off from the development settings to compare the
 	// glide against the raw fix stream
@@ -690,7 +712,10 @@
 			} else {
 				viewMode.set('north');
 			}
-			// swap the location marker between the dot and the heading arrow
+			// swap the location marker between the dot and the heading arrow, and
+			// its heading between the compass and the traveling direction
+			const heading = markerHeading();
+			if (heading !== null) marker.setHeading(heading);
 			renderUserMarker();
 		}
 		if (mapLoaded) {
