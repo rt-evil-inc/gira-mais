@@ -91,6 +91,9 @@ bun run build
 bunx cap run ios
 ```
 
+> [!NOTE]
+> Para instalar num iPhone físico (em vez do simulador) é necessária uma conta Apple Developer. No Xcode, em *Signing & Capabilities* do target `GiraMais`, escolha a sua equipa e altere o *Bundle Identifier* para um valor próprio (por exemplo `com.exemplo.giraplus`), já que `dev.tteles.giraplus` está registado à equipa do projeto. Não inclua essa alteração em pull requests.
+
 ## Contribuição
 Contribuições são bem-vindas! Consulte o ficheiro [`CONTRIBUTING.md`](CONTRIBUTING.md) para mais informações sobre como contribuir para o projeto.
 
