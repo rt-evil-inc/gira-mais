@@ -14,7 +14,12 @@ export function shortestAngleDelta(from: number, to: number): number {
 // debug controls, a high-rate fix stream), and gliding those over a floor well
 // above their own interval would leave the marker permanently behind
 const MAX_GLIDE_ms = 1500;
-const HEADING_GLIDE_ms = 300;
+// Heading-only updates (the compass) likewise glide over their own interval,
+// so a steady stream of readings is followed closely instead of each one
+// starting a fixed turn that the next reading cuts short — a lag that would
+// build up while the phone turns. The cap covers the first reading after
+// the phone has been still for a while
+const MAX_HEADING_GLIDE_ms = 300;
 const SNAP_DISTANCE_deg = 0.005; // ~500 m
 
 /**
@@ -38,6 +43,7 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	let headStart = 0;
 	let headDuration = 0;
 	let lastTargetTime: number|null = null;
+	let lastHeadingTime: number|null = null;
 	let frame: number|null = null;
 	let smoothing = true;
 
@@ -108,6 +114,7 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		}
 		headTarget = heading;
 		lastTargetTime = time;
+		lastHeadingTime = time;
 		posStart = time;
 		headStart = time;
 		advance(posDuration <= 0 && headDuration <= 0);
@@ -121,10 +128,12 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 		// notification is deferred) — re-timing the turn already in flight would
 		// compress every turn into the short compass glide
 		if (heading === headTarget) return;
+		const time = performance.now();
 		headFrom = displayed.heading;
 		headTarget = heading;
-		headStart = performance.now();
-		headDuration = glide(HEADING_GLIDE_ms);
+		headStart = time;
+		headDuration = glide(Math.min(lastHeadingTime === null ? MAX_HEADING_GLIDE_ms : time - lastHeadingTime, MAX_HEADING_GLIDE_ms));
+		lastHeadingTime = time;
 		advance(headDuration <= 0);
 	}
 

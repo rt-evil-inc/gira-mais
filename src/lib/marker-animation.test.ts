@@ -94,6 +94,27 @@ describe('createMarkerAnimator', () => {
 		expect(applied.at(-1)?.lng).toBe(0.001); // and still reaches it on time
 	});
 
+	it('follows a stream of compass readings at their own pace', () => {
+		const applied: MarkerState[] = [];
+		const animator = createMarkerAnimator(state => applied.push(state));
+		animator.setTarget({ lng: 0, lat: 0, heading: 0 });
+		now += 5000;
+		// the first reading after a long still spell turns over the capped glide
+		animator.setHeading(30);
+		runFrame(50);
+		expect(applied.at(-1)?.heading).toBe(5);
+		// readings 50ms apart are each reached within 50ms, so the marker stays
+		// on the heels of a turning phone instead of falling behind
+		animator.setHeading(40);
+		runFrame(25);
+		expect(applied.at(-1)?.heading).toBe(22.5);
+		runFrame(25);
+		expect(applied.at(-1)?.heading).toBe(40);
+		animator.setHeading(50);
+		runFrame(50);
+		expect(applied.at(-1)?.heading).toBe(50);
+	});
+
 	it('keeps the turn pacing when the heading is already the target', () => {
 		const applied: MarkerState[] = [];
 		const animator = createMarkerAnimator(state => applied.push(state));

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 	refreshAccountInfo: vi.fn(),
 	preferencesGet: vi.fn(),
 	preferencesSet: vi.fn(),
+	reportErrorEvent: vi.fn(),
 }));
 
 vi.mock('$lib/gira-api/api', () => ({
@@ -31,10 +32,12 @@ vi.mock('$lib/location', () => ({
 }));
 vi.mock('$lib/settings', () => ({ appSettings: writable({ distanceLock: false, mockUnlock: false }) }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
-vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: vi.fn(), reportTripStartEvent: vi.fn() }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: mocks.reportErrorEvent, reportTripStartEvent: vi.fn() }));
 vi.mock('$lib/translations', () => ({ t: writable((key: string) => key) }));
 
-import { currentTrip, markTripRated, recoverRecentTripRating, refreshTripStatus, tripRating } from './trip';
+import { currentTrip, markTripRated, recoverRecentTripRating, refreshTripStatus, tripRating, tryStartTrip } from './trip';
+import { VaimooApiError } from '$lib/vaimoo-api/client';
+import type { StationInfo } from '$lib/map.svelte';
 
 describe('VAIMOO trip lifecycle', () => {
 	beforeEach(() => {
@@ -67,16 +70,13 @@ describe('VAIMOO trip lifecycle', () => {
 			endedAt: new Date(Date.now() - 60_000),
 			bikeId: 'E2114',
 		}]);
-		mocks.preferencesGet.mockResolvedValue({ value: '456' });
+		// markTripRated persists through Preferences; feed whatever it stored back on the next read
+		mocks.preferencesSet.mockImplementation(async ({ value }) => mocks.preferencesGet.mockResolvedValue({ value }));
+		await markTripRated('456');
 
 		await recoverRecentTripRating();
 
 		expect(get(tripRating).currentRating).toBeNull();
-	});
-
-	it('remembers only the successfully rated trip id', async () => {
-		await markTripRated('456');
-		expect(mocks.preferencesSet).toHaveBeenCalledWith({ key: 'trip/lastRatedTripId', value: '456' });
 	});
 
 	it('restores an active server trip', async () => {
@@ -131,5 +131,19 @@ describe('VAIMOO trip lifecycle', () => {
 		mocks.getActiveTrip.mockResolvedValue(null);
 		await refreshTripStatus();
 		expect(get(currentTrip)).toEqual(expect.objectContaining({ confirmed: false }));
+	});
+
+	it('reports a rejected unlock with the full VAIMOO response', async () => {
+		const body = { responseStatus: { errorCode: 4, message: 'Not enough credit', errors: [{ errorCode: 4, message: 'Not enough credit' }] } };
+		mocks.quickStartBike.mockRejectedValue(new VaimooApiError('VAIMOO request failed with HTTP 400', 400, body));
+		const station = { serialNumber: '101', latitude: 38.7, longitude: -9.1 } as StationInfo;
+
+		expect(await tryStartTrip('E0980', 'bike-comm-id', station)).toBe(false);
+
+		expect(get(currentTrip)).toBeNull();
+		expect(mocks.reportErrorEvent).toHaveBeenCalledOnce();
+		expect(mocks.reportErrorEvent.mock.calls[0][0]).toBe('gira_api_error');
+		// The server's answer must reach the database, not just the extracted message.
+		expect(JSON.parse(mocks.reportErrorEvent.mock.calls[0][1])).toMatchObject({ bike: 'E0980', status: 400, code: 4, body });
 	});
 });

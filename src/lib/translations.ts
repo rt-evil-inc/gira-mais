@@ -445,6 +445,14 @@ const translations = {
 		en: 'Glide the marker and the map between location updates instead of placing them straight onto each one',
 		pt: 'Deslizar o marcador e o mapa entre atualizações de localização em vez de os colocar diretamente em cada uma',
 	},
+	compass_debug_label: {
+		en: 'Compass',
+		pt: 'Bússola',
+	},
+	compass_debug_description: {
+		en: 'Sensor state and the latest heading with its reported error',
+		pt: 'Estado do sensor e a última direção com o erro reportado',
+	},
 	report_ratings_setting_label: {
 		en: 'Share trip ratings',
 		pt: 'Partilhar avaliações de viagens',

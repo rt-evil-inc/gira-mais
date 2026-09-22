@@ -16,6 +16,8 @@ vi.mock('$lib/vaimoo-api/firestore', () => ({ subscribeFirestoreBike: vi.fn((_id
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
 vi.mock('$lib/translations', () => ({ t: writable((key: string) => key) }));
 vi.mock('./api', () => ({ subscribeStations: vi.fn(() => () => {}) }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: vi.fn() }));
+vi.mock('$lib/error-reporting', () => ({ reportApiError: vi.fn() }));
 
 import { currentTrip } from '$lib/trip';
 import { startBackendSync, stopBackendSync } from './backend-sync';

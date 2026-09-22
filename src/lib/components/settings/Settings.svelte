@@ -1,5 +1,6 @@
 <script>
 	import { dev } from '$app/environment';
+	import { compassAccuracy, compassHeading, compassStatus } from '$lib/compass';
 	import { LOCK_DISTANCE_m } from '$lib/constants';
 	import { appSettings } from '$lib/settings';
 	import MenuPage from '$lib/components/MenuPage.svelte';
@@ -80,6 +81,14 @@
 					</SettingsRow>
 					<SettingsRow label={$t('marker_smoothing_setting_label')} description={$t('marker_smoothing_setting_description')}>
 						<Toggle bind:checked={$appSettings.markerSmoothing} />
+					</SettingsRow>
+					<SettingsRow label={$t('compass_debug_label')} description={$t('compass_debug_description')}>
+						<div class="text-sm font-medium text-right whitespace-nowrap">
+							<div>{$compassStatus}</div>
+							{#if $compassHeading !== null}
+								<div>{Math.round($compassHeading)}°{$compassAccuracy !== null ? ` ± ${Math.round($compassAccuracy)}°` : ''}</div>
+							{/if}
+						</div>
 					</SettingsRow>
 				</div>
 			</div>

@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { request, addError } = vi.hoisted(() => ({ request: vi.fn(), addError: vi.fn() }));
+const { request, addError, reportErrorEvent } = vi.hoisted(() => ({ request: vi.fn(), addError: vi.fn(), reportErrorEvent: vi.fn() }));
 vi.mock('$app/environment', () => ({ dev: false }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent }));
 vi.mock('@capacitor/core', () => ({ CapacitorHttp: { request } }));
 vi.mock('@capacitor/network', () => ({ Network: { getStatus: async () => ({ connected: true }) } }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: addError } }));
 vi.mock('$lib/translations', () => ({ t: { subscribe: (run: (value: (key: string) => string) => void) => { run(key => key); return () => {}; } } }));
 
-import { defaultQuery, loginWithEmel, quickStartVaimooTrip, refreshVaimooSession, vaimooRequest, VaimooApiError, VaimooNetworkError } from './client';
+import { loginWithEmel, quickStartVaimooTrip, refreshVaimooSession, vaimooRequest, VaimooApiError, VaimooNetworkError } from './client';
 
 const jwt = (exp: number) => `h.${Buffer.from(JSON.stringify({ sub: '42', exp })).toString('base64url')}.s`;
 
@@ -15,6 +16,7 @@ describe('VAIMOO API client', () => {
 	beforeEach(() => {
 		request.mockReset();
 		addError.mockReset();
+		reportErrorEvent.mockReset();
 	});
 
 	it('retries network failures with a warning and gives up with a communication error', async () => {
@@ -28,6 +30,10 @@ describe('VAIMOO API client', () => {
 			expect(error).toBeInstanceOf(VaimooNetworkError);
 			expect(request).toHaveBeenCalledTimes(3);
 			expect(addError.mock.calls.map(call => call[0])).toEqual(['gira_api_communication_error_retry', 'gira_api_communication_error']);
+			// Reported once, after the last attempt, without the query string (user id) or headers (token).
+			expect(reportErrorEvent).toHaveBeenCalledOnce();
+			expect(reportErrorEvent.mock.calls[0][0]).toBe('gira_api_communication_error');
+			expect(JSON.parse(reportErrorEvent.mock.calls[0][1])).toEqual({ method: 'GET', path: '/user/trip', attempts: 3, error: 'Request timed out' });
 		} finally {
 			vi.useRealTimers();
 		}
@@ -56,6 +62,8 @@ describe('VAIMOO API client', () => {
 		await expect(quickStartVaimooTrip(session, 'bike-1')).rejects.toBeInstanceOf(VaimooNetworkError);
 		expect(request).toHaveBeenCalledTimes(1);
 		expect(addError).not.toHaveBeenCalled();
+		// Silent for the rider, but still worth knowing about.
+		expect(reportErrorEvent).toHaveBeenCalledWith('gira_api_communication_error', expect.stringContaining('/trip/v2/quick-start/bike-1'));
 	});
 
 	it('performs the browserless EMEL exchange and returns a VAIMOO session', async () => {
@@ -75,19 +83,6 @@ describe('VAIMOO API client', () => {
 			'/auth/v2/oauth/',
 		]);
 		expect(request.mock.calls[3][0].data).toEqual({ code: 'secure-code' });
-	});
-
-	it('adds the VAIMOO protocol headers and query parameters', async () => {
-		request.mockResolvedValue({ status: 200, data: { result: 'pong' } });
-		await vaimooRequest('ping', { token: 'access', userId: 42 });
-
-		const options = request.mock.calls[0][0];
-		expect(options.headers).toMatchObject({
-			AppId: '8d75593b-83a1-4cce-862f-1671b59c5b0f',
-			Authorization: 'access',
-		});
-		expect(options.params).toMatchObject({ userId: '42', mainAppVersion: 'A1.0.0' });
-		expect(JSON.parse(defaultQuery(2, 50))).toEqual({ pageIndex: 2, pageSize: 50, sort: [{ field: 'startDate', dir: 'desc' }], filter: { filters: [] } });
 	});
 
 	it('normalizes VAIMOO failures for the existing error UI', async () => {

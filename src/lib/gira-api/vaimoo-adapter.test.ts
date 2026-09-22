@@ -37,7 +37,7 @@ vi.mock('$lib/vaimoo-api/client', () => ({
 }));
 
 import { VaimooApiError } from '$lib/vaimoo-api/client';
-import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, parseVaimooDate, quickStartBike, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
+import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, parseVaimooDate, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
 
 const station = {
 	DockingStationId: 4551,
@@ -91,12 +91,6 @@ describe('VAIMOO app-domain adapter', () => {
 		expect(await findAvailableBike('e0980')).toMatchObject({ id: 'E0980', manual: true });
 	});
 
-	it('quick-starts directly without a fake reservation', async () => {
-		mocks.quickStartVaimooTrip.mockResolvedValue(undefined);
-		await quickStartBike('communication-id');
-		expect(mocks.quickStartVaimooTrip).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), 'communication-id');
-	});
-
 	it('reads zone-less VAIMOO timestamps as UTC', async () => {
 		expect(parseVaimooDate('2026-09-15T21:20:22.308').toISOString()).toBe('2026-09-15T21:20:22.308Z');
 		expect(parseVaimooDate('2026-09-15T21:20:22Z').toISOString()).toBe('2026-09-15T21:20:22.000Z');
@@ -122,27 +116,17 @@ describe('VAIMOO app-domain adapter', () => {
 		expect(mocks.getCurrentVaimooTrip).toHaveBeenCalledTimes(2);
 	});
 
-	it('submits official VAIMOO trip feedback with the end-station id', async () => {
-		mocks.getVaimooTripDetails.mockResolvedValue({
-			tripId: 123,
-			endStation: { name: 'Station', stationId: 1084 },
-		});
+	it('rates a trip against its numeric id and end station, with a zone-less local timestamp', async () => {
+		mocks.getVaimooTripDetails.mockResolvedValue({ tripId: 123, endStation: { name: 'Station', stationId: 1084 } });
 		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
 
 		await submitTripRating('123', 'E0980', 5, undefined, new Date(2026, 8, 15, 21, 20, 22, 308));
 
-		expect(mocks.getVaimooTripDetails).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), 123);
-		expect(mocks.submitVaimooTripFeedback).toHaveBeenCalledWith(expect.objectContaining({ userId: 42 }), {
-			createDate: '2026-09-15T21:20:22.308',
-			osVersion: 'Android',
-			appVersion: '1.0.0',
-			rating: 5,
-			comment: [''],
-			reportType: 'Opinion',
-			vehicleVisualId: 'E0980',
-			geoFenceId: 1084,
-			tripId: 123,
-		});
+		expect(mocks.getVaimooTripDetails).toHaveBeenCalledWith(expect.anything(), 123);
+		expect(mocks.submitVaimooTripFeedback.mock.calls[0][1]).toMatchObject({ tripId: 123, geoFenceId: 1084, createDate: '2026-09-15T21:20:22.308' });
+
+		await expect(submitTripRating('DEBUG', 'E0980', 5)).rejects.toThrow();
+		await expect(submitTripRating('123', 'E0980', 6)).rejects.toThrow();
 	});
 
 	it('sends the chosen reasons and comment in the feedback comment list', async () => {

@@ -28,7 +28,7 @@ export type TripStatisticsPostResponse = {
 export type ErrorStatisticsPostRequest = {
   deviceId: string;
   errorCode: string;
-  errorMessage: string;
+  errorMessage: string | null;
 }
 
 export type ErrorStatisticsPostResponse = {

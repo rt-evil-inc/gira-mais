@@ -1,5 +1,6 @@
 import { get, writable } from 'svelte/store';
-import { navigationMarker, pulsingDot } from '$lib/pulsing-dot';
+import { headingCone, navigationMarker, pulsingDot } from '$lib/pulsing-dot';
+import { BEAM_HALF_ANGLES_deg } from '$lib/heading-beam';
 import type { GeoJSON } from 'geojson';
 import { getCssVariable } from '$lib/utils';
 import { theme } from '$lib/theme';
@@ -22,6 +23,9 @@ export type StationInfo ={
 export const stations = $state<{value:StationInfo[]}>({ value: [] });
 export const selectedStation = writable<string|null>(null);
 export const following = writable<boolean>(false);
+// Whether the camera still shows the route as the route fit framed it, i.e.
+// no other camera move (a gesture, following, a station centering) happened since
+export const routeFramed = writable<boolean>(false);
 /** While following: 'north' is the classic top-down view, 'heading' the tilted
  * navigation view that rotates with the traveling direction (trips only). */
 export const viewMode = writable<'north'|'heading'>('north');
@@ -315,6 +319,24 @@ export function addLayers(map: maplibregl.Map) {
 			'icon-padding': 0,
 		},
 	});
+	// Outside of trips the dot gets a compass beam behind it (the chevron
+	// already points the way during one), as wide as the compass is unsure;
+	// drawn on its own layer so the pulsing dot's per-frame redraw stays
+	// untouched. `beam` carries the half-angle and is absent without a compass
+	map.addLayer({
+		'id': 'user-heading',
+		'type': 'symbol',
+		'source': 'user-location',
+		'filter': ['all', ['!', ['to-boolean', ['get', 'nav']]], ['has', 'beam']],
+		'layout': {
+			'icon-image': ['concat', 'heading-cone-', ['to-string', ['get', 'beam']]],
+			'icon-rotate': ['coalesce', ['get', 'heading'], 0],
+			'icon-rotation-alignment': 'map',
+			'icon-pitch-alignment': 'map',
+			'icon-allow-overlap': true,
+			'icon-ignore-placement': true,
+		},
+	});
 	map.addLayer({
 		'id': 'user-location',
 		'type': 'symbol',
@@ -350,6 +372,7 @@ export async function loadImages(map: maplibregl.Map) {
 
 	addOrReplace('pulsing-dot', pulsingDot(map), { pixelRatio: 2 });
 	addOrReplace('nav-marker', navigationMarker(165), { pixelRatio: 2 });
+	for (const halfAngle of BEAM_HALF_ANGLES_deg) addOrReplace(`heading-cone-${halfAngle}`, headingCone(halfAngle), { pixelRatio: 2 });
 	addOrReplace('bike_inactive', await loadSvg('./assets/bike_marker_inactive.svg', replaces));
 	addOrReplace('bike_inactive_selected', await loadSvg('./assets/bike_marker_inactive_selected.svg', replaces));
 	addOrReplace('dock_inactive', await loadSvg('./assets/dock_marker_inactive.svg', replaces));

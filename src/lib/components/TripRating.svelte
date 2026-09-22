@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { submitTripRating } from '$lib/gira-api/api';
+	import { reportApiError } from '$lib/error-reporting';
 	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 	import { currentRoute } from '$lib/routing';
 	import { t } from '$lib/translations';
@@ -199,7 +200,7 @@
 		// The Gira+ aggregate behind the bike-condition badges, kept regardless of VAIMOO's answer
 		void postBikeRating(tripCode, bikePlate, value, date?.toISOString(), details).catch(error => {
 			console.warn('Could not mirror bike rating to Gira+', error);
-			reportErrorEvent('bike_rating_mirror_error');
+			void reportApiError('bike_rating_mirror_error', error);
 		});
 	}
 
