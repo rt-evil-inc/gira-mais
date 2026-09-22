@@ -4,7 +4,8 @@
 	import { safeInsets } from '$lib/ui.svelte';
 
 	import { submitTripRating } from '$lib/gira-api/api';
-	import { postBikeRating, reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
+	import { postBikeRating } from '$lib/gira-mais-api/gira-mais-api';
+	import { reportApiError } from '$lib/error-reporting';
 	import { markTripRated, tripRating } from '$lib/trip';
 	import IconMoodConfuzed from '@tabler/icons-svelte/icons/mood-confuzed';
 	import IconMoodConfuzedFilled from '@tabler/icons-svelte/icons/mood-confuzed-filled';
@@ -34,12 +35,13 @@
 			// VAIMOO currently rejects otherwise valid opinion feedback. Rating is optional,
 			// so do not block or repeatedly prompt the rider when its backend is unavailable.
 			console.warn('VAIMOO trip rating was not accepted; continuing', error);
+			void reportApiError('trip_rating_error', error, { rating });
 		}
 		await markTripRated(tripCode).catch(error => console.warn('Could not remember handled trip rating', error));
 		// Keep the optional Gira+ aggregate for bike-condition hints regardless of VAIMOO's result.
 		void postBikeRating(tripCode, bikePlate, rating, date?.toISOString()).catch(error => {
 			console.warn('Could not mirror bike rating to Gira+', error);
-			reportErrorEvent('bike_rating_mirror_error');
+			void reportApiError('bike_rating_mirror_error', error);
 		});
 		$tripRating.currentRating = null;
 	}

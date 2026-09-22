@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { request, addError } = vi.hoisted(() => ({ request: vi.fn(), addError: vi.fn() }));
+const { request, addError, reportErrorEvent } = vi.hoisted(() => ({ request: vi.fn(), addError: vi.fn(), reportErrorEvent: vi.fn() }));
 vi.mock('$app/environment', () => ({ dev: false }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent }));
 vi.mock('@capacitor/core', () => ({ CapacitorHttp: { request } }));
 vi.mock('@capacitor/network', () => ({ Network: { getStatus: async () => ({ connected: true }) } }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: addError } }));
@@ -15,6 +16,7 @@ describe('VAIMOO API client', () => {
 	beforeEach(() => {
 		request.mockReset();
 		addError.mockReset();
+		reportErrorEvent.mockReset();
 	});
 
 	it('retries network failures with a warning and gives up with a communication error', async () => {
@@ -28,6 +30,10 @@ describe('VAIMOO API client', () => {
 			expect(error).toBeInstanceOf(VaimooNetworkError);
 			expect(request).toHaveBeenCalledTimes(3);
 			expect(addError.mock.calls.map(call => call[0])).toEqual(['gira_api_communication_error_retry', 'gira_api_communication_error']);
+			// Reported once, after the last attempt, without the query string (user id) or headers (token).
+			expect(reportErrorEvent).toHaveBeenCalledOnce();
+			expect(reportErrorEvent.mock.calls[0][0]).toBe('gira_api_communication_error');
+			expect(JSON.parse(reportErrorEvent.mock.calls[0][1])).toEqual({ method: 'GET', path: '/user/trip', attempts: 3, error: 'Request timed out' });
 		} finally {
 			vi.useRealTimers();
 		}
@@ -56,6 +62,8 @@ describe('VAIMOO API client', () => {
 		await expect(quickStartVaimooTrip(session, 'bike-1')).rejects.toBeInstanceOf(VaimooNetworkError);
 		expect(request).toHaveBeenCalledTimes(1);
 		expect(addError).not.toHaveBeenCalled();
+		// Silent for the rider, but still worth knowing about.
+		expect(reportErrorEvent).toHaveBeenCalledWith('gira_api_communication_error', expect.stringContaining('/trip/v2/quick-start/bike-1'));
 	});
 
 	it('performs the browserless EMEL exchange and returns a VAIMOO session', async () => {

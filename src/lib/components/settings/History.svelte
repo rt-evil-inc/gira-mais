@@ -8,6 +8,7 @@
 	import { getTripHistory } from '$lib/gira-api/api';
 	import { getLocale, t } from '$lib/translations';
 	import { errorMessages } from '$lib/ui.svelte';
+	import { reportApiError } from '$lib/error-reporting';
 
 	let trips:CompletedTrip[] = $state([]);
 	let observed:HTMLDivElement|undefined = $state();
@@ -25,6 +26,7 @@
 			trips = trips.concat(res);
 		} catch (error) {
 			console.error('Failed to load trip history', error);
+			void reportApiError('trip_history_error', error, { source: 'history-page', page: Math.floor(trips.length / loadedPerPage) + 1 });
 			errorMessages.add($t('gira_api_communication_error'), 5000);
 			// Stop the intersection observer from hammering a failing endpoint; reopening the page retries.
 			loadedAll = true;

@@ -7,6 +7,7 @@ import { Network } from '@capacitor/network';
 import { Preferences } from '@capacitor/preferences';
 import { get, writable } from 'svelte/store';
 import { getVaimooUser, InvalidCredentialsError, loginWithEmel, refreshVaimooSession, VaimooApiError } from '$lib/vaimoo-api/client';
+import { reportApiError } from '$lib/error-reporting';
 import type { VaimooSession } from '$lib/vaimoo-api/types';
 
 export type Token = {
@@ -131,13 +132,21 @@ export async function login(email: string, password: string) {
 			email: session.user.email ?? email,
 			name: [session.user.firstName, session.user.lastName].filter(Boolean).join(' ') || session.user.userName || email,
 		});
-		const initialLoads = await Promise.allSettled([refreshAccountInfo(), updateUserInfo()]);
-		for (const result of initialLoads) {
-			if (result.status === 'rejected') console.error('Failed to load VAIMOO account data', result.reason);
-		}
+		await Promise.all([
+			refreshAccountInfo().catch(error => {
+				console.error('Failed to load VAIMOO account data', error);
+				void reportApiError('account_info_error', error, { source: 'login' });
+			}),
+			updateUserInfo().catch(error => {
+				console.error('Failed to load VAIMOO user data', error);
+				void reportApiError('user_info_error', error, { source: 'login' });
+			}),
+		]);
 		return 0;
 	} catch (error) {
+		// Wrong credentials are the rider's problem, not the app's; everything else is worth knowing about.
 		if (error instanceof InvalidCredentialsError) return 100;
+		void reportApiError('login_error', error);
 		throw error;
 	}
 }
@@ -185,6 +194,7 @@ async function doRefreshToken() {
 			});
 			success = true;
 		} catch (error) {
+			void reportApiError('token_refresh_error', error, { attempt: i + 1 });
 			// A rejected refresh token will not become valid by retrying; go straight to the credentials.
 			if (error instanceof VaimooApiError && (error.status === 400 || error.status === 401)) break;
 			await new Promise(resolve => setTimeout(resolve, msBetweenRefreshAttempts));

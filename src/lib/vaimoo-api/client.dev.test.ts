@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const { request } = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock('$app/environment', () => ({ dev: true }));
 vi.mock('@capacitor/core', () => ({ CapacitorHttp: { request } }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: vi.fn() }));
 
 import { loginWithEmel } from './client';
 
