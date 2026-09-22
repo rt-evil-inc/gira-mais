@@ -1,8 +1,17 @@
+<script lang="ts" module>
+	let fit: (() => void)|null = null;
+
+	/** Frame the route on display, if any (stops following the user) */
+	export function fitCurrentRoute() {
+		fit?.();
+	}
+</script>
+
 <script lang="ts">
 	import { token } from '$lib/account';
 	import { bearing, bearingNorth, currentHeading, currentPos } from '$lib/location';
 	import { getMapStyle } from '$lib/map-style';
-	import { addLayers, following, loadImages, selectedStation, setSourceData, STATION_MARKER_FADE_END, STATION_MARKER_FADE_START, stationDotColor, stationDotStrokeColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
+	import { addLayers, following, loadImages, routeFramed, selectedStation, setSourceData, STATION_MARKER_FADE_END, STATION_MARKER_FADE_START, stationDotColor, stationDotStrokeColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
 	import { appSettings } from '$lib/settings';
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { compassAccuracy, compassHeading } from '$lib/compass';
@@ -16,7 +25,7 @@
 	import type { Position } from '@capacitor/geolocation';
 	import type { GeoJSON } from 'geojson';
 	import maplibregl, { type ExpressionSpecification } from 'maplibre-gl';
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 
@@ -25,6 +34,8 @@
 		bottomPadding?: number;
 		topPadding?: number;
 		leftPadding?: number;
+		// Bottom edge of the search bar UI, which the top-down framings clear
+		searchBarBottom?: number;
 	}
 
 	let {
@@ -32,6 +43,7 @@
 		bottomPadding = $bindable(0),
 		topPadding = $bindable(0),
 		leftPadding = $bindable(0),
+		searchBarBottom = 0,
 	}: Props = $props();
 
 	let mapElem: HTMLDivElement;
@@ -136,17 +148,20 @@
 	}
 
 	// Extra top padding keeps the marker in the lower part of the view, showing
-	// the road ahead rather than what's behind
+	// the road ahead rather than what's behind. Every side is set: a side left
+	// out of a camera move's padding keeps its current value (e.g. the route
+	// fit's right margin)
 	function navPadding() {
 		return {
 			top: topPadding + window.innerHeight * 0.35,
 			bottom: 0,
 			left: leftPadding,
+			right: 0,
 		};
 	}
 
 	function standardPadding() {
-		return { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding };
+		return { top: topPadding, bottom: bottomPadding, left: leftPadding, right: 0 };
 	}
 
 	function enterNavView() {
@@ -329,29 +344,46 @@
 				(route.destination.type === 'station' && route.destination.stationSerial === props.serialNumber)
 			);
 			if (!partOfRoute) {
-				routeDestination.set({
-					type: 'station',
-					lat: feature.geometry.coordinates[1],
-					lng: feature.geometry.coordinates[0],
-					name: props.name,
-					stationSerial: props.serialNumber,
-				});
+				// The route to a tapped station is drawn without reframing the map:
+				// the user is looking at that station (often just to check its
+				// bikes), and zooming out to the whole route pulled them away from
+				// it (#111). Only destinations picked from the search bar or by
+				// dropping a pin fit the route — unless the camera is in the
+				// route-framing mode, which frames the new route as well
+				fitSuppressed = !get(routeFramed);
+				try {
+					routeDestination.set({
+						type: 'station',
+						lat: feature.geometry.coordinates[1],
+						lng: feature.geometry.coordinates[0],
+						name: props.name,
+						stationSerial: props.serialNumber,
+					});
+				} finally {
+					fitSuppressed = false;
+				}
 			}
+			// Once the menu has rendered and reported its height, keep the zoom
+			// and center the station in the map area between the search bar and
+			// the menu — or, in the route-framing mode, keep the route framed
+			// there instead (a new route's fit is already pending)
 			await tick();
 			await tick();
-			// With no active trip the camera moves once, when the computed route is
-			// fit to the view; during a trip, without a location (when no route can
-			// be computed) or when the route is kept, no fit happens, so center the
-			// station instead
-			if (get(currentTrip) !== null || get(currentPos) === null || partOfRoute) {
+			if (get(routeFramed)) {
+				if (!pendingFit) fitRoute(get(currentRoute));
+			} else {
 				map.flyTo({
 					center: feature.geometry.coordinates as [number, number],
-					padding: { top: topPadding, bottom: Math.min(bottomPadding, window.innerHeight / 2), left: leftPadding },
+					padding: { top: searchBarBottom, bottom: bottomPadding, left: leftPadding, right: 0 },
 					curve: 0,
 				});
 			}
 		}
 		for (const layer of STATION_LAYERS) map.on('click', layer, onStationClick);
+		// any camera move but the route fit's own takes the route out of frame
+		map.on('movestart', () => {
+			if (!fitting) routeFramed.set(false);
+		});
 		// on dragging map, remove user tracking
 		map.on('dragstart', () => {
 			following.set(false);
@@ -526,43 +558,54 @@
 		map.setPaintProperty('docks', 'icon-opacity', markerOpacity);
 	}
 
-	// The station menu height passed as bottomPadding only measures the bike
-	// list; the sheet header (drag handle + station info) adds roughly this much
-	const SHEET_HEADER_px = 110;
-
 	let pendingFit = false;
-	let lastFitAt = 0;
+	// Set around a routeDestination update whose route must not be fit to the
+	// view (a station tapped on the map)
+	let fitSuppressed = false;
 	let refitTimeout: ReturnType<typeof setTimeout>;
+	// The fit's own camera moves in flight: a count, since a fit interrupting
+	// another fires the interrupted one's moveend synchronously
+	let fitting = 0;
+	let lastFit: { computedAt: number, bottom: number }|null = null;
 
+	fit = () => fitRoute(get(currentRoute));
 	function fitRoute(route: PlannedRoute|null) {
 		if (!route || !mapLoaded || get(currentTrip) !== null) return;
-		lastFitAt = Date.now();
+		// Clear the search bar UI at the top and the bottom sheet (if open) at the
+		// bottom, with a margin, while always keeping a minimum strip of the map
+		// visible
+		const top = searchBarBottom + 20;
+		const bottom = Math.min(bottomPadding + 40, window.innerHeight - top - 150);
+		// already framed this way — e.g. a sheet resize that didn't change the
+		// padding, or a route republished with new metadata only (a named pin)
+		if (get(routeFramed) && lastFit?.computedAt === route.computedAt && lastFit.bottom === bottom) return;
+		lastFit = { computedAt: route.computedAt, bottom };
 		following.set(false);
 		const bounds = new maplibregl.LngLatBounds;
 		bounds.extend([route.origin.lng, route.origin.lat]);
 		route.legs.forEach(leg => leg.coordinates.forEach(c => bounds.extend(c)));
-		// Clear the search bar + route summary chip at the top, and the bottom
-		// sheet (bike list is CSS-capped at 50vh) plus its header at the bottom,
-		// while always keeping a minimum strip of the map visible
-		const top = topPadding + 130;
-		const bottom = Math.min(
-			Math.min(bottomPadding, window.innerHeight / 2) + SHEET_HEADER_px,
-			window.innerHeight - top - 150,
+		// Not fitBounds: it adds the map's persistent padding (left behind by the
+		// last padded camera move, e.g. a station centering) on top of the
+		// requested one and can never shrink it. Frame the bounds ourselves and
+		// set the padding outright instead
+		const padding = { top, bottom, left: leftPadding + 40, right: 40 };
+		const corners = [bounds.getNorthWest(), bounds.getNorthEast(), bounds.getSouthEast(), bounds.getSouthWest()].map(c => map.project(c));
+		const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+		const scale = Math.min(
+			(map.getContainer().clientWidth - padding.left - padding.right) / (Math.max(...xs) - Math.min(...xs)),
+			(map.getContainer().clientHeight - padding.top - padding.bottom) / (Math.max(...ys) - Math.min(...ys)),
 		);
-		// fitBounds adds the map's persistent padding (left behind by flyTo calls
-		// with a padding option) on top of the requested one, so subtract it to
-		// avoid zooming out much further than the route needs
-		const persistent = map.getPadding();
-		map.fitBounds(bounds, {
-			padding: {
-				top: Math.max(0, top - persistent.top),
-				bottom: Math.max(0, bottom - persistent.bottom),
-				left: Math.max(0, leftPadding + 40 - persistent.left),
-				right: Math.max(0, 40 - persistent.right),
-			},
+		fitting++;
+		routeFramed.set(true);
+		map.flyTo({
+			center: map.unproject(corners[0].add(corners[2]).div(2)),
+			zoom: Math.min(map.getZoom() + Math.log2(scale), 16.5),
+			padding,
 			duration: 1000,
-			maxZoom: 16.5,
 		});
+		// registered only after the flyTo call, see recenterNorthView
+		if (map.isMoving()) map.once('moveend', () => fitting--);
+		else fitting--;
 	}
 
 	// Zoom to the full route whenever a destination is picked, unless riding
@@ -574,10 +617,15 @@
 		applyStationDisplayState();
 		if (!route) {
 			pendingFit = false;
+			routeFramed.set(false);
 			return;
 		}
 		if (pendingFit) {
 			pendingFit = false;
+			fitRoute(route);
+		} else if (get(routeFramed)) {
+			// the camera hasn't been touched since the fit: keep the route in
+			// frame as it's recomputed from the moving user
 			fitRoute(route);
 		}
 	});
@@ -590,7 +638,7 @@
 		}
 		const route = get(currentRoute);
 		applyRouteData(route);
-		if (!destination) {
+		if (!destination || fitSuppressed) {
 			pendingFit = false;
 			return;
 		}
@@ -603,14 +651,15 @@
 		}
 	});
 
-	// Re-fit when the bottom sheet resizes shortly after a fit (e.g. the bike
-	// list grows once up-to-date station info arrives), so the route stays visible
+	// A framed route is re-fit when the bottom sheet resizes (the menu opening
+	// or closing, its bike list growing) so it stays in the map area left; a
+	// pending route's fit will use the new size anyway
 	$effect(() => {
 		void bottomPadding;
 		clearTimeout(refitTimeout);
-		if (Date.now() - lastFitAt < 5000) {
-			refitTimeout = setTimeout(() => fitRoute(get(currentRoute)), 200);
-		}
+		refitTimeout = setTimeout(() => {
+			if (get(routeFramed) && !pendingFit) fitRoute(get(currentRoute));
+		}, 200);
 	});
 
 	currentTrip.subscribe((trip: ActiveTrip | null) => {
@@ -746,8 +795,16 @@
 		northWasActive = active;
 	});
 
+	// Closing the menu drops the padding the station centering left on the
+	// map: the ground stays put, only the camera's perspective (visible on the
+	// 3D buildings) returns to the full view. A framed route is re-fit by the
+	// resize effect above instead, and while following, the follow's own
+	// camera moves re-apply their padding
 	$effect(() => {
-		if ($selectedStation == null) bottomPadding = 0;
+		if ($selectedStation != null) return;
+		bottomPadding = 0;
+		if (!mapLoaded || get(following) || get(routeFramed) || map.getPadding().bottom === 0) return;
+		map.easeTo({ padding: untrack(standardPadding) });
 	});
 </script>
 

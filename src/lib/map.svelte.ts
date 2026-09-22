@@ -23,6 +23,9 @@ export type StationInfo ={
 export const stations = $state<{value:StationInfo[]}>({ value: [] });
 export const selectedStation = writable<string|null>(null);
 export const following = writable<boolean>(false);
+// Whether the camera still shows the route as the route fit framed it, i.e.
+// no other camera move (a gesture, following, a station centering) happened since
+export const routeFramed = writable<boolean>(false);
 /** While following: 'north' is the classic top-down view, 'heading' the tilted
  * navigation view that rotates with the traveling direction (trips only). */
 export const viewMode = writable<'north'|'heading'>('north');

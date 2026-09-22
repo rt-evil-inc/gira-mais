@@ -11,7 +11,7 @@
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
 	import { routeDestination } from '$lib/routing';
-	import SearchBar, { dismissSearchBar } from '$lib/components/SearchBar.svelte';
+	import SearchBar, { dismissSearchBar, SEARCH_BAR_EXTENT_px } from '$lib/components/SearchBar.svelte';
 	import { get } from 'svelte/store';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
@@ -36,6 +36,10 @@
 	let stationMenuPos:number|undefined = $state(0);
 	let tripStatusHeight:number = $state(0);
 	let tripStatusWidth:number = $state(0);
+	// The search bar's anchor and, for the map's padding, the bottom edge of its
+	// UI (anchor + Floating offset + the bar's extent)
+	let searchBarY = $derived(Math.max(tripStatusHeight + 16, $safeInsets.top));
+	let searchBarBottom = $derived(searchBarY + 4 + SEARCH_BAR_EXTENT_px);
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
 
@@ -89,12 +93,12 @@
 			<Login />
 		</div>
 	{/if}
-	<Map loading={!$token} bind:bottomPadding={menuHeight} bind:topPadding={tripStatusHeight} bind:leftPadding={tripStatusWidth} />
+	<Map loading={!$token} bind:bottomPadding={menuHeight} bind:topPadding={tripStatusHeight} bind:leftPadding={tripStatusWidth} {searchBarBottom} />
 
 	{#if $currentTrip !== null}
 		<TripStatus bind:height={tripStatusHeight} bind:width={tripStatusWidth} />
 	{:else}
-		<StationMenu bind:posTop={stationMenuPos} bind:anchorTop={stationMenuAnchor} bind:bikeListHeight={menuHeight} />
+		<StationMenu bind:posTop={stationMenuPos} bind:anchorTop={stationMenuAnchor} bind:height={menuHeight} />
 		{#if $tripRating.currentRating != null && $networkStatus }
 			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
 		{/if}
@@ -126,7 +130,7 @@
 	{#if $token !== null}
 		<!-- in landscape trips the HUD already claims the left edge, so the bar
 			collapses into a button to keep the map visible -->
-		<Floating left={tripStatusWidth + 16} right={80} y={Math.max(tripStatusHeight + 16, $safeInsets.top)} offset={4} class="z-[5] pointer-events-none">
+		<Floating left={tripStatusWidth + 16} right={80} y={searchBarY} offset={4} class="z-[5] pointer-events-none">
 			<SearchBar collapsible={tripStatusWidth > 0} />
 		</Floating>
 	{/if}
