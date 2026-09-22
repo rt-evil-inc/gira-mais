@@ -6,6 +6,8 @@ import { subscribeFirestoreBike } from '$lib/vaimoo-api/firestore';
 import { subscribeStations } from './api';
 import { errorMessages } from '$lib/ui.svelte';
 import { t } from '$lib/translations';
+import { reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
+import { reportApiError } from '$lib/error-reporting';
 
 const PENDING_TRIP_INTERVAL_MS = 3_000;
 const FIRESTORE_START_TRIP_TIMEOUT = 100;
@@ -95,6 +97,7 @@ function followActiveBike(bikeId: string | null) {
 			// The official app surfaces these codes straight from the bike document (100 = start timeout, 2xx/4xx = end failures).
 			if (previousErrorCode !== undefined && previousErrorCode !== nextErrorCode && nextErrorCode != null && nextErrorCode !== 0) {
 				console.warn('VAIMOO bike reported trip error code', nextErrorCode);
+				void reportErrorEvent('bike_trip_error', JSON.stringify({ code: nextErrorCode, state: nextState, tripId: bike?.TripId ?? null, confirmed: trip?.confirmed ?? false }));
 				if (nextErrorCode === FIRESTORE_START_TRIP_TIMEOUT) {
 					// Clear the unconfirmed trip right away instead of waiting for the 30 s confirmation timeout,
 					// which would otherwise show the same error a second time.
@@ -108,7 +111,10 @@ function followActiveBike(bikeId: string | null) {
 			previousState = nextState;
 			previousErrorCode = nextErrorCode;
 		},
-		error => console.error('VAIMOO active-bike listener failed', error),
+		error => {
+			console.error('VAIMOO active-bike listener failed', error);
+			void reportApiError('bike_feed_error', error, { source: 'active-bike' });
+		},
 	);
 }
 
@@ -121,7 +127,10 @@ export function startBackendSync() {
 	if (!stopStationListener) {
 		stopStationListener = subscribeStations(
 			value => stations.value = value,
-			error => console.error('VAIMOO station listener failed', error),
+			error => {
+				console.error('VAIMOO station listener failed', error);
+				void reportApiError('station_feed_error', error);
+			},
 		);
 	}
 	if (!stopTripStoreListener) {
@@ -163,7 +172,9 @@ export function startBackendSync() {
 				const activeTrip = await refreshTripStatus('backend-sync-start');
 				if (!activeTrip) await recoverRecentTripRating();
 			} catch (error) {
-				console.error('Initial VAIMOO trip status refresh failed', error);
+				// refreshTripStatus reports its own failures; only the rating recovery's history request can throw here.
+				console.error('Recovering the trip rating prompt failed', error);
+				void reportApiError('trip_history_error', error, { source: 'rating-recovery' });
 			}
 		})();
 	}

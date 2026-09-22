@@ -3,6 +3,7 @@ import { getActiveTrip, getTripHistory, knownErrors, quickStartBike } from '$lib
 import type { ServerActiveTrip } from '$lib/gira-api/models';
 import { VaimooApiError, VaimooNetworkError } from '$lib/vaimoo-api/client';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
+import { reportApiError } from '$lib/error-reporting';
 import { currentPos, setDebugPosition, watchPosition } from '$lib/location';
 import { appSettings } from '$lib/settings';
 import { errorMessages } from '$lib/ui.svelte';
@@ -96,7 +97,10 @@ async function completeTrip(trip: ActiveTrip) {
 	if (trip.bikePlate) {
 		tripRating.set({ currentRating: { code: trip.code, bikePlate: trip.bikePlate, startDate: trip.startDate, endDate: new Date } });
 	}
-	await refreshAccountInfo().catch(error => console.error('Could not refresh account after trip completion', error));
+	await refreshAccountInfo().catch(error => {
+		console.error('Could not refresh account after trip completion', error);
+		void reportApiError('account_info_error', error, { source: 'trip-completion' });
+	});
 	completingTripId = null;
 	logTripLifecycle('completion-finished', { tripCode: trip.code });
 }
@@ -174,6 +178,7 @@ export async function refreshTripStatus(source = 'unspecified'): Promise<ServerA
 			logTripLifecycle('start-confirmation-timed-out', { source, trip: tripSummary(localTrip) });
 			currentTrip.set(null);
 			errorMessages.add(get(t)('bike_unlock_error'));
+			void reportErrorEvent('bike_unlock_timeout', JSON.stringify({ source, bike: localTrip.bikePlate }));
 		}
 		return serverTrip;
 	} catch (error) {
@@ -182,6 +187,7 @@ export async function refreshTripStatus(source = 'unspecified'): Promise<ServerA
 			message: error instanceof Error ? error.message : String(error),
 		});
 		console.error(`VAIMOO trip status refresh failed (${source})`, error);
+		void reportApiError('trip_status_error', error, { source });
 		return null;
 	} finally {
 		statusRequest = null;
@@ -189,7 +195,8 @@ export async function refreshTripStatus(source = 'unspecified'): Promise<ServerA
 	}
 }
 
-function addKnownApiError(error: unknown) {
+/** Show the unlock failure and report it with VAIMOO's full response, so the real error codes can be mapped in knownErrors. */
+function addKnownApiError(error: unknown, context: { bike: string; station: string }) {
 	let added = false;
 	if (error instanceof VaimooApiError) {
 		for (const item of error.errors) {
@@ -198,11 +205,10 @@ function addKnownApiError(error: unknown) {
 				errorMessages.add(get(t)(known.message as keyof Translations));
 				added = true;
 			}
-			// Include VAIMOO's numeric code so the real codes can be learned from the reports and mapped above.
-			reportErrorEvent('gira_api_error', error.code != null ? `${error.code}: ${item.message}` : item.message);
 		}
 	}
 	if (!added) errorMessages.add(get(t)('bike_unlock_error'));
+	void reportApiError('gira_api_error', error, context);
 }
 
 export async function tryStartTrip(id: string, communicationId: string, station: StationInfo): Promise<boolean> {
@@ -260,7 +266,7 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 			}
 		}
 		currentTrip.set(null);
-		addKnownApiError(error);
+		addKnownApiError(error, { bike: id, station: station.serialNumber });
 		return false;
 	}
 }

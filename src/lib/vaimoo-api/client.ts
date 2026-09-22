@@ -4,6 +4,7 @@ import { Network } from '@capacitor/network';
 import { get } from 'svelte/store';
 import { t } from '$lib/translations';
 import { errorMessages } from '$lib/ui.svelte';
+import { reportErrorEvent } from '$lib/gira-mais-api/gira-mais-api';
 import type {
 	VaimooCurrentTrip,
 	VaimooLoginResponse,
@@ -135,14 +136,18 @@ async function http<T>(service: Service, options: HttpOptions, { retry = true } 
 		} catch (error) {
 			console.error(`${service} request to ${options.url} failed (attempt ${attempt}/${maxAttempts})`, error);
 			// Offline is reported by the network banner already; only warn when the service itself is unreachable.
-			const notify = retry && await isOnline();
+			const online = await isOnline();
+			const notify = retry && online;
 			if (attempt < maxAttempts) {
 				if (notify && attempt === 1) errorMessages.add(get(t)(COMMUNICATION_ERROR_KEYS[service].retry), 5000);
 				await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
 				continue;
 			}
 			if (notify) errorMessages.add(get(t)(COMMUNICATION_ERROR_KEYS[service].final), 5000);
-			throw new VaimooNetworkError(`${service} request failed: ${error instanceof Error ? error.message : String(error)}`, error);
+			const message = error instanceof Error ? error.message : String(error);
+			// Only the path: the query string carries the user id and the headers the access token.
+			if (online) void reportErrorEvent(COMMUNICATION_ERROR_KEYS[service].final, JSON.stringify({ method: options.method ?? 'GET', path: new URL(options.url).pathname, attempts: maxAttempts, error: message }));
+			throw new VaimooNetworkError(`${service} request failed: ${message}`, error);
 		}
 		if (response.status < 200 || response.status >= 300) {
 			throw new VaimooApiError(`VAIMOO request failed with HTTP ${response.status}`, response.status, response.data);
@@ -172,7 +177,8 @@ function expiresAt(response: VaimooLoginResponse) {
 function toSession(response: VaimooLoginResponse): VaimooSession {
 	// The login response uses `userId`, the refresh-token response uses `id`.
 	const userId = response.user.userId ?? response.user.id;
-	if (userId == null) throw new VaimooApiError('VAIMOO session has no user id', 500, response);
+	// Not the response itself: it holds the tokens and the account details, and error bodies get reported.
+	if (userId == null) throw new VaimooApiError('VAIMOO session has no user id', 500, { userKeys: Object.keys(response.user ?? {}) });
 	return {
 		accessToken: response.accessToken.token,
 		refreshToken: response.accessToken.refreshToken,

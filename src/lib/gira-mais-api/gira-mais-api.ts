@@ -48,23 +48,31 @@ export async function reportTripStartEvent(bikeSerial: string | null, stationSer
 	return response?.data as TripStatisticsPostResponse;
 }
 
+/**
+ * Report an error to the Gira+ statistics backend. Never throws: telemetry must not break the operation
+ * that failed, and most callers fire and forget.
+ */
 export async function reportErrorEvent(errorCode: string, errorMessage: string | null = null) {
 	if (!get(appSettings).analytics || dev) return;
 
-	const response = await httpRequestWithRetry({
-		method: 'post',
-		url: GIRA_MAIS_API_URL + '/statistics/errors',
-		headers: {
-			'User-Agent': `Gira+/${version}`,
-			'Content-Type': 'application/json',
-		},
-		data: {
-			deviceId: (await Device.getId()).identifier,
-			errorCode,
-			errorMessage,
-		} as ErrorStatisticsPostRequest,
-	});
-	return response?.data as ErrorStatisticsPostResponse;
+	try {
+		const response = await httpRequestWithRetry({
+			method: 'post',
+			url: GIRA_MAIS_API_URL + '/statistics/errors',
+			headers: {
+				'User-Agent': `Gira+/${version}`,
+				'Content-Type': 'application/json',
+			},
+			data: {
+				deviceId: (await Device.getId()).identifier,
+				errorCode,
+				errorMessage,
+			} as ErrorStatisticsPostRequest,
+		});
+		return response?.data as ErrorStatisticsPostResponse;
+	} catch (error) {
+		console.warn(`Could not report error event ${errorCode}`, error);
+	}
 }
 
 export async function getMessage() {

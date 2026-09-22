@@ -2,6 +2,7 @@
 	import Bike from '$lib/components/Bike.svelte';
 	import BikeSkeleton from '$lib/components/BikeSkeleton.svelte';
 	import { getStationBikeRatings } from '$lib/gira-mais-api/gira-mais-api';
+	import { reportApiError } from '$lib/error-reporting';
 	import type { StationBikeRating } from '$lib/gira-mais-api/types';
 	import { subscribeStationBikes } from '$lib/gira-api/api';
 	import type { AvailableBike } from '$lib/gira-api/models';
@@ -158,7 +159,10 @@
 			return subscribeStationBikes(
 				stationId,
 				info => void updateInfo(stationId, info),
-				error => console.error('Failed to listen for station bikes', error),
+				error => {
+					console.error('Failed to listen for station bikes', error);
+					void reportApiError('bike_feed_error', error, { source: 'station-menu', station: stationId });
+				},
 			);
 		} else if (dragged) {
 			dismiss();
