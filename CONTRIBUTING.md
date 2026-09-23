@@ -49,14 +49,7 @@ Here is a summary of the steps:
     bun run build-app-dev # or npm run build-app-dev
     ```
 
-    To debug on a browser, you need to disable CORS restrictions. On Chrome, you can do this by running:
-    ```bash
-    google-chrome --disable-web-security --user-data-dir="/tmp/chrome_dev" # on Linux
-    ```
-    or
-    ```powershell
-    & 'C:\Program Files\Google\Chrome\Application\chrome.exe' --disable-web-security --user-data-dir=\ # on Windows
-    ```
+    To debug on a browser, just open the dev server URL (http://localhost:5173) in any browser. In development, requests to the EMEL, VAIMOO and Gira+ APIs go through a local proxy on the Vite dev server (the `/__dev-proxy/*` routes in [`vite.config.ts`](vite.config.ts)), so there is no need to disable CORS in your browser. If the app needs to reach another backend that doesn't allow cross-origin requests, add a matching proxy entry there.
 
 ## Code Style and Linting
 
