@@ -109,6 +109,10 @@ const translations = {
 		en: 'Station',
 		pt: 'Estação',
 	},
+	unknown_location_label: {
+		en: 'Unknown location',
+		pt: 'Local desconhecido',
+	},
 	bikes_label: {
 		en: 'BIKES',
 		pt: 'BICICLETAS',

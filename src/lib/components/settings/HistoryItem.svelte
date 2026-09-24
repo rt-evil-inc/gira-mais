@@ -44,11 +44,13 @@
 			</svg>
 		</div>
 		<div class="flex flex-col gap-4 grow">
-			<div>
+			<div class="min-h-12">
 				<div class="font-bold text-primary text-xl leading-none">{formatHours(trip.startedAt)}</div>
 				{#if trip.startStation}
 					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.startStation)}</div>
 					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.startStation)}</div>
+				{:else}
+					<div class="font-medium text-xs text-label">{$t('unknown_location_label')}</div>
 				{/if}
 			</div>
 			<div>
@@ -56,6 +58,8 @@
 				{#if trip.endStation}
 					<div class="font-bold text-xs">{$t('station_label')} {idFromName(trip.endStation)}</div>
 					<div class="font-medium leading-none text-xs text-label">{nameFromName(trip.endStation)}</div>
+				{:else}
+					<div class="font-medium text-xs text-label">{$t('unknown_location_label')}</div>
 				{/if}
 			</div>
 		</div>
