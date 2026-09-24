@@ -120,13 +120,26 @@ describe('VAIMOO app-domain adapter', () => {
 		mocks.getVaimooTripDetails.mockResolvedValue({ tripId: 123, endStation: { name: 'Station', stationId: 1084 } });
 		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
 
-		await submitTripRating('123', 'E0980', 5, new Date(2026, 8, 15, 21, 20, 22, 308));
+		await submitTripRating('123', 'E0980', 5, undefined, new Date(2026, 8, 15, 21, 20, 22, 308));
 
 		expect(mocks.getVaimooTripDetails).toHaveBeenCalledWith(expect.anything(), 123);
 		expect(mocks.submitVaimooTripFeedback.mock.calls[0][1]).toMatchObject({ tripId: 123, geoFenceId: 1084, createDate: '2026-09-15T21:20:22.308' });
 
 		await expect(submitTripRating('DEBUG', 'E0980', 5)).rejects.toThrow();
 		await expect(submitTripRating('123', 'E0980', 6)).rejects.toThrow();
+	});
+
+	it('sends the chosen reasons and comment in the feedback comment list', async () => {
+		mocks.getVaimooTripDetails.mockResolvedValue({ tripId: 123, endStation: null });
+		mocks.submitVaimooTripFeedback.mockResolvedValue({ isSuccess: true });
+
+		await submitTripRating('123', 'E0980', 2, { reasons: ['brakes', 'saddle'], comment: 'Loose saddle' });
+
+		expect(mocks.submitVaimooTripFeedback).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+			rating: 2,
+			comment: ['Braking issue', 'Saddle issue', 'Loose saddle'],
+			geoFenceId: null,
+		}));
 	});
 
 	it('maps credit and infers subscription status when isExpired is omitted', async () => {

@@ -4,7 +4,7 @@ import { currentPos, setDebugPosition } from '$lib/location';
 import { following, selectedStation, stations } from '$lib/map.svelte';
 import { appSettings } from '$lib/settings';
 import { shortestAngleDelta } from '$lib/marker-animation';
-import { currentTrip, DEBUG_START_POSITION, toggleDebugTrip } from '$lib/trip';
+import { currentTrip, DEBUG_START_POSITION, toggleDebugTrip, tripRating } from '$lib/trip';
 import { errorMessages } from '$lib/ui.svelte';
 import { token } from '$lib/account';
 import { compassAccuracy, compassHeading, compassStatus } from '$lib/compass';
@@ -101,6 +101,8 @@ export function startDebugControls() {
 			if (select) selectedStation.set('101');
 		},
 		selectStation: (serial: string) => selectedStation.set(serial),
+		// giraDebug.fakeRating() shows the post-trip rating card without having ridden
+		fakeRating: (bikePlate = 'E0980') => tripRating.set({ currentRating: { code: '1', bikePlate, startDate: new Date(Date.now() - 600_000), endDate: new Date } }),
 		// the compass sensor state, for reading off a device over remote debugging
 		compass: () => ({ status: get(compassStatus), heading: get(compassHeading), accuracy: get(compassAccuracy) }),
 	};
