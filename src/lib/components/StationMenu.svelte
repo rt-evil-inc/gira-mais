@@ -235,12 +235,6 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div bind:this={listWrapper} class="overflow-y-auto transition-all" style:height="calc(min(50vh,{bikeListHeight}px))" onscroll={() => isScrolling = true} ontouchend={() => isScrolling = false}>
 			<div bind:this={bikeList} class="flex flex-col p-5 pt-2 gap-3" style:padding-bottom="max(1.25rem, {$safeInsets.bottom}px)">
-				{#if markedCount > 0}
-					<div class="flex items-center gap-3 rounded-2xl bg-background-secondary dark:bg-background-tertiary px-4 py-3 text-xs font-medium text-label">
-						<IconInfoCircle size={20} stroke={1.8} class="shrink-0" />
-						<span>{$t(markedCount === 1 ? 'marked_unavailable_bikes_one' : 'marked_unavailable_bikes', { count: String(markedCount) })}</span>
-					</div>
-				{/if}
 				{#if bikeInfo.length == 0}
 					{#each new Array(bikes) as _}
 						<BikeSkeleton />
@@ -253,6 +247,12 @@
 					{#each bikeInfo as bike}
 						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.communicationId} rating={bike.rating} disabled={isScrolling} station={station} unlock={unlockSubject(bike)} />
 					{/each}
+				{/if}
+				{#if markedCount > 0}
+					<div class="flex items-center gap-3 rounded-2xl bg-background-secondary dark:bg-background-tertiary px-4 py-3 text-xs font-medium text-label">
+						<IconInfoCircle size={20} stroke={1.8} class="shrink-0" />
+						<span>{$t(markedCount === 1 ? 'marked_unavailable_bikes_one' : 'marked_unavailable_bikes', { count: String(markedCount) })}</span>
+					</div>
 				{/if}
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>
