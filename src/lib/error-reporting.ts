@@ -23,10 +23,10 @@ function boundedBody(body: unknown): unknown {
 }
 
 /**
- * Serialize a failure for the error statistics endpoint as a JSON string: the HTTP status, VAIMOO's numeric
- * error code, the extracted messages and the (redacted, size-capped) response body, plus any caller context.
+ * Describe a failure for telemetry: the HTTP status, VAIMOO's numeric error code, the extracted messages and
+ * the (redacted, size-capped) response body, plus any caller context.
  */
-export function describeError(error: unknown, context: Record<string, unknown> = {}): string {
+export function errorDetails(error: unknown, context: Record<string, unknown> = {}): Record<string, unknown> {
 	const details: Record<string, unknown> = { ...context };
 	if (error instanceof VaimooApiError) {
 		details.type = error.name;
@@ -45,7 +45,12 @@ export function describeError(error: unknown, context: Record<string, unknown> =
 	} else {
 		details.value = String(error);
 	}
-	return JSON.stringify(details);
+	return details;
+}
+
+/** {@link errorDetails} as the JSON string the error statistics endpoint stores. */
+export function describeError(error: unknown, context: Record<string, unknown> = {}): string {
+	return JSON.stringify(errorDetails(error, context));
 }
 
 /**

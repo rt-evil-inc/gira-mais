@@ -3,6 +3,7 @@
 	import type { StationBikeRating } from '$lib/gira-mais-api/types';
 	import { t } from '$lib/translations';
 	import { tryStartTrip } from '$lib/trip';
+	import type { UnlockSubject } from '$lib/unlock-reporting';
 	import IconBattery from '@tabler/icons-svelte/icons/battery';
 	import IconBattery1 from '@tabler/icons-svelte/icons/battery-1';
 	import IconBattery2 from '@tabler/icons-svelte/icons/battery-2';
@@ -30,6 +31,7 @@
 		disabled?: boolean;
 		serial: string;
 		station: StationInfo;
+		unlock?: UnlockSubject;
 	}
 
 	let {
@@ -41,8 +43,9 @@
 		disabled = false,
 		serial,
 		station,
+		unlock = undefined,
 	}: Props = $props();
-	const action = () => tryStartTrip(id, serial, station);
+	const action = () => tryStartTrip(id, serial, station, unlock);
 
 	let dragging = false;
 	let initPos = 0;
@@ -62,6 +65,11 @@
 	}
 
 	let hasRating = $derived(rating !== undefined && rating !== null);
+	// Bikes the system marks unavailable still unlock; greying them out sets them apart without hiding them.
+	let marked = $derived(unlock?.source === 'hidden');
+	let accent = $derived(marked ? 'text-label' : 'text-primary');
+	/** At or below this charge the battery badge turns to the warning colour, where its icon already shows empty. */
+	const LOW_BATTERY_PERCENT = 20;
 
 	function onPointerDown(event: PointerEvent & { currentTarget: EventTarget & HTMLDivElement }) {
 		dragging = true;
@@ -124,15 +132,15 @@
 
 		style:left="{pos.current}px">
 		{#if type === 'electric'}
-			<IconBolt size={42} stroke={1.7} class="text-primary -mx-3" />
+			<IconBolt size={42} stroke={1.7} class="{accent} -mx-3" />
 		{:else if type === 'classic'}
-			<IconSettings size={42} stroke={1.7} class="text-primary -mx-3" />
+			<IconSettings size={42} stroke={1.7} class="{accent} -mx-3" />
 		{:else}
 			<!-- Weird styling to perfectly align with the other icons -->
 			<div class="text-label font-bold text-xl -mr-6 w-[42px]">--</div>
 		{/if}
 		<div class="relative h-[42px] min-w-0 grow overflow-hidden">
-			<div class="absolute left-0 right-0 text-base font-bold text-primary leading-tight transition-all duration-150 ease-out {hasRating ? 'top-0 translate-y-[0px]' : 'top-1/2 -translate-y-1/2'}">{id}</div>
+			<div class="absolute left-0 right-0 text-base font-bold {accent} leading-tight transition-all duration-150 ease-out {hasRating ? 'top-0 translate-y-[0px]' : 'top-1/2 -translate-y-1/2'}">{id}</div>
 			{#if hasRating}
 				<div class="absolute bottom-0 left-0 right-0 flex h-4 items-center gap-1 text-label" transition:fly={{ y: -4, duration: 150, opacity: 0 }}>
 					{#if rating === 1}
@@ -151,9 +159,9 @@
 			{/if}
 		</div>
 		{#if type === 'electric' && battery != null}
-			<div class="flex items-center h-6 px-[6px] bg-primary rounded-md gap-1">
+			<div class="flex items-center h-6 px-[6px] {battery <= LOW_BATTERY_PERCENT ? 'bg-warning' : marked ? 'bg-label' : 'bg-primary'} rounded-md gap-1">
 				<span class="text-xs font-bold text-background">{battery}%</span>
-				{#if battery <= 20}
+				{#if battery <= LOW_BATTERY_PERCENT}
 					<IconBattery size={25} stroke={1.7} class="text-background -m-1" />
 				{:else if battery <= 40}
 					<IconBattery1 size={25} stroke={1.7} class="text-background -m-1" />
@@ -172,7 +180,7 @@
 				<IconBattery4 size={25} stroke={1.7} class="text-background -m-1" />
 			</div>
 		{/if}
-		<div class="flex flex-col items-center w-6 {dock == null ? 'text-label' : 'text-primary'}">
+		<div class="flex flex-col items-center w-6 {dock == null ? 'text-label' : accent}">
 			<span class="font-bold text-2xl leading-none">{dock ?? '--'}</span>
 			<span class="font-bold text-[7px] text-center leading-none">{$t('dock_label')}</span>
 		</div>

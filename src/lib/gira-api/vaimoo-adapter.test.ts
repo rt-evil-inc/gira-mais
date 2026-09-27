@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	getFirestoreStations: vi.fn(),
 	getFirestoreBikes: vi.fn(),
-	findFirestoreBike: vi.fn(),
 	subscribeFirestoreStations: vi.fn(),
 	subscribeFirestoreBikes: vi.fn(),
 	quickStartVaimooTrip: vi.fn(),
@@ -37,7 +36,7 @@ vi.mock('$lib/vaimoo-api/client', () => ({
 }));
 
 import { VaimooApiError } from '$lib/vaimoo-api/client';
-import { findAvailableBike, getAccountSnapshot, getActiveTrip, getStationBikes, getStations, parseVaimooDate, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
+import { getAccountSnapshot, getActiveTrip, getStationBikes, getStations, parseVaimooDate, submitTripRating, subscribeStationBikes, subscribeStations } from './api';
 
 const station = {
 	DockingStationId: 4551,
@@ -86,9 +85,27 @@ describe('VAIMOO app-domain adapter', () => {
 		expect((await getStationBikes('4551'))[0]).toMatchObject({ id: 'E0980', communicationId: 'communication-id', battery: 98, dock: '2' });
 	});
 
-	it('resolves a manually entered bike from live Firestore data', async () => {
-		mocks.findFirestoreBike.mockResolvedValue([bike]);
-		expect(await findAvailableBike('e0980')).toMatchObject({ id: 'E0980', manual: true });
+	it('lists every docked bike that unlocks with the available ones by dock, leaving out repairs and held bikes', async () => {
+		const hidden = { ...bike, IsAvaliable: false, TripVehicleState: 'LOCKED' };
+		mocks.getFirestoreBikes.mockResolvedValue([
+			{ ...hidden, VisualId: 'E0001', DockingPointVisualId: '1', Comment: 'Service status is not OK; \tHas low battery; \t' },
+			{ ...bike, VisualId: 'E0002', DockingPointVisualId: '9', Comment: 'Bike is OK' },
+			{ ...hidden, VisualId: 'E0003', DockingPointVisualId: '3', Comment: 'Service status is not OK; \tIs offline; \t', TripErrorCode: '100' },
+			{ ...hidden, VisualId: 'E0004', DockingPointVisualId: '4', Comment: 'Has repair; \tService status is not OK; \t' },
+			{ ...hidden, VisualId: 'E0005', DockingPointVisualId: '5', Comment: 'Has power issue; \t' },
+			{ ...hidden, VisualId: 'E0006', DockingPointVisualId: null, Comment: 'Service status is not OK; \t' },
+			{ ...hidden, VisualId: 'E0007', DockingPointVisualId: '7', TripVehicleState: 'RUNNING', Comment: '' },
+			{ ...hidden, VisualId: 'E0008', DockingPointVisualId: '8', IsBooked: true, Comment: '' },
+			{ ...hidden, VisualId: 'E0010', DockingPointVisualId: '6', Comment: 'Has active trip; \tHas attached user; \t' },
+			{ ...hidden, VisualId: 'E0009', DockingPointVisualId: '2', TripVehicleState: null, Comment: null },
+		]);
+		const bikes = await getStationBikes('4551');
+		expect(bikes.map(b => [b.id, b.hiddenReasons])).toEqual([
+			['E0001', ['Service status is not OK', 'Has low battery']],
+			['E0009', []],
+			['E0003', ['Service status is not OK', 'Is offline']],
+			['E0002', undefined],
+		]);
 	});
 
 	it('reads zone-less VAIMOO timestamps as UTC', async () => {
@@ -170,7 +187,7 @@ describe('VAIMOO app-domain adapter', () => {
 		emitStations([{ ...station, AvailableBikes: 3 }]);
 		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 3 })]);
 
-		emitBikes([bike, { ...bike, VisualId: 'E0002' }, { ...bike, VisualId: 'E0003', IsAvaliable: false }]);
+		emitBikes([bike, { ...bike, VisualId: 'E0002' }, { ...bike, VisualId: 'E0003', IsAvaliable: false, Comment: 'Has repair; \t' }]);
 		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 2 })]);
 
 		// The server counter did not change, so a fresh station feed keeps the observed count.
@@ -204,8 +221,8 @@ describe('VAIMOO app-domain adapter', () => {
 		emitBikes([bike, { ...bike, VisualId: 'E0002' }]);
 		expect(onStations).toHaveBeenCalledTimes(1);
 
-		// Once a bike becomes unavailable the displayed count changes, so the map is updated.
-		emitBikes([bike, { ...bike, VisualId: 'E0002', IsAvaliable: false }]);
+		// Once a bike goes in for repair the displayed count changes, so the map is updated.
+		emitBikes([bike, { ...bike, VisualId: 'E0002', IsAvaliable: false, Comment: 'Has repair; \t' }]);
 		expect(onStations).toHaveBeenCalledTimes(2);
 		expect(onStations).toHaveBeenLastCalledWith([expect.objectContaining({ serialNumber: '4551', bikes: 1 })]);
 		unsubscribe();

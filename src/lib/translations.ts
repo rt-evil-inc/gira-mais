@@ -458,10 +458,6 @@ const translations = {
 		en: 'The bicycle reported a problem ending the trip. Make sure it is locked in a dock.',
 		pt: 'A bicicleta reportou um problema ao terminar a viagem. Certifique-se de que está bloqueada numa doca.',
 	},
-	bike_unlock_no_serial_error: {
-		en: 'Bike identification number not found',
-		pt: 'Numero de identificação da bicicleta não encontrado',
-	},
 	trip_interval_limit_error: {
 		en: 'You have to wait 5 minutes between trips',
 		pt: 'Tem que esperar 5 minutos entre viagens',
@@ -490,6 +486,14 @@ const translations = {
 		en: 'This bike is in repair',
 		pt: 'Esta bicicleta está em reparação',
 	},
+	bike_not_available_error: {
+		en: 'This bike is not available',
+		pt: 'Esta bicicleta não está disponível',
+	},
+	bike_uncharged_error: {
+		en: "This bike's battery is too low",
+		pt: 'A bateria desta bicicleta está demasiado fraca',
+	},
 	network_offline_warning: {
 		en: 'You are currently offline',
 		pt: 'Não está ligado à Internet',
@@ -502,29 +506,17 @@ const translations = {
 		en: 'Show a warning when a new version of the app is available',
 		pt: 'Mostrar um aviso quando uma nova versão da aplicação estiver disponível',
 	},
+	marked_unavailable_bikes_one: {
+		en: '1 of these bikes is marked as unavailable by the system, but can still be unlocked.',
+		pt: '1 destas bicicletas está marcada como indisponível pelo sistema, mas pode ser desbloqueada na mesma.',
+	},
+	marked_unavailable_bikes: {
+		en: '{{count}} of these bikes are marked as unavailable by the system, but can still be unlocked.',
+		pt: '{{count}} destas bicicletas estão marcadas como indisponíveis pelo sistema, mas podem ser desbloqueadas na mesma.',
+	},
 	no_bikes_found: {
 		en: 'No bikes found',
 		pt: 'Nenhuma bicicleta encontrada',
-	},
-	search_other_bikes: {
-		en: 'Add missing bike',
-		pt: 'Adicionar bicicleta em falta',
-	},
-	ghost_bike_title: {
-		en: 'Missing bikes',
-		pt: 'Bicicletas em falta',
-	},
-	ghost_bike_description: {
-		en: 'You can try to retrieve bikes that do not appear in the system through their number.',
-		pt: 'Pode tentar retirar bicicletas que não aparecem no sistema através do seu número.',
-	},
-	ghost_dismiss_label: {
-		en: 'Add missing bike',
-		pt: 'Adicionar bicicleta em falta',
-	},
-	bike_unlock_invalid_id_error: {
-		en: 'Invalid bike ID. It should be a 4-digit number.',
-		pt: 'ID de bicicleta inválido. Deve ser um número de 4 dígitos.',
 	},
 	cancel_button: {
 		en: 'Cancel',

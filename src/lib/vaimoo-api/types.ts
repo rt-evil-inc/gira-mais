@@ -64,6 +64,8 @@ export interface VaimooBike {
 	TripVehicleState?: string | null;
 	TripErrorCode?: number | null;
 	UserId?: number | null;
+	/** Why the server hides the bike, as "; \t"-separated phrases ("Has low battery; \tIs offline; \t"), or "Bike is OK". */
+	Comment?: string | null;
 	Model: string;
 	Category: string;
 	Fleet: string;

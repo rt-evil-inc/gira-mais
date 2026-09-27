@@ -16,7 +16,7 @@ vi.mock('firebase/firestore', () => ({
 	where: mocks.where,
 }));
 
-import { findFirestoreBike, getFirestoreBikes, getFirestoreStations, subscribeFirestoreBike, subscribeFirestoreStations } from './firestore';
+import { getFirestoreBikes, getFirestoreStations, subscribeFirestoreBike, subscribeFirestoreStations } from './firestore';
 
 const snapshot = (documents: unknown[]) => ({ docs: documents.map(data => ({ data: () => data })) });
 
@@ -32,13 +32,11 @@ describe('VAIMOO Firestore adapter', () => {
 		expect(mocks.query.mock.calls[0].slice(1)).toEqual([{ field: 'Tenant', op: '==', value: 'P1/EML/EML/' }]);
 	});
 
-	it('queries bikes by station or visual ID', async () => {
+	it('queries bikes by station', async () => {
 		mocks.getDocs.mockResolvedValue(snapshot([]));
 		await getFirestoreBikes(4551);
-		await findFirestoreBike('E0980');
 
 		expect(mocks.query.mock.calls[0].slice(1)).toContainEqual({ field: 'DockingStationId', op: '==', value: 4551 });
-		expect(mocks.query.mock.calls[1].slice(1)).toContainEqual({ field: 'VisualId', op: '==', value: 'E0980' });
 	});
 
 	it('resubscribes with backoff after a listener error and stops once unsubscribed', () => {

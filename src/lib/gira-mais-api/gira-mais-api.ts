@@ -1,6 +1,6 @@
 import { dev, version } from '$app/environment';
 import { GIRA_MAIS_API_URL } from '$lib/constants';
-import type { BikeRatingPostRequest, BikeRatingPostResponse, ErrorStatisticsPostRequest, ErrorStatisticsPostResponse, MessageGetResponse, StationBikeRatingsGetResponse, TripStatisticsPostRequest, TripStatisticsPostResponse, UsageStatisticsPostRequest, UsageStatisticsPostResponse } from '$lib/gira-mais-api/types';
+import type { BikeRatingPostRequest, BikeRatingPostResponse, ErrorStatisticsPostRequest, ErrorStatisticsPostResponse, MessageGetResponse, StationBikeRatingsGetResponse, TripStatisticsPostRequest, TripStatisticsPostResponse, UnlockAttemptPostRequest, UnlockResultPostRequest, UnlockStatisticsPostResponse, UsageStatisticsPostRequest, UsageStatisticsPostResponse } from '$lib/gira-mais-api/types';
 import { appSettings } from '$lib/settings';
 import { getLocale } from '$lib/translations';
 import { httpRequestWithRetry } from '$lib/utils';
@@ -73,6 +73,42 @@ export async function reportErrorEvent(errorCode: string, errorMessage: string |
 	} catch (error) {
 		console.warn(`Could not report error event ${errorCode}`, error);
 	}
+}
+
+export async function reportUnlockAttemptEvent(attempt: Omit<UnlockAttemptPostRequest, 'deviceId'>) {
+	if (!get(appSettings).analytics || dev) return;
+
+	const response = await httpRequestWithRetry({
+		method: 'post',
+		url: GIRA_MAIS_API_URL + '/statistics/unlocks',
+		headers: {
+			'User-Agent': `Gira+/${version}`,
+			'Content-Type': 'application/json',
+		},
+		data: {
+			...attempt,
+			deviceId: (await Device.getId()).identifier,
+		} as UnlockAttemptPostRequest,
+	});
+	return response?.data as UnlockStatisticsPostResponse;
+}
+
+export async function reportUnlockResultEvent(attemptId: string, result: Omit<UnlockResultPostRequest, 'deviceId'>) {
+	if (!get(appSettings).analytics || dev) return;
+
+	const response = await httpRequestWithRetry({
+		method: 'post',
+		url: GIRA_MAIS_API_URL + `/statistics/unlocks/${encodeURIComponent(attemptId)}/result`,
+		headers: {
+			'User-Agent': `Gira+/${version}`,
+			'Content-Type': 'application/json',
+		},
+		data: {
+			...result,
+			deviceId: (await Device.getId()).identifier,
+		} as UnlockResultPostRequest,
+	});
+	return response?.data as UnlockStatisticsPostResponse;
 }
 
 export async function getMessage() {
