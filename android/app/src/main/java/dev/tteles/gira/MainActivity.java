@@ -1,14 +1,24 @@
 package dev.tteles.gira;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
+
+import androidx.lifecycle.Lifecycle;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 
 public class MainActivity extends BridgeActivity {
+
+  private static final String TAG = "MainActivity";
+
+  // Set when the WebView's renderer died while the activity was out of sight;
+  // the activity is rebuilt once it's back in front
+  private boolean webViewLost = false;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -20,33 +30,41 @@ public class MainActivity extends BridgeActivity {
     );
 
     // Attach a custom WebViewClient to handle renderer crashes
-    bridge.getWebView().setWebViewClient(new CustomWebViewClient(bridge));
+    bridge.getWebView().setWebViewClient(new RendererRecoveryClient());
   }
 
-  private static class CustomWebViewClient extends BridgeWebViewClient {
-    public CustomWebViewClient(com.getcapacitor.Bridge bridge) {
+  @Override
+  public void onResume() {
+    super.onResume();
+    if (webViewLost) {
+      webViewLost = false;
+      recreate();
+    }
+  }
+
+  private class RendererRecoveryClient extends BridgeWebViewClient {
+    RendererRecoveryClient() {
       super(bridge);
     }
 
     @Override
     public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-      // Handle WebView renderer crash gracefully
-      if (!detail.didCrash()) {
-        // The renderer was killed to reclaim memory
-        view.destroy();
-        return true; // prevent app from crashing
-      }
-
-      // Renderer crashed — destroy and maybe reload
+      // The system kills the renderer to reclaim memory, mostly while the app
+      // is in the background, and it can also crash. Either way this WebView
+      // can't be used again and must be destroyed (returning true keeps the
+      // app alive); rebuilding the activity loads the app into a fresh one.
+      // In the background that waits until the user comes back, so a page
+      // loaded under memory pressure isn't killed straight away again
+      Log.w(TAG, "WebView renderer gone (crashed: " + detail.didCrash() + ")");
+      ViewGroup parent = (ViewGroup) view.getParent();
+      if (parent != null) parent.removeView(view);
       view.destroy();
 
-      // Restart the app’s activity:
-      view.post(() -> {
-        android.content.Intent intent = new android.content.Intent(view.getContext(), MainActivity.class);
-        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        view.getContext().startActivity(intent);
-      });
-
+      if (getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+        recreate();
+      } else {
+        webViewLost = true;
+      }
       return true;
     }
   }
