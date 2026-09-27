@@ -19,7 +19,7 @@
 	import { loadSettings } from '$lib/settings';
 	import { getLocale } from '$lib/translations';
 	import { reportAppUsageEvent } from '$lib/gira-mais-api/gira-mais-api';
-	import { watchPosition } from '$lib/location';
+	import { restartPositionWatch, watchPosition } from '$lib/location';
 	import { startDebugControls } from '$lib/debug';
 	interface Props {
 		children?: import('svelte').Snippet;
@@ -70,6 +70,7 @@
 			});
 		});
 		App.addListener('resume', async () => {
+			void restartPositionWatch();
 			if ($token != null && $token.refreshToken != null) {
 				console.debug('Refreshing token because app was reopened');
 				await refreshToken().catch(error => console.error('Resume token refresh failed', error));
