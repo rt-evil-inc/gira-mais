@@ -120,8 +120,34 @@ let watchSetup: Promise<void>|null = null;
 
 export function watchPosition(): Promise<void> {
 	if (simulatedLocationActive) return Promise.resolve();
-	watchSetup ??= setupWatcher().finally(() => watchSetup = null);
+	watchSetup ??= setupWatcher()
+		.catch(error => console.error('Could not start the location watcher', error))
+		.finally(() => watchSetup = null);
 	return watchSetup;
+}
+
+/**
+ * Replace the foreground watcher with a fresh one. A watch can die natively
+ * without JS noticing (e.g. while the app sat frozen in the background), and
+ * nothing would ever start another since one is still on record. The trip's
+ * background watcher runs in a foreground service and is left alone.
+ */
+export async function restartPositionWatch() {
+	await watchSetup;
+	if (backgroundWatchId !== null) return;
+	await clearWatchers();
+	return watchPosition();
+}
+
+// The ids are dropped before the plugins confirm: a watch they no longer know
+// can't be cleared, and keeping its id would block every later setup
+async function clearWatchers() {
+	const foreground = watchId;
+	const background = backgroundWatchId;
+	watchId = null;
+	backgroundWatchId = null;
+	if (foreground !== null) await Geolocation.clearWatch({ id: foreground }).catch(() => {});
+	if (background !== null) await BackgroundGeolocation.removeWatcher({ id: background }).catch(() => {});
 }
 
 async function setupWatcher() {
@@ -132,15 +158,20 @@ async function setupWatcher() {
 	// trip yet either and the foreground watcher is the right one
 	if (get(currentTrip) !== null && get(appSettings)?.backgroundLocation) {
 		if (backgroundWatchId !== null) return;
-		if (watchId !== null) {
-			await Geolocation.clearWatch({ id: watchId });
-			watchId = null;
-		}
+		await clearWatchers();
 
 		backgroundWatchId = await BackgroundGeolocation.addWatcher({
 			backgroundTitle: get(t)('background_tracking_title'),
 			backgroundMessage: get(t)('background_tracking_message'),
-		}, position => {
+		}, (position, error) => {
+			// The plugin reports a watcher that never started (e.g. its service
+			// wasn't bound yet) through the callback; forget it so the next
+			// setup (the trip status refresh on resume) adds another
+			if (error) {
+				console.error('Background location watcher failed', error);
+				backgroundWatchId = null;
+				return;
+			}
 			if (position && !simulatedLocationActive) {
 				currentPos.set({ coords: { ...position, heading: position.bearing }, timestamp: position.time ?? Date.now() });
 			}
@@ -148,10 +179,7 @@ async function setupWatcher() {
 		});
 	} else {
 		if (watchId !== null) return;
-		if (backgroundWatchId !== null) {
-			await BackgroundGeolocation.removeWatcher({ id: backgroundWatchId });
-			backgroundWatchId = null;
-		}
+		await clearWatchers();
 
 		if (get(currentPos) === null) void requestInitialFix();
 		watchId = await Geolocation.watchPosition({
