@@ -91,6 +91,10 @@ function recordObservedBikeCount(stationId: string, bikes: number) {
 	stationListener?.(mapStations(lastStations));
 }
 
+// Mirrors the official app, which keys station availability on ServiceStatus alone (IsActive is ignored) and
+// treats IN_USE, LIMITED_USE and any status it doesn't recognise as usable.
+const UNAVAILABLE_SERVICE_STATUSES = new Set(['DISABLED', 'UNAVAILABLE_BY_SYSTEM', 'UNAVAILABLE_BY_OPERATOR', 'UNKNOWN']);
+
 function mapStations(response: VaimooStation[]): StationInfo[] {
 	lastStations = response;
 	return response.map(station => ({
@@ -103,7 +107,7 @@ function mapStations(response: VaimooStation[]): StationInfo[] {
 		docks: Math.max(0, Math.trunc(station.DockLimit)),
 		freeDocks: Math.max(0, Math.trunc(station.FreeDocks)),
 		serialNumber: String(station.DockingStationId),
-		assetStatus: station.IsActive && station.ServiceStatus === 'AVAILABLE' ? 'active' : 'repair',
+		assetStatus: UNAVAILABLE_SERVICE_STATUSES.has(station.ServiceStatus) ? 'repair' : 'active',
 	}));
 }
 
