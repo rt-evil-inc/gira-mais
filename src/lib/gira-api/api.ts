@@ -166,14 +166,15 @@ function dockOrder(dock: string | null) {
 }
 
 /**
- * Whether a bike can be unlocked from this station: available, or flagged unavailable for a reason that
- * doesn't stop it (see BLOCKING_REASONS) while sitting in a dock. The dock matters: the survey's typed-in
- * bikes whose records named no dock started a trip without the dock letting go, and stayed open for hours.
+ * Whether a bike can be unlocked from this station: in one of its docks, and either available or flagged
+ * unavailable for a reason that doesn't stop it (see BLOCKING_REASONS). The dock matters even for available
+ * bikes, which the feed sometimes lists with no dock: the survey's typed-in bikes whose records named no
+ * dock started a trip without the dock letting go, and those trips stayed open for hours.
  */
 function isUnlockable(bike: VaimooBike) {
-	if (bike.IsBooked || !bike.CommunicationId) return false;
+	if (bike.IsBooked || !bike.CommunicationId || !bike.DockingPointVisualId) return false;
 	if (bike.IsAvaliable) return true;
-	return bike.TripVehicleState !== 'RUNNING' && Boolean(bike.DockingPointVisualId) && !hidingReasons(bike).some(reason => BLOCKING_REASONS.has(reason));
+	return bike.TripVehicleState !== 'RUNNING' && !hidingReasons(bike).some(reason => BLOCKING_REASONS.has(reason));
 }
 
 // Firestore returns bikes in arbitrary order; list them by dock number like the station does.

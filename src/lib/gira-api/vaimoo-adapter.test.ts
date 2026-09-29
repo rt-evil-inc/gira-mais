@@ -159,14 +159,14 @@ describe('VAIMOO app-domain adapter', () => {
 		});
 	});
 
-	it('lists station bikes by dock number', async () => {
+	it('lists station bikes by dock number, leaving out any whose record names no dock', async () => {
 		mocks.getFirestoreBikes.mockResolvedValue([
 			{ ...bike, VisualId: 'E0001', DockingPointVisualId: '12' },
 			{ ...bike, VisualId: 'E0002', DockingPointVisualId: null },
 			{ ...bike, VisualId: 'E0003', DockingPointVisualId: '02' },
 			{ ...bike, VisualId: 'E0004', DockingPointVisualId: '3' },
 		]);
-		expect((await getStationBikes('4551')).map(b => b.id)).toEqual(['E0003', 'E0004', 'E0001', 'E0002']);
+		expect((await getStationBikes('4551')).map(b => b.id)).toEqual(['E0003', 'E0004', 'E0001']);
 	});
 
 	it('replaces the server bike counter with the unlockable count once station bikes load', () => {
