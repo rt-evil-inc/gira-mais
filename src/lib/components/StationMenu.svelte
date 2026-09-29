@@ -12,7 +12,6 @@
 	import type { UnlockSubject } from '$lib/unlock-reporting';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { distanceBetweenCoords, formatDistance } from '$lib/utils';
-	import IconInfoCircle from '@tabler/icons-svelte/icons/info-circle';
 	import { onMount, tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { Tween } from 'svelte/motion';
@@ -249,10 +248,7 @@
 					{/each}
 				{/if}
 				{#if markedCount > 0}
-					<div class="flex items-center gap-3 rounded-2xl bg-background-secondary dark:bg-background-tertiary px-4 py-3 text-xs font-medium text-label">
-						<IconInfoCircle size={20} stroke={1.8} class="shrink-0" />
-						<span>{$t(markedCount === 1 ? 'marked_unavailable_bikes_one' : 'marked_unavailable_bikes', { count: String(markedCount) })}</span>
-					</div>
+					<span class="text-center text-xs font-medium text-label px-2">{$t(markedCount === 1 ? 'marked_unavailable_bikes_one' : 'marked_unavailable_bikes', { count: String(markedCount) })}</span>
 				{/if}
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>

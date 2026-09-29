@@ -507,12 +507,12 @@ const translations = {
 		pt: 'Mostrar um aviso quando uma nova versão da aplicação estiver disponível',
 	},
 	marked_unavailable_bikes_one: {
-		en: '1 of these bikes is marked as unavailable by the system, but can still be unlocked.',
-		pt: '1 destas bicicletas está marcada como indisponível pelo sistema, mas pode ser desbloqueada na mesma.',
+		en: '1 of these bikes is marked as unavailable by the system, but can still be unlocked in this app.',
+		pt: '1 destas bicicletas está indisponível no sistema, mas pode ser desbloqueada nesta aplicação.',
 	},
 	marked_unavailable_bikes: {
-		en: '{{count}} of these bikes are marked as unavailable by the system, but can still be unlocked.',
-		pt: '{{count}} destas bicicletas estão marcadas como indisponíveis pelo sistema, mas podem ser desbloqueadas na mesma.',
+		en: '{{count}} of these bikes are marked as unavailable by the system, but can still be unlocked in this app.',
+		pt: '{{count}} destas bicicletas estão indisponíveis no sistema, mas podem ser desbloqueadas nesta aplicação.',
 	},
 	no_bikes_found: {
 		en: 'No bikes found',
