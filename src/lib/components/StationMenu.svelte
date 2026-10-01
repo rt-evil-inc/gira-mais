@@ -9,6 +9,7 @@
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations } from '$lib/map.svelte';
 	import { t } from '$lib/translations';
+	import type { UnlockSubject } from '$lib/unlock-reporting';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { distanceBetweenCoords, formatDistance } from '$lib/utils';
 	import { onMount, tick } from 'svelte';
@@ -57,7 +58,7 @@
 	});
 
 	let bikeInfo:(AvailableBike & { rating?: StationBikeRating })[] = $state([]);
-	let manualBike: AvailableBike | null = $state(null);
+	let markedCount = $derived(bikeInfo.filter(bike => bike.hiddenReasons).length);
 
 	async function loadBikeRatings(bikeIds: string[]) {
 		try {
@@ -133,14 +134,12 @@
 		}
 		await tick();
 		bikeListHeight = bikeList.clientHeight;
-		const extraBike = manualBike;
-		const visibleBikes = extraBike && !bikesAtStation.some(bike => bike.id === extraBike.id) ? [...bikesAtStation, extraBike] : bikesAtStation;
 		if (stationId === $selectedStation) {
 			// Snapshots arrive on every bike-document change at the station; keep the ratings already
 			// loaded so the badges don't flicker, and only fetch ratings for bikes we haven't seen.
 			const knownRatings = new Map(bikeInfo.map(bike => [bike.id, bike.rating]));
-			bikeInfo = visibleBikes.map(bike => ({ ...bike, rating: knownRatings.get(bike.id) }));
-			const newBikeIds = visibleBikes.filter(bike => !knownRatings.has(bike.id)).map(bike => bike.id);
+			bikeInfo = bikesAtStation.map(bike => ({ ...bike, rating: knownRatings.get(bike.id) }));
+			const newBikeIds = bikesAtStation.filter(bike => !knownRatings.has(bike.id)).map(bike => bike.id);
 			if (newBikeIds.length) loadBikeRatings(newBikeIds);
 		}
 		await tick();
@@ -160,7 +159,6 @@
 			const stationId = $selectedStation;
 			pos.set(0);
 			bikeInfo = [];
-			manualBike = null;
 			// The list is skeleton-sized from the station's bike count as soon as
 			// it renders, so report that height now rather than when the bikes
 			// arrive: the map pads its centering with it right after the tap
@@ -189,6 +187,11 @@
 		};
 	}
 
+	// Bikes the server flags unavailable are reported when unlocked, to notice if VAIMOO stops releasing them.
+	function unlockSubject(bike: AvailableBike): UnlockSubject {
+		return { source: bike.hiddenReasons ? 'hidden' : 'listed', hiddenReasons: bike.hiddenReasons ?? null, record: bike.record ?? null };
+	}
+
 	function getStationFromSerial(serial:string) {
 		const s = stations.value.find(s => s.serialNumber == serial);
 		if (!s) {
@@ -198,92 +201,9 @@
 		return s;
 	}
 
-/* Ghost-bike lookup disabled: the VAIMOO backend lists every dockable bike, so the legacy "missing bike" workaround is not needed.
-	function getSelectArrowBackground() {
-		const primaryColor = getCssVariable('--color-primary').slice(1);
-		return `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23${primaryColor}' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`;
-	}
-
-	let bikeIdNumber = $state<number|null>(null);
-	let bikeType = $state<'classic'|'electric'>('electric');
-	let bikeId = $derived.by(() => {
-		if (bikeIdNumber === null) return null;
-		return (bikeType === 'electric' ? 'E' : 'C') + bikeIdNumber.toString().padStart(4, '0');
-	});
-
-	const makeExtraBikeFunction = (dismiss: () => void) => {
-		return async () => {
-			await tick();
-			if (bikeId === null) {
-				errorMessages.add(
-					$t('bike_unlock_invalid_id_error'),
-					2000,
-				);
-				bikeIdInput?.focus();
-				return;
-			}
-			const foundBike = await findAvailableBike(bikeId);
-			if (foundBike) {
-				manualBike = foundBike;
-				if (!bikeInfo.some(bike => bike.id === foundBike.id)) bikeInfo.push(foundBike);
-				loadBikeRatings([foundBike.id]);
-			} else {
-				errorMessages.add(
-					$t('bike_unlock_no_serial_error'),
-					3000,
-				);
-				bikeIdInput?.focus();
-				return;
-			}
-			dismiss();
-			await tick();
-			bikeListHeight = bikeList.clientHeight;
-			bikeIdNumber = null;
-		};
-	};
-
-	let bikeIdInput: HTMLInputElement|null = $state(null);
-	$effect(() => {
-		if (bikeIdInput && $selectedStation !== null) {
-			bikeIdInput.focus();
-		}
-	});
-	*/
 </script>
 
 <svelte:window bind:innerHeight={windowHeight} />
-
-<!--
-{#snippet addGhostBike(dismiss:() => void)}
-	<div class="w-[340px] max-w-md mx-auto p-6 bg-background rounded-2xl shadow-lg text-left flex flex-col gap-3">
-		<div class="flex justify-between">
-			<h1 class="text-lg font-semibold text-info">{$t('ghost_bike_title')}</h1>
-			<IconX class="text-label hover:text-primary cursor-pointer" size="24" stroke="1.5" onclick={dismiss} aria-label="Close dialog"/>
-		</div>
-		<div class="text-sm text-label">{$t('ghost_bike_description')}</div>
-		<div class="flex w-full text-background rounded-lg p-2 bg-background-secondary border border-background-tertiary focus:border-primary focus:outline-none h-12">
-			<select bind:value={bikeType} name="Bike Type" class="bg-background-secondary text-primary rounded-lg px-px pr-8 pl-1 -my-1 -mr-3 border-0 w-12 border-none focus:ring-0 font-bold appearance-none"
-				style:background-image={getSelectArrowBackground()}
-			>
-				<option value="classic">C</option>
-				<option value="electric">E</option>
-			</select>
-			<input bind:this={bikeIdInput} bind:value={bikeIdNumber} name="Bike ID" type="number" placeholder="1234"
-				class="bg-background-secondary placeholder-label text-info rounded-lg p-2 w-full border-none focus:ring-0"
-				onkeydown={async e => {
-					if (e.key.length === 1 && (e.key < '0' || e.key > '9')) {
-						e.preventDefault();
-					}
-					if (e.key === 'Enter') {
-						makeExtraBikeFunction(dismiss)();
-					}
-				}}
-			/>
-		</div>
-		<button class="bg-primary w-full text-background rounded-lg py-2 px-4 font-bold" onclick={makeExtraBikeFunction(dismiss)}>{$t('ghost_dismiss_label')}</button>
-	</div>
-{/snippet}
--->
 
 <div out:transition bind:this={menu} class="absolute w-full bottom-0 z-10" style:transform="translate(0,{pos.current}px)" >
 	<div bind:this={dragged} class="bg-background rounded-t-4xl" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
@@ -324,14 +244,12 @@
 				{#if $selectedStation !== null}
 					{@const station = getStationFromSerial($selectedStation)}
 					{#each bikeInfo as bike}
-						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.manual ? null : bike.dock} serial={bike.communicationId} rating={bike.rating} disabled={isScrolling} station={station} />
+						<Bike type={bike.type} id={bike.id} battery={bike.battery} dock={bike.dock} serial={bike.communicationId} rating={bike.rating} disabled={isScrolling} station={station} unlock={unlockSubject(bike)} />
 					{/each}
 				{/if}
-				<!-- Ghost-bike lookup disabled, see the commented-out addGhostBike snippet above.
-				<button class="py-4 pb-2 px-8 w-full flex justify-center text-primary items-center font-semibold gap-2" onclick={() => enqueueDialog(addGhostBike)}>
-					<Search size="16px" stroke="2"/> {$t('search_other_bikes')}
-				</button>
-				-->
+				{#if markedCount > 0}
+					<span class="text-center text-xs font-medium text-label px-2">{$t(markedCount === 1 ? 'marked_unavailable_bikes_one' : 'marked_unavailable_bikes', { count: String(markedCount) })}</span>
+				{/if}
 				<div class="fixed left-0 w-full h-4 -mt-6" style:box-shadow="0px 6px 6px 0px var(--color-background)"></div>
 			</div>
 		</div>

@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
 	preferencesGet: vi.fn(),
 	preferencesSet: vi.fn(),
 	reportErrorEvent: vi.fn(),
+	reportUnlockAttemptEvent: vi.fn(),
+	reportUnlockResultEvent: vi.fn(),
 }));
 
 vi.mock('$lib/gira-api/api', () => ({
@@ -16,6 +18,7 @@ vi.mock('$lib/gira-api/api', () => ({
 	getTripHistory: mocks.getTripHistory,
 	quickStartBike: mocks.quickStartBike,
 	knownErrors: {},
+	knownErrorCodes: {},
 }));
 vi.mock('@capacitor/preferences', () => ({
 	Preferences: { get: mocks.preferencesGet, set: mocks.preferencesSet },
@@ -32,7 +35,19 @@ vi.mock('$lib/location', () => ({
 }));
 vi.mock('$lib/settings', () => ({ appSettings: writable({ distanceLock: false, mockUnlock: false }) }));
 vi.mock('$lib/ui.svelte', () => ({ errorMessages: { add: vi.fn() } }));
-vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({ reportErrorEvent: mocks.reportErrorEvent, reportTripStartEvent: vi.fn() }));
+vi.mock('$lib/gira-mais-api/gira-mais-api', () => ({
+	reportErrorEvent: mocks.reportErrorEvent,
+	reportTripStartEvent: vi.fn(),
+	reportUnlockAttemptEvent: mocks.reportUnlockAttemptEvent,
+	reportUnlockResultEvent: mocks.reportUnlockResultEvent,
+}));
+const emitBike = vi.hoisted(() => ({ current: (_bike: unknown) => {} }));
+vi.mock('$lib/vaimoo-api/firestore', () => ({
+	subscribeFirestoreBike: (_id: string, onData: (bike: unknown) => void) => {
+		emitBike.current = onData;
+		return () => {};
+	},
+}));
 vi.mock('$lib/translations', () => ({ t: writable((key: string) => key) }));
 
 import { currentTrip, markTripRated, recoverRecentTripRating, refreshTripStatus, tripRating, tryStartTrip } from './trip';
@@ -145,5 +160,45 @@ describe('VAIMOO trip lifecycle', () => {
 		expect(mocks.reportErrorEvent.mock.calls[0][0]).toBe('gira_api_error');
 		// The server's answer must reach the database, not just the extracted message.
 		expect(JSON.parse(mocks.reportErrorEvent.mock.calls[0][1])).toMatchObject({ bike: 'E0980', status: 400, code: 4, body });
+	});
+
+	it('reports an unlock of a hidden bike, and completes it once the bike is released', async () => {
+		const station = { serialNumber: '101', latitude: 38.7, longitude: -9.1 } as StationInfo;
+		const subject = { source: 'hidden' as const, hiddenReasons: ['Service status is not OK', 'Has low battery'], record: null };
+		mocks.reportUnlockAttemptEvent.mockResolvedValue({ success: true });
+		mocks.reportUnlockResultEvent.mockResolvedValue({ success: true });
+
+		mocks.quickStartBike.mockResolvedValue(undefined);
+		mocks.getActiveTrip.mockResolvedValue(null);
+		expect(await tryStartTrip('E0980', 'bike-comm-id', station, subject)).toBe(true);
+		expect(mocks.reportUnlockAttemptEvent).toHaveBeenCalledWith(expect.objectContaining({
+			bike: 'E0980', station: '101', source: 'hidden', hiddenReasons: subject.hiddenReasons, request: 'accepted', vaimooCode: null,
+		}));
+		const { attemptId } = mocks.reportUnlockAttemptEvent.mock.calls[0][0];
+
+		// Accepted is not released: the result only comes once the bike's record goes RUNNING.
+		expect(mocks.reportUnlockResultEvent).not.toHaveBeenCalled();
+		emitBike.current({ VisualId: 'E0980', TripVehicleState: 'RUNNING' });
+		await vi.waitFor(() => expect(mocks.reportUnlockResultEvent).toHaveBeenCalledWith(attemptId, expect.objectContaining({ outcome: 'confirmed' })));
+	});
+
+	it('reports a refused unlock of a hidden bike with VAIMOO\'s code', async () => {
+		const station = { serialNumber: '101', latitude: 38.7, longitude: -9.1 } as StationInfo;
+		mocks.reportUnlockAttemptEvent.mockResolvedValue({ success: true });
+		mocks.quickStartBike.mockRejectedValue(new VaimooApiError('VAIMOO request failed with HTTP 400', 400, { responseStatus: { errorCode: 1103 } }));
+
+		expect(await tryStartTrip('E0980', 'bike-comm-id', station, { source: 'hidden', hiddenReasons: ['Has repair'], record: null })).toBe(false);
+		expect(mocks.reportUnlockAttemptEvent).toHaveBeenCalledWith(expect.objectContaining({ source: 'hidden', request: 'refused', vaimooCode: 1103 }));
+		expect(mocks.reportUnlockResultEvent).not.toHaveBeenCalled();
+		// The ordinary unlock failure report still goes out alongside it.
+		expect(mocks.reportErrorEvent).toHaveBeenCalledWith('gira_api_error', expect.any(String));
+	});
+
+	it('does not report unlocks of bikes the server lists as available', async () => {
+		mocks.quickStartBike.mockResolvedValue(undefined);
+		mocks.getActiveTrip.mockResolvedValue(null);
+		const station = { serialNumber: '101', latitude: 38.7, longitude: -9.1 } as StationInfo;
+		expect(await tryStartTrip('E0980', 'bike-comm-id', station, { source: 'listed', hiddenReasons: null, record: null })).toBe(true);
+		expect(mocks.reportUnlockAttemptEvent).not.toHaveBeenCalled();
 	});
 });

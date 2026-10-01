@@ -1,5 +1,6 @@
 import { LOCK_DISTANCE_m } from '$lib/constants';
-import { getActiveTrip, getTripHistory, knownErrors, quickStartBike } from '$lib/gira-api/api';
+import { isReportedUnlock, reportUnlockAttempt, trackUnlockResult, type UnlockSubject } from '$lib/unlock-reporting';
+import { getActiveTrip, getTripHistory, knownErrorCodes, knownErrors, quickStartBike } from '$lib/gira-api/api';
 import type { ServerActiveTrip } from '$lib/gira-api/models';
 import { VaimooApiError, VaimooNetworkError } from '$lib/vaimoo-api/client';
 import { reportErrorEvent, reportTripStartEvent } from '$lib/gira-mais-api/gira-mais-api';
@@ -199,9 +200,14 @@ export async function refreshTripStatus(source = 'unspecified'): Promise<ServerA
 function addKnownApiError(error: unknown, context: { bike: string; station: string }) {
 	let added = false;
 	if (error instanceof VaimooApiError) {
+		const byCode = error.code == null ? undefined : knownErrorCodes[error.code as keyof typeof knownErrorCodes];
+		if (byCode) {
+			errorMessages.add(get(t)(byCode));
+			added = true;
+		}
 		for (const item of error.errors) {
 			const known = knownErrors[item.message as keyof typeof knownErrors];
-			if (known && 'message' in known) {
+			if (!added && known && 'message' in known) {
 				errorMessages.add(get(t)(known.message as keyof Translations));
 				added = true;
 			}
@@ -211,7 +217,9 @@ function addKnownApiError(error: unknown, context: { bike: string; station: stri
 	void reportApiError('gira_api_error', error, context);
 }
 
-export async function tryStartTrip(id: string, communicationId: string, station: StationInfo): Promise<boolean> {
+export async function tryStartTrip(id: string, communicationId: string, station: StationInfo, subject?: UnlockSubject): Promise<boolean> {
+	const context = { bike: id, station: station.serialNumber };
+	const reported = isReportedUnlock(subject) ? subject : null;
 	try {
 		if (get(appSettings).distanceLock) {
 			const position = get(currentPos);
@@ -251,6 +259,7 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 		if (mockUnlock) return true;
 
 		reportTripStartEvent(communicationId, station.serialNumber);
+		if (reported) trackUnlockResult(reportUnlockAttempt(reported, context, 'accepted'));
 		watchPosition();
 		void refreshTripStatus('quick-start-response');
 		return true;
@@ -262,11 +271,13 @@ export async function tryStartTrip(id: string, communicationId: string, station:
 			if (serverTrip) {
 				logTripLifecycle('trip-started-despite-network-error', { serverTripId: serverTrip.id });
 				reportTripStartEvent(communicationId, station.serialNumber);
+				if (reported) trackUnlockResult(reportUnlockAttempt(reported, context, 'accepted-after-network-error'));
 				return true;
 			}
 		}
 		currentTrip.set(null);
-		addKnownApiError(error, { bike: id, station: station.serialNumber });
+		addKnownApiError(error, context);
+		if (reported) reportUnlockAttempt(reported, context, error instanceof VaimooNetworkError ? 'network-error' : 'refused', error);
 		return false;
 	}
 }

@@ -11,7 +11,6 @@ import {
 	submitVaimooTripFeedback,
 } from '$lib/vaimoo-api/client';
 import {
-	findFirestoreBike,
 	getFirestoreBikes,
 	getFirestoreStations,
 	subscribeFirestoreBikes,
@@ -38,6 +37,21 @@ export const knownErrors = {
 	bike_in_repair: { message: 'bike_in_repair_error', retry: false },
 } as const satisfies Record<string, { message?: keyof Translations; retry: boolean }>;
 
+/**
+ * VAIMOO's numeric `responseStatus.errorCode`s, taken from the official app's error enum. These are the
+ * refusals worth naming for the user; anything else falls back to the generic unlock error. Unlocking a
+ * bike the station feed hides relies on these, since such an attempt is the one most likely to be refused.
+ */
+export const knownErrorCodes = {
+	412: 'bike_not_available_error',
+	1100: 'no_bike_found_error',
+	1103: 'bike_in_repair_error',
+	1113: 'bike_uncharged_error',
+	1122: 'bike_already_in_trip_error',
+	1607: 'already_active_trip_error',
+	5800: 'no_bike_found_error',
+} as const satisfies Record<number, keyof Translations>;
+
 function session(): VaimooSession {
 	const current = currentSession();
 	if (!current) throw new Error('Not authenticated with VAIMOO');
@@ -60,9 +74,9 @@ function stationDescription(station: VaimooStation) {
 	return [station.StreetBuildingIdentifier, station.Street, station.City].filter(Boolean).join(' ');
 }
 
-// The station feed's AvailableBikes counter ignores bikes flagged as out of service, so it can exceed the
-// number of bikes a user can actually unlock. Once a station's bikes have been loaded, prefer the observed
-// count for as long as the server counter stays at the value it had when we observed it.
+// The station feed's AvailableBikes counter doesn't match what can be unlocked: it leaves out bikes flagged
+// unavailable that still release, and sometimes counts ones that can't. Once a station's bikes have been
+// loaded, prefer the observed count for as long as the server counter stays at the value it had then.
 const observedBikeCounts = new Map<string, { serverBikes: number; bikes: number }>;
 let lastStations: VaimooStation[] = [];
 let stationListener: ((stations: StationInfo[]) => void) | null = null;
@@ -124,7 +138,19 @@ export function subscribeStations(onData: (stations: StationInfo[]) => void, onE
 	};
 }
 
-function mapBike(bike: VaimooBike, manual = false): AvailableBike {
+/** The server's reasons for flagging a bike unavailable, from its `Comment` ("Has low battery; \tIs offline; \t"). */
+function hidingReasons(bike: VaimooBike): string[] {
+	return (bike.Comment ?? '').split(';').map(reason => reason.trim()).filter(reason => reason && reason !== 'Bike is OK');
+}
+
+// A field survey in September 2026 (28 unlock attempts, see gira-web's unlock_attempts) found that VAIMOO
+// refuses bikes flagged "Has repair" (error 1103) and that every other unavailable bike sitting in a dock
+// releases normally, "Is offline", "Service status is not OK", low battery and stale error codes included.
+// The remaining reasons mean someone else holds the bike. "Has power issue" never came up without a repair
+// flag, so it stays out until it has been seen to work.
+const BLOCKING_REASONS = new Set(['Has repair', 'Has power issue', 'Has attached user', 'Has active trip', 'Has booking ticket']);
+
+function mapBike(bike: VaimooBike): AvailableBike {
 	return {
 		id: bike.VisualId,
 		communicationId: bike.CommunicationId,
@@ -133,7 +159,8 @@ function mapBike(bike: VaimooBike, manual = false): AvailableBike {
 		remainingDistanceKm: bike.RemainingDistance,
 		dock: bike.DockingPointVisualId ?? null,
 		stationId: String(bike.DockingStationId),
-		manual,
+		hiddenReasons: bike.IsAvaliable ? undefined : hidingReasons(bike),
+		record: bike,
 	};
 }
 
@@ -142,16 +169,30 @@ function dockOrder(dock: string | null) {
 	return Number.isNaN(number) ? Number.POSITIVE_INFINITY : number;
 }
 
-// Firestore returns bikes in arbitrary order; list them by dock number like the station does.
-function availableBikes(bikes: VaimooBike[]) {
-	return bikes
-		.filter(bike => bike.IsAvaliable && !bike.IsBooked && Boolean(bike.CommunicationId))
-		.map(bike => mapBike(bike))
-		.sort((a, b) => dockOrder(a.dock) - dockOrder(b.dock) || a.id.localeCompare(b.id));
+/**
+ * Whether a bike can be unlocked from this station: in one of its docks, and either available or flagged
+ * unavailable for a reason that doesn't stop it (see BLOCKING_REASONS). The dock matters even for available
+ * bikes, which the feed sometimes lists with no dock: the survey's typed-in bikes whose records named no
+ * dock started a trip without the dock letting go, and those trips stayed open for hours.
+ */
+function isUnlockable(bike: VaimooBike) {
+	if (bike.IsBooked || !bike.CommunicationId || !bike.DockingPointVisualId) return false;
+	if (bike.IsAvaliable) return true;
+	return bike.TripVehicleState !== 'RUNNING' && !hidingReasons(bike).some(reason => BLOCKING_REASONS.has(reason));
 }
 
+// Firestore returns bikes in arbitrary order; list them by dock number like the station does.
+function byDock(a: AvailableBike, b: AvailableBike) {
+	return dockOrder(a.dock) - dockOrder(b.dock) || a.id.localeCompare(b.id);
+}
+
+function stationBikes(bikes: VaimooBike[]) {
+	return bikes.filter(isUnlockable).map(mapBike).sort(byDock);
+}
+
+/** The station's unlockable bikes by dock; those the server flags unavailable carry `hiddenReasons`. */
 export async function getStationBikes(stationId: string): Promise<AvailableBike[]> {
-	return availableBikes(await getFirestoreBikes(Number(stationId)));
+	return stationBikes(await getFirestoreBikes(Number(stationId)));
 }
 
 export function subscribeStationBikes(
@@ -160,17 +201,10 @@ export function subscribeStationBikes(
 	onError?: (error: Error) => void,
 ) {
 	return subscribeFirestoreBikes(Number(stationId), bikes => {
-		const available = availableBikes(bikes);
-		recordObservedBikeCount(stationId, available.length);
-		onData(available);
+		const unlockable = stationBikes(bikes);
+		recordObservedBikeCount(stationId, unlockable.length);
+		onData(unlockable);
 	}, onError);
-}
-
-export async function findAvailableBike(visualId: string): Promise<AvailableBike | null> {
-	const normalized = visualId.trim().toUpperCase();
-	const bikes = await findFirestoreBike(normalized);
-	const bike = bikes.find(candidate => candidate.IsAvaliable && !candidate.IsBooked && Boolean(candidate.CommunicationId));
-	return bike ? mapBike(bike, true) : null;
 }
 
 export async function quickStartBike(communicationId: string): Promise<void> {

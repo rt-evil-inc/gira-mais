@@ -35,6 +35,30 @@ export type ErrorStatisticsPostResponse = {
   success: boolean;
 }
 
+export type UnlockAttemptPostRequest = {
+  attemptId: string;
+  deviceId: string;
+  survey: boolean;
+  bike: string;
+  station: string | null;
+  source: 'listed' | 'hidden' | 'typed';
+  hiddenReasons: string[] | null;
+  request: 'accepted' | 'accepted-after-network-error' | 'refused' | 'network-error';
+  vaimooCode: number | null;
+  details: Record<string, unknown> | null;
+}
+
+export type UnlockResultPostRequest = {
+  deviceId: string;
+  outcome: 'confirmed' | 'not-confirmed' | 'unresolved';
+  elapsedMs: number;
+  details: Record<string, unknown> | null;
+}
+
+export type UnlockStatisticsPostResponse = {
+  success: boolean;
+}
+
 export type BikeRatingPostRequest = {
   deviceId: string;
   tripCode: string;

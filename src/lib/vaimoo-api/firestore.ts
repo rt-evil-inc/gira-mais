@@ -71,10 +71,6 @@ export function getFirestoreBikes(stationId: number): Promise<VaimooBike[]> {
 	return queryOnce<VaimooBike>('bikes', where('DockingStationId', '==', stationId));
 }
 
-export function findFirestoreBike(visualId: string): Promise<VaimooBike[]> {
-	return queryOnce<VaimooBike>('bikes', where('VisualId', '==', visualId));
-}
-
 /** Subscribe to the same tenant-scoped station feed used by the official app. */
 export function subscribeFirestoreStations(
 	onData: (stations: VaimooStation[]) => void,
