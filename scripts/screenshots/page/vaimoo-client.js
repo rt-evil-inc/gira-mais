@@ -26,7 +26,23 @@ export class VaimooApiError extends Error {
 		this.name = 'VaimooApiError';
 		this.status = status;
 		this.body = body;
+		this.code = null;
 		this.errors = [{ message }];
+	}
+}
+
+export class InvalidCredentialsError extends VaimooApiError {
+	constructor(message, body) {
+		super(message, 401, body);
+		this.name = 'InvalidCredentialsError';
+	}
+}
+
+export class VaimooNetworkError extends Error {
+	constructor(message, cause) {
+		super(message);
+		this.name = 'VaimooNetworkError';
+		this.cause = cause;
 	}
 }
 
