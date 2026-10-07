@@ -74,9 +74,9 @@ function stationDescription(station: VaimooStation) {
 	return [station.StreetBuildingIdentifier, station.Street, station.City].filter(Boolean).join(' ');
 }
 
-// The station feed's AvailableBikes counter doesn't match what can be unlocked: it leaves out bikes flagged
-// unavailable that still release, and sometimes counts ones that can't. Once a station's bikes have been
-// loaded, prefer the observed count for as long as the server counter stays at the value it had then.
+// The station feed's AvailableBikes counter doesn't always match what can be unlocked: it sometimes counts
+// bikes whose record names no dock. Once a station's bikes have been loaded, prefer the observed count for
+// as long as the server counter stays at the value it had then.
 const observedBikeCounts = new Map<string, { serverBikes: number; bikes: number }>;
 let lastStations: VaimooStation[] = [];
 let stationListener: ((stations: StationInfo[]) => void) | null = null;
@@ -143,13 +143,6 @@ function hidingReasons(bike: VaimooBike): string[] {
 	return (bike.Comment ?? '').split(';').map(reason => reason.trim()).filter(reason => reason && reason !== 'Bike is OK');
 }
 
-// A field survey in September 2026 (28 unlock attempts, see gira-web's unlock_attempts) found that VAIMOO
-// refuses bikes flagged "Has repair" (error 1103) and that every other unavailable bike sitting in a dock
-// releases normally, "Is offline", "Service status is not OK", low battery and stale error codes included.
-// The remaining reasons mean someone else holds the bike. "Has power issue" never came up without a repair
-// flag, so it stays out until it has been seen to work.
-const BLOCKING_REASONS = new Set(['Has repair', 'Has power issue', 'Has attached user', 'Has active trip', 'Has booking ticket']);
-
 function mapBike(bike: VaimooBike): AvailableBike {
 	return {
 		id: bike.VisualId,
@@ -170,15 +163,17 @@ function dockOrder(dock: string | null) {
 }
 
 /**
- * Whether a bike can be unlocked from this station: in one of its docks, and either available or flagged
- * unavailable for a reason that doesn't stop it (see BLOCKING_REASONS). The dock matters even for available
- * bikes, which the feed sometimes lists with no dock: the survey's typed-in bikes whose records named no
- * dock started a trip without the dock letting go, and those trips stayed open for hours.
+ * Whether a bike can be unlocked from this station: available and in one of its docks. The dock matters
+ * because the feed sometimes lists available bikes with no dock: the survey's typed-in bikes whose records
+ * named no dock started a trip without the dock letting go, and those trips stayed open for hours.
+ *
+ * Bikes the server flags unavailable are left out, as the official app does. A field survey in September 2026
+ * (see gira-web's unlock_attempts) found that VAIMOO only refused the ones flagged "Has repair", so v1.6.0
+ * listed the rest. From 6 October 2026 (between 08:36 and 09:40 UTC) VAIMOO refuses every flagged bike with
+ * error 1103 (BikeIsBrokenException), whatever the reason, and none has unlocked since.
  */
 function isUnlockable(bike: VaimooBike) {
-	if (bike.IsBooked || !bike.CommunicationId || !bike.DockingPointVisualId) return false;
-	if (bike.IsAvaliable) return true;
-	return bike.TripVehicleState !== 'RUNNING' && !hidingReasons(bike).some(reason => BLOCKING_REASONS.has(reason));
+	return bike.IsAvaliable && !bike.IsBooked && !!bike.CommunicationId && !!bike.DockingPointVisualId;
 }
 
 // Firestore returns bikes in arbitrary order; list them by dock number like the station does.

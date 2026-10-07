@@ -85,7 +85,7 @@ describe('VAIMOO app-domain adapter', () => {
 		expect((await getStationBikes('4551'))[0]).toMatchObject({ id: 'E0980', communicationId: 'communication-id', battery: 98, dock: '2' });
 	});
 
-	it('lists every docked bike that unlocks with the available ones by dock, leaving out repairs and held bikes', async () => {
+	it('lists only the available docked bikes, by dock, leaving out every bike the server flags unavailable', async () => {
 		const hidden = { ...bike, IsAvaliable: false, TripVehicleState: 'LOCKED' };
 		mocks.getFirestoreBikes.mockResolvedValue([
 			{ ...hidden, VisualId: 'E0001', DockingPointVisualId: '1', Comment: 'Service status is not OK; \tHas low battery; \t' },
@@ -98,12 +98,12 @@ describe('VAIMOO app-domain adapter', () => {
 			{ ...hidden, VisualId: 'E0008', DockingPointVisualId: '8', IsBooked: true, Comment: '' },
 			{ ...hidden, VisualId: 'E0010', DockingPointVisualId: '6', Comment: 'Has active trip; \tHas attached user; \t' },
 			{ ...hidden, VisualId: 'E0009', DockingPointVisualId: '2', TripVehicleState: null, Comment: null },
+			{ ...bike, VisualId: 'E0011', DockingPointVisualId: '3' },
+			{ ...bike, VisualId: 'E0012', DockingPointVisualId: null },
 		]);
 		const bikes = await getStationBikes('4551');
 		expect(bikes.map(b => [b.id, b.hiddenReasons])).toEqual([
-			['E0001', ['Service status is not OK', 'Has low battery']],
-			['E0009', []],
-			['E0003', ['Service status is not OK', 'Is offline']],
+			['E0011', undefined],
 			['E0002', undefined],
 		]);
 	});
