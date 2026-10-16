@@ -81,6 +81,20 @@ describe.skipIf(!serverReachable)('computeRoute', () => {
 		expect(route!.endStationSerial).toBe('marques');
 	});
 
+	it('should pick up the bike right away when starting at a station with bikes', async () => {
+		const route = await computeRoute({ type: 'station', lat: 38.7256, lng: -9.1503, name: 'Marquês de Pombal', stationSerial: 'marques' }, { type: 'location', lat: 38.7700, lng: -9.0950 }, false);
+		expect(route).not.toBeNull();
+		expect(route!.legs.map(l => l.mode)).toEqual(['bike', 'foot']);
+		expect(route!.startStationSerial).toBe('marques');
+	});
+
+	it('should walk to another station when the starting station has no bikes', async () => {
+		const route = await computeRoute({ type: 'station', lat: 38.7336, lng: -9.1451, name: 'Saldanha', stationSerial: 'saldanha-empty' }, { type: 'location', lat: 38.7700, lng: -9.0950 }, false);
+		expect(route).not.toBeNull();
+		expect(route!.legs[0].mode).toBe('foot');
+		expect(route!.startStationSerial).not.toBe('saldanha-empty');
+	});
+
 	it('should open the station menu when reaching the pickup station', async () => {
 		selectedStation.set(null);
 		currentPos.set({ coords: { latitude: 38.7075, longitude: -9.1440, accuracy: 5, altitude: null, altitudeAccuracy: null, speed: null, heading: null }, timestamp: Date.now() });

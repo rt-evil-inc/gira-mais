@@ -104,6 +104,12 @@ export function setSourceData(map: maplibregl.Map) {
 			'data': { type: 'FeatureCollection', features: [] },
 		});
 	}
+	if (!(map.getSource('route-origin') instanceof maplibregl.GeoJSONSource)) {
+		map.addSource('route-origin', {
+			'type': 'geojson',
+			'data': { type: 'FeatureCollection', features: [] },
+		});
+	}
 	const routeDestSrc = map.getSource('route-destination');
 	if (!(routeDestSrc instanceof maplibregl.GeoJSONSource)) {
 		map.addSource('route-destination', {
@@ -258,6 +264,19 @@ export function addLayers(map: maplibregl.Map) {
 			'line-dasharray': [0.1, 1.8],
 		},
 	}, 'building');
+	// A route that doesn't start at the user starts at a ring, like a station
+	// dot hollowed out, so it can't be mistaken for the user's own marker
+	map.addLayer({
+		'id': 'route-origin',
+		'type': 'circle',
+		'source': 'route-origin',
+		'paint': {
+			'circle-radius': 7,
+			'circle-color': getCssVariable('--color-background'),
+			'circle-stroke-color': getCssVariable('--color-primary'),
+			'circle-stroke-width': 4,
+		},
+	});
 	map.addLayer({
 		'id': 'route-destination',
 		'type': 'symbol',

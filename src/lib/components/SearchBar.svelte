@@ -1,7 +1,9 @@
 <script lang="ts" module>
 	// The vertical space the bar claims below its anchor: the pill (h-12) plus
-	// the route summary strip (h-10) hanging from it once a route is shown
-	export const SEARCH_BAR_EXTENT_px = 48 + 40;
+	// the route summary strip (h-10) hanging from it once a route is shown, and
+	// the origin row (h-10) above the summary when it's on display. The visible
+	// extent only counts the strips actually out, for the cards stacked below
+	export const searchBarLayout = $state({ extent: 48 + 40, visibleExtent: 48 });
 	let dismiss: (() => boolean)|null = null;
 
 	/** Unfocus the search bar, closing its results; true if it was focused */
@@ -16,12 +18,12 @@
 	import { addToSearchHistory, searchHistory, type SearchHistoryEntry } from '$lib/search-history';
 	import { currentPos } from '$lib/location';
 	import { selectedStation, stations, type StationInfo } from '$lib/map.svelte';
-	import { currentRoute, routeDestination, routePending, type PlannedRoute } from '$lib/routing';
+	import { currentRoute, routeDestination, routeOrigin, routePending, type Destination, type PlannedRoute } from '$lib/routing';
 	import { currentTrip } from '$lib/trip';
 	import { t } from '$lib/translations';
 	import { Keyboard } from '@capacitor/keyboard';
 	import { onMount } from 'svelte';
-	import { IconBike, IconChevronRight, IconHistory, IconMapPin, IconSearch, IconWalk, IconX } from '@tabler/icons-svelte';
+	import { IconBike, IconChevronDown, IconChevronRight, IconCurrentLocation, IconHistory, IconMapPin, IconSearch, IconWalk, IconX } from '@tabler/icons-svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { get } from 'svelte/store';
 
@@ -46,8 +48,40 @@
 		expanded = true;
 		input?.focus();
 	}
-	const showingHistory = $derived(focused && query.trim().length < 2 && $searchHistory.length > 0);
+	// The origin row: offered by tapping the route summary, and always shown
+	// while the route starts somewhere else than the user. Editing it searches
+	// in place, with the same results as the destination search
+	let originOpen = $state(false);
+	let originFocused = $state(false);
+	let originQuery = $state('');
+	let originInput: HTMLInputElement|undefined = $state();
+	const showingOrigin = $derived(originOpen || originFocused || $routeOrigin != null);
+	const activeQuery = $derived(originFocused ? originQuery : query);
+
+	const showingHistory = $derived((focused || originFocused) && activeQuery.trim().length < 2 && $searchHistory.length > 0);
 	const showingResults = $derived(focused && (results != null || stationResults.length > 0 || showingHistory));
+	const showingOriginResults = $derived(originFocused);
+
+	// The offer folds away with the route, unless an origin is set
+	$effect(() => {
+		if ($routeDestination == null && $routeOrigin == null) originOpen = false;
+	});
+
+	function editOrigin() {
+		originQuery = '';
+		results = null;
+		stationResults = [];
+		originFocused = true;
+		// the input only exists once the row re-renders in its editing form
+		setTimeout(() => originInput?.focus());
+	}
+
+	function setOrigin(origin: Destination|null) {
+		routeOrigin.set(origin);
+		if (origin == null) originOpen = false;
+		originFocused = false;
+		originInput?.blur();
+	}
 	let debounce: ReturnType<typeof setTimeout>;
 
 	// Delay showing the summary slightly after a route arrives, so that when a
@@ -64,8 +98,10 @@
 	});
 
 	dismiss = () => {
-		const wasFocused = focused;
+		const wasFocused = focused || originFocused;
 		focused = false;
+		originFocused = false;
+		originInput?.blur();
 		expanded = false;
 		input?.blur();
 		return wasFocused;
@@ -95,7 +131,7 @@
 
 	function onInput() {
 		clearTimeout(debounce);
-		const q = query.trim();
+		const q = activeQuery.trim();
 		if (q.length < 2) {
 			results = null;
 			stationResults = [];
@@ -109,7 +145,7 @@
 		debounce = setTimeout(async () => {
 			try {
 				const found = await searchLocations(q, bias);
-				if (q === query.trim()) results = found;
+				if (q === activeQuery.trim()) results = found;
 			} catch (e) {
 				console.error('Location search failed', e);
 				results = [];
@@ -118,6 +154,11 @@
 	}
 
 	function select(result: GeocodingResult) {
+		if (originFocused) {
+			setOrigin({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
+			addToSearchHistory({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
+			return;
+		}
 		selectedStation.set(null);
 		routeDestination.set({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
 		addToSearchHistory({ type: 'location', lat: result.lat, lng: result.lng, name: result.name });
@@ -125,6 +166,11 @@
 	}
 
 	function selectStation(station: StationInfo) {
+		if (originFocused) {
+			setOrigin({ type: 'station', lat: station.latitude, lng: station.longitude, name: station.name, stationSerial: station.serialNumber });
+			addToSearchHistory({ type: 'station', lat: station.latitude, lng: station.longitude, name: station.name, stationSerial: station.serialNumber });
+			return;
+		}
 		// Same path as tapping the station on the map: the route ends at the
 		// station, and its menu opens
 		selectedStation.set(station.serialNumber);
@@ -157,12 +203,12 @@
 			return;
 		}
 		clearTimeout(debounce);
-		const q = query.trim();
+		const q = activeQuery.trim();
 		if (q.length < 2) return;
 		try {
 			const pos = get(currentPos);
 			const found = await searchLocations(q, pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null);
-			if (q !== query.trim()) return;
+			if (q !== activeQuery.trim()) return;
 			results = found;
 			if (found.length > 0) select(found[0]);
 		} catch (e) {
@@ -190,6 +236,14 @@
 	$effect(() => currentRoute.subscribe(route => {
 		if (route) lastRoute = route;
 	}));
+
+	// The origin row and summary strip under the pill, when not showing results
+	const stripsHeight = $derived((showingOrigin ? 40 : 0) + (lastRoute != null && showSummary ? 40 : 0));
+
+	$effect(() => {
+		searchBarLayout.extent = 48 + 40 + (showingOrigin ? 40 : 0);
+		searchBarLayout.visibleExtent = 48 + stripsHeight;
+	});
 
 	// Slides the summary strip rigidly out from / back behind the bar, like a
 	// drawer: translating (instead of growing height, as slide does) keeps the
@@ -263,72 +317,82 @@
 		</div>
 		<!-- one extension surface behind the pill: the search results while typing,
 			the route summary otherwise, animating its height between the two -->
-		{#if showingResults || (lastRoute != null && showSummary)}
+		{#if showingResults || showingOrigin || (lastRoute != null && showSummary)}
 			<!-- the wrapper clips the extension at the bar's midline (where the pill
 				is full-width), so it can never peek out above the bar while sliding;
 				the padding, cancelled by negative margins, keeps the shadow visible.
 				pointer-events-none so the widened wrapper never eats taps beside the
 				bar — re-enabled on the surface itself -->
 			<div class="relative -mt-6 -mx-8 -mb-8 px-8 pb-8 overflow-hidden pointer-events-none">
-				<div transition:drawer use:resetContentHeight class="pointer-events-auto pt-6 rounded-b-[24px] bg-background-secondary dark:bg-background {$routePending && !showingResults ? 'animate-pulse' : ''}" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
-					<!-- the summary height (h-10) is set synchronously with the mode
-						switch — only the variable-height results list relies on the
-						measured (and thus one-frame-stale) contentHeight -->
-					<div class="transition-[height] duration-150 overflow-hidden" style:height={showingResults ? contentHeight != null ? contentHeight + 'px' : 'auto' : '40px'}>
+				<div transition:drawer use:resetContentHeight class="pointer-events-auto pt-6 rounded-b-[24px] bg-background-secondary dark:bg-background {$routePending && !showingResults && !showingOriginResults ? 'animate-pulse' : ''}" style:box-shadow="0px 0px 20px 0px var(--color-shadow)">
+					<!-- the summary height is set synchronously with the mode switch —
+						only the variable-height results lists rely on the measured (and
+						thus one-frame-stale) contentHeight -->
+					<div class="transition-[height] duration-150 overflow-hidden" style:height={showingResults || showingOriginResults ? contentHeight != null ? contentHeight + 'px' : 'auto' : `${stripsHeight}px`}>
 						<div bind:clientHeight={contentHeight}>
 							{#if showingResults}
-								<div class="max-h-[40vh] overflow-y-auto py-2">
-									{#if showingHistory}
-										{#each $searchHistory as entry}
-											<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectHistoryEntry(entry)}>
-												<IconHistory class="text-label shrink-0" size="20" stroke="2" />
-												<span class="text-info font-semibold text-sm truncate">{entry.name}</span>
-											</button>
-										{/each}
-									{/if}
-									{#each stationResults as station}
-										<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectStation(station)}>
-											<IconBike class="text-label shrink-0" size="20" stroke="2" />
-											<div class="flex flex-col min-w-0">
-												<span class="text-info font-semibold text-sm truncate">{station.name}</span>
-												<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: station.freeDocks.toString() })}</span>
-											</div>
-										</button>
-									{/each}
-									{#each results ?? [] as result}
-										<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => select(result)}>
-											<IconMapPin class="text-label shrink-0" size="20" stroke="2" />
-											<div class="flex flex-col min-w-0">
-												<span class="text-info font-semibold text-sm truncate">{result.name}</span>
-												{#if result.detail}
-													<span class="text-label text-xs truncate">{result.detail}</span>
-												{/if}
-											</div>
-										</button>
+								{@render resultList()}
+							{:else}
+								<!-- kept mounted and tucked above the clipping edge — the pill's
+									bottom — while hidden, so it slides out from behind the bar. The
+									margin shares the height's duration and easing, so the rows below
+									move in lockstep with the growing surface. A hollow ring, like the
+									one marking the route's start on the map -->
+								<div class="flex items-center gap-3 h-10 px-4 transition-[margin-top] duration-150" style:margin-top={showingOrigin ? '0px' : '-40px'} inert={!showingOrigin}>
+									<span class="w-[14px] h-[14px] mx-[3px] shrink-0 rounded-full border-[3.5px] border-primary"></span>
+									{#if originFocused}
+										<input
+											bind:this={originInput}
+											bind:value={originQuery}
+											oninput={onInput}
+											onkeydown={e => e.key === 'Enter' && submit()}
+											onblur={() => setTimeout(() => originFocused = false, 150)}
+											type="text"
+											enterkeyhint="search"
+											placeholder={$t('search_origin_placeholder')}
+											class="grow min-w-0 bg-transparent border-none focus:ring-0 p-0 text-sm text-info placeholder-label font-semibold"
+										/>
 									{:else}
-										{#if stationResults.length === 0 && results != null}
-											<span class="block px-4 py-2 text-sm text-label">{$t('no_results_found')}</span>
+										<button class="flex items-baseline gap-1.5 grow min-w-0 text-left" onclick={editOrigin}>
+											<span class="text-label text-xs font-semibold shrink-0">{$t('route_from_label')}</span>
+											<span class="text-info text-sm font-semibold truncate">{$routeOrigin?.name ?? $t('your_location_label')}</span>
+										</button>
+										{#if $routeOrigin != null}
+											<button onclick={() => setOrigin(null)} aria-label="Clear origin">
+												<IconX class="text-label shrink-0" size="18" stroke="2" />
+											</button>
 										{/if}
-									{/each}
+									{/if}
 								</div>
-							{:else if lastRoute}
-								<!-- during a trip the TripStatus HUD already shows this information -->
-								{@const route = lastRoute}
-								<div class="flex items-center gap-1 h-10 px-4 text-info text-sm font-semibold">
-									{#each route.legs as leg, i}
-										{#if i > 0}
-											<IconChevronRight class="text-label shrink-0" size="14" stroke="2.5" />
-										{/if}
-										{#if leg.mode === 'bike'}
-											<IconBike class="text-primary shrink-0" size="18" stroke="2" />
+								{#if showingOriginResults}
+									{@render resultList(true)}
+								{:else if lastRoute != null && showSummary}
+									<!-- during a trip the TripStatus HUD already shows this information -->
+									{@const route = lastRoute}
+									<button class="flex items-center gap-1 w-full h-10 px-4 text-info text-sm font-semibold" onclick={() => { if ($routeOrigin == null) originOpen = !originOpen; }}>
+										{#each route.legs as leg, i}
+											{#if i > 0}
+												<IconChevronRight class="text-label shrink-0" size="14" stroke="2.5" />
+											{/if}
+											{#if leg.mode === 'bike'}
+												<IconBike class="text-primary shrink-0" size="18" stroke="2" />
+											{:else}
+												<IconWalk class="text-primary shrink-0" size="18" stroke="2" />
+											{/if}
+											<span>{legMinutes(leg.duration)}</span>
+										{/each}
+										<span class="text-label font-medium ml-1">·</span>
+										{#if $routeOrigin == null}
+											<span class="ml-1">{formatTime(new Date(Date.now() + route.totalDuration * 1000))}</span>
 										{:else}
-											<IconWalk class="text-primary shrink-0" size="18" stroke="2" />
+											<!-- leaving from elsewhere, there's no telling when: the duration instead -->
+											<span class="ml-1">{legMinutes(route.totalDuration)} min</span>
 										{/if}
-										<span>{legMinutes(leg.duration)}</span>
-									{/each}
-									<span class="text-label font-medium ml-1">·</span>
-									<span class="ml-1">{formatTime(new Date(Date.now() + route.totalDuration * 1000))}</span>
-								</div>
+										{#if $routeOrigin == null}
+											<IconChevronDown class="text-label shrink-0 ml-auto transition-transform duration-150 {originOpen ? 'rotate-180' : ''}" size="18" stroke="2" />
+										{/if}
+									</button>
+								{/if}
 							{/if}
 						</div>
 					</div>
@@ -337,3 +401,46 @@
 		{/if}
 	</div>
 </div>
+
+{#snippet resultList(forOrigin = false)}
+	<div class="max-h-[40vh] overflow-y-auto py-2">
+		{#if forOrigin}
+			<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => setOrigin(null)}>
+				<IconCurrentLocation class="text-primary shrink-0" size="20" stroke="2" />
+				<span class="text-info font-semibold text-sm truncate">{$t('your_location_label')}</span>
+			</button>
+		{/if}
+		{#if showingHistory}
+			{#each $searchHistory as entry}
+				<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectHistoryEntry(entry)}>
+					<IconHistory class="text-label shrink-0" size="20" stroke="2" />
+					<span class="text-info font-semibold text-sm truncate">{entry.name}</span>
+				</button>
+			{/each}
+		{/if}
+		{#each stationResults as station}
+			<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => selectStation(station)}>
+				<IconBike class="text-label shrink-0" size="20" stroke="2" />
+				<div class="flex flex-col min-w-0">
+					<span class="text-info font-semibold text-sm truncate">{station.name}</span>
+					<span class="text-label text-xs truncate">{$t('station_availability', { bikes: station.bikes.toString(), docks: station.freeDocks.toString() })}</span>
+				</div>
+			</button>
+		{/each}
+		{#each results ?? [] as result}
+			<button class="flex items-center gap-3 w-full px-4 py-2 text-left" onclick={() => select(result)}>
+				<IconMapPin class="text-label shrink-0" size="20" stroke="2" />
+				<div class="flex flex-col min-w-0">
+					<span class="text-info font-semibold text-sm truncate">{result.name}</span>
+					{#if result.detail}
+						<span class="text-label text-xs truncate">{result.detail}</span>
+					{/if}
+				</div>
+			</button>
+		{:else}
+			{#if stationResults.length === 0 && results != null}
+				<span class="block px-4 py-2 text-sm text-label">{$t('no_results_found')}</span>
+			{/if}
+		{/each}
+	</div>
+{/snippet}

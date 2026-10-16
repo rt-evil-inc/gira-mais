@@ -89,6 +89,18 @@ const translations = {
 		en: 'Search destination',
 		pt: 'Pesquisar destino',
 	},
+	search_origin_placeholder: {
+		en: 'Search starting point',
+		pt: 'Pesquisar partida',
+	},
+	route_from_label: {
+		en: 'From',
+		pt: 'De',
+	},
+	your_location_label: {
+		en: 'Your location',
+		pt: 'A sua localização',
+	},
 	no_results_found: {
 		en: 'No results found',
 		pt: 'Sem resultados',

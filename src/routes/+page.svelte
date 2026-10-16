@@ -10,8 +10,8 @@
 	import TripRating from '$lib/components/TripRating.svelte';
 	import { currentTrip, tripRating } from '$lib/trip';
 	import { following, selectedStation } from '$lib/map.svelte';
-	import { routeDestination } from '$lib/routing';
-	import SearchBar, { dismissSearchBar, SEARCH_BAR_EXTENT_px } from '$lib/components/SearchBar.svelte';
+	import { routeDestination, routeOrigin } from '$lib/routing';
+	import SearchBar, { dismissSearchBar, searchBarLayout } from '$lib/components/SearchBar.svelte';
 	import { get } from 'svelte/store';
 	import { safeInsets } from '$lib/ui.svelte';
 	import { Geolocation } from '@capacitor/geolocation';
@@ -39,7 +39,12 @@
 	// The search bar's anchor and, for the map's padding, the bottom edge of its
 	// UI (anchor + Floating offset + the bar's extent)
 	let searchBarY = $derived(Math.max(tripStatusHeight + 16, $safeInsets.top));
-	let searchBarBottom = $derived(searchBarY + 4 + SEARCH_BAR_EXTENT_px);
+	let searchBarBottom = $derived(searchBarY + 4 + searchBarLayout.extent);
+	// The trip rating card and the offline banner sit below what the search bar
+	// has out right now, and share the slot as they never show together. Logged
+	// out, there's no search bar and the banner sits at the top
+	let belowSearchBar = $derived(searchBarY + 4 + searchBarLayout.visibleExtent + 20);
+	let networkWarningTop = $derived($token === null ? Math.max(tripStatusHeight + 16, $safeInsets.top + 8) : belowSearchBar);
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
 
@@ -75,6 +80,8 @@
 					$selectedStation = null;
 				} else if (get(routeDestination) != null) {
 					routeDestination.set(null);
+				} else if (get(routeOrigin) != null) {
+					routeOrigin.set(null);
 				} else {
 					App.exitApp();
 				}
@@ -100,12 +107,12 @@
 	{:else}
 		<StationMenu bind:posTop={stationMenuPos} bind:anchorTop={stationMenuAnchor} bind:height={menuHeight} />
 		{#if $tripRating.currentRating != null && $networkStatus }
-			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} />
+			<TripRating tripCode={$tripRating.currentRating.code} bikePlate={$tripRating.currentRating.bikePlate} date={$tripRating.currentRating.endDate} top={belowSearchBar} />
 		{/if}
 	{/if}
 
 	{#if !$networkStatus}
-		<NetworkWarning {tripStatusHeight} {tripStatusWidth} />
+		<NetworkWarning top={networkWarningTop} {tripStatusWidth} />
 	{/if}
 
 	<!-- during a trip the station menu is unmounted and its position is a stale

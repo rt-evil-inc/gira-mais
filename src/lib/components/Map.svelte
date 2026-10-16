@@ -16,7 +16,7 @@
 	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
 	import { compassAccuracy, compassHeading } from '$lib/compass';
 	import { beamHalfAngle } from '$lib/heading-beam';
-	import { computeRoute, currentRoute, routeDestination, type PlannedRoute } from '$lib/routing';
+	import { computeRoute, currentRoute, routeDestination, routeOrigin, type PlannedRoute } from '$lib/routing';
 	import { clipRouteAtProjection, emptyRouteClippingState, projectPositionOntoRoute, remainingRoute, type RouteClippingState } from '$lib/route-clipping';
 	import { reverseGeocode } from '$lib/geocoding';
 	import { theme } from '$lib/theme';
@@ -280,9 +280,11 @@
 		// Compute the route and name right away so both are usually ready when
 		// the wait ends
 		const pos = get(currentPos);
+		const fixedOrigin = get(currentTrip) === null ? get(routeOrigin) : null;
+		const origin = fixedOrigin ?? (pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null);
 		let prefetchedRoute: PlannedRoute|null = null;
-		if (pos) {
-			computeRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }, destination, get(currentTrip) !== null)
+		if (origin) {
+			computeRoute(origin, destination, get(currentTrip) !== null)
 				.then(route => prefetchedRoute = route)
 				.catch(() => {}); // if it failed, the recompute below will retry and report
 		}
@@ -316,6 +318,34 @@
 	const TRIP_PIN_HOLD_TOLERANCE_px = 10;
 	let press: { id: number, x: number, y: number, time: number }|null = null;
 
+	// Outside trips, holding a spot starts the route there instead: previewing
+	// a route from elsewhere is rare enough to live behind a gesture. The click
+	// that may follow the release must not also drop a destination pin
+	let suppressClickUntil = 0;
+	function holdSetOrigin(e: PointerEvent) {
+		if (!mapLoaded || get(currentTrip) !== null) return;
+		const rect = map.getCanvasContainer().getBoundingClientRect();
+		const point: [number, number] = [e.clientX - rect.left, e.clientY - rect.top];
+		cancelPendingPinDrop();
+		suppressClickUntil = performance.now() + 500;
+		const station = map.queryRenderedFeatures(point, { layers: STATION_LAYERS })[0] as GeoJSON.Feature<GeoJSON.Point>|undefined;
+		if (station) {
+			const props = station.properties as { serialNumber: string, name: string };
+			const [lng, lat] = station.geometry.coordinates;
+			routeOrigin.set({ type: 'station', lat, lng, name: props.name, stationSerial: props.serialNumber });
+			return;
+		}
+		const spot = map.unproject(point);
+		const origin = { type: 'location' as const, lat: spot.lat, lng: spot.lng };
+		routeOrigin.set(origin);
+		reverseGeocode(origin).then(name => {
+			const current = get(routeOrigin);
+			if (current && current.lat === origin.lat && current.lng === origin.lng) {
+				routeOrigin.set({ ...origin, name: name ?? get(t)('selected_location') });
+			}
+		});
+	}
+
 	function tripHoldPinDrop(e: PointerEvent) {
 		if (!mapLoaded || get(currentTrip) === null) return;
 		if (get(selectedStation) != null) return; // the tap closes the menu instead
@@ -328,7 +358,7 @@
 
 	function addEventListeners(map: maplibregl.Map) {
 		async function onStationClick(e: maplibregl.MapLayerMouseEvent) {
-			if (e.features === undefined) return;
+			if (e.features === undefined || performance.now() < suppressClickUntil) return;
 			cancelPendingPinDrop();
 			following.set(false);
 			const feature = e.features[0] as GeoJSON.Feature<GeoJSON.Point>;
@@ -389,6 +419,7 @@
 			following.set(false);
 		});
 		map.on('click', e => {
+			if (performance.now() < suppressClickUntil) return;
 			const features = map.queryRenderedFeatures(e.point, { layers: STATION_LAYERS });
 			if (features.length > 0) return;
 			if (get(selectedStation) != null) {
@@ -480,8 +511,21 @@
 	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
 		const destSrc = map.getSource<maplibregl.GeoJSONSource>('route-destination');
+		const originSrc = map.getSource<maplibregl.GeoJSONSource>('route-origin');
 		if (src == null || destSrc == null) return;
-		if (route && pos?.coords) {
+		// A route from elsewhere is a preview, drawn whole: the user's position
+		// has nothing to clip it at
+		const fixedOrigin = get(currentTrip) === null ? get(routeOrigin) : null;
+		originSrc?.setData({
+			type: 'FeatureCollection',
+			features: fixedOrigin ? [{
+				type: 'Feature' as const,
+				properties: {},
+				geometry: { type: 'Point' as const, coordinates: [fixedOrigin.lng, fixedOrigin.lat] },
+			}] : [],
+		});
+		if (fixedOrigin) routeClippingState = emptyRouteClippingState();
+		else if (route && pos?.coords) {
 			routeClippingState = projectPositionOntoRoute(route, {
 				lat: pos.coords.latitude,
 				lng: pos.coords.longitude,
@@ -651,6 +695,12 @@
 		}
 	});
 
+	routeOrigin.subscribe(() => {
+		if (!mapLoaded) return;
+		applyRouteData(get(currentRoute));
+		if (get(routeDestination)) pendingFit = true;
+	});
+
 	// A framed route is re-fit when the bottom sheet resizes (the menu opening
 	// or closing, its bike list growing) so it stays in the map area left; a
 	// pending route's fit will use the new size anyway
@@ -709,7 +759,10 @@
 			const held = performance.now() - press.time;
 			const moved = Math.hypot(e.clientX - press.x, e.clientY - press.y);
 			press = null;
-			if (e.type === 'pointerup' && held >= TRIP_PIN_HOLD_ms && moved <= TRIP_PIN_HOLD_TOLERANCE_px) tripHoldPinDrop(e);
+			if (e.type === 'pointerup' && held >= TRIP_PIN_HOLD_ms && moved <= TRIP_PIN_HOLD_TOLERANCE_px) {
+				if (get(currentTrip) !== null) tripHoldPinDrop(e);
+				else holdSetOrigin(e);
+			}
 		};
 		map.getCanvasContainer().addEventListener('pointerdown', trackPointer);
 		window.addEventListener('pointerup', releasePointer);

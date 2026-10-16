@@ -38,6 +38,9 @@ export type PlannedRoute = {
 };
 
 export const routeDestination = writable<Destination|null>(null);
+/** Where the route starts, when it isn't the user's current position (null).
+  * A fixed origin freezes the route: it no longer follows the user's moves */
+export const routeOrigin = writable<Destination|null>(null);
 export const currentRoute = writable<PlannedRoute|null>(null);
 export const routePending = writable(false);
 
@@ -54,9 +57,9 @@ function stationCoord(s: StationInfo): Coord {
 	return { lat: s.latitude, lng: s.longitude };
 }
 
-function resolveDestinationStation(destination: Destination): StationInfo|undefined {
-	return destination.type === 'station' ?
-		stations.value.find(s => s.serialNumber === destination.stationSerial) :
+function resolveDestinationStation(place: Coord|Destination): StationInfo|undefined {
+	return 'type' in place && place.type === 'station' ?
+		stations.value.find(s => s.serialNumber === place.stationSerial) :
 		undefined;
 }
 
@@ -171,14 +174,18 @@ type StationRouteCandidate = {
 	walkFromDropoffDuration: number,
 };
 
-async function computeRouteWithoutBike(origin: Coord, destination: Destination): Promise<PlannedRoute|null> {
+async function computeRouteWithoutBike(origin: Coord|Destination, destination: Destination): Promise<PlannedRoute|null> {
 	const destinationStation = resolveDestinationStation(destination);
-	const pickupCandidates = nearestStations(origin, station => hasAvailableBike(station) && station.serialNumber !== destinationStation?.serialNumber);
+	// Starting at a station with bikes, the bike is picked up right there — the
+	// walk to it would only be OSRM snapping the station to the street
+	const originStation = resolveDestinationStation(origin);
+	const pickupAtOrigin = originStation != null && hasAvailableBike(originStation) && originStation.serialNumber !== destinationStation?.serialNumber;
+	const pickupCandidates = pickupAtOrigin ? [originStation] : nearestStations(origin, station => hasAvailableBike(station) && station.serialNumber !== destinationStation?.serialNumber);
 	const dropoffCandidates = destinationStation ? [destinationStation] : nearestStations(destination, hasAvailableDock);
 	const canUseStations = pickupCandidates.length > 0 && dropoffCandidates.length > 0;
 	const [directWalkRoute, walkToPickupDurations, bikeDurations, walkFromDropoffDurations] = await Promise.all([
 		osrmRoute('foot', origin, destination),
-		canUseStations ? osrmTable('foot', [origin], pickupCandidates.map(stationCoord)) : null,
+		canUseStations ? pickupAtOrigin ? [[0]] : osrmTable('foot', [origin], pickupCandidates.map(stationCoord)) : null,
 		canUseStations ? osrmTable('bike', pickupCandidates.map(stationCoord), dropoffCandidates.map(stationCoord)) : null,
 		canUseStations && !destinationStation ? osrmTable('foot', dropoffCandidates.map(stationCoord), [destination]) : null,
 	]);
@@ -217,7 +224,7 @@ async function computeRouteWithoutBike(origin: Coord, destination: Destination):
 	if (!bestCandidate) return null;
 
 	const [walkToPickupRoute, bikeRoute, walkFromDropoffRoute] = await Promise.all([
-		osrmRoute('foot', origin, stationCoord(bestCandidate.pickupStation)),
+		pickupAtOrigin ? Promise.resolve(null) : osrmRoute('foot', origin, stationCoord(bestCandidate.pickupStation)),
 		osrmRoute('bike', stationCoord(bestCandidate.pickupStation), stationCoord(bestCandidate.dropoffStation)),
 		destinationStation ? Promise.resolve(null) : osrmRoute('foot', stationCoord(bestCandidate.dropoffStation), destination),
 	]);
@@ -236,7 +243,7 @@ async function computeRouteWithoutBike(origin: Coord, destination: Destination):
 }
 
 /** Compute the best route from origin to destination using the rider's current bike state. */
-export async function computeRoute(origin: Coord, destination: Destination, hasBike: boolean): Promise<PlannedRoute|null> {
+export async function computeRoute(origin: Coord|Destination, destination: Destination, hasBike: boolean): Promise<PlannedRoute|null> {
 	return hasBike ?
 		computeRouteWithBike(origin, destination) :
 		computeRouteWithoutBike(origin, destination);
@@ -245,6 +252,7 @@ export async function computeRoute(origin: Coord, destination: Destination, hasB
 /** Same place, ignoring metadata like the name (which e.g. reverse geocoding
   * fills in asynchronously after a pin is dropped) */
 function sameRoutingDestination(a: Destination|null, b: Destination|null) {
+	if (a === null && b === null) return true;
 	if (!a || !b || a.type !== b.type || a.lat !== b.lat || a.lng !== b.lng) return false;
 	return a.type === 'location' || (b.type === 'station' && a.stationSerial === b.stationSerial);
 }
@@ -261,15 +269,17 @@ async function recomputeRoute() {
 		if (!sameRoutingDestination(computing, destination)) recomputeQueued = true;
 		return;
 	}
+	const fixedOrigin = get(currentTrip) === null ? get(routeOrigin) : null;
 	const pos = get(currentPos);
-	if (!pos) return;
+	if (!fixedOrigin && !pos) return;
 	computing = destination;
 	routePending.set(true);
 	try {
-		const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+		const origin = fixedOrigin ?? { lat: pos!.coords.latitude, lng: pos!.coords.longitude };
 		const route = await computeRoute(origin, destination, get(currentTrip) !== null);
 		const current = get(routeDestination);
 		if (!current || !sameRoutingDestination(current, destination)) return; // destination changed meanwhile
+		if (!sameRoutingDestination(get(currentTrip) === null ? get(routeOrigin) : null, fixedOrigin)) return; // origin changed meanwhile
 		if (!route) {
 			lastFailedAt = Date.now();
 			errorMessages.add(get(t)('no_route_found'));
@@ -299,6 +309,11 @@ async function recomputeRoute() {
 export function clearRouteDestination() {
 	routeDestination.set(null);
 }
+
+routeOrigin.subscribe(() => {
+	if (computing) recomputeQueued = true;
+	else if (get(routeDestination)) recomputeRoute();
+});
 
 /** The station the route heads to for picking up a bike — the pickup station,
   * or a station destination itself when walking straight to one */
@@ -342,13 +357,18 @@ routeDestination.subscribe(destination => {
 // `undefined` is the not-yet-restored state at startup, so only react to an
 // actual logout
 token.subscribe(session => {
-	if (session === null) routeDestination.set(null);
+	if (session === null) {
+		routeDestination.set(null);
+		routeOrigin.set(null);
+	}
 });
 
 currentPos.subscribe(pos => {
 	if (!pos) return;
 	const destination = get(routeDestination);
 	if (!destination) return;
+	// A route from elsewhere is only a preview: the user's moves don't touch it
+	if (get(routeOrigin) !== null && get(currentTrip) === null) return;
 
 	// Arrived at the destination
 	if (distanceBetweenCoords(pos.coords.latitude, pos.coords.longitude, destination.lat, destination.lng) * 1000 < ARRIVAL_RADIUS_METERS && get(currentTrip) === null) {

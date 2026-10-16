@@ -2,11 +2,9 @@
 	import { submitTripRating } from '$lib/gira-api/api';
 	import { reportApiError } from '$lib/error-reporting';
 	import { postBikeRating } from '$lib/gira-mais-api/gira-mais-api';
-	import { currentRoute } from '$lib/routing';
 	import { t } from '$lib/translations';
 	import { markTripRated, tripRating } from '$lib/trip';
 	import { DETAILS_RATING_THRESHOLD, forwardsToEmel, markRatingDragHintSeen, ratingDragHintSeen, TRIP_RATING_REASONS, type TripRatingDetails, type TripRatingReasonCode } from '$lib/trip-rating';
-	import { safeInsets } from '$lib/ui.svelte';
 	import { Keyboard } from '@capacitor/keyboard';
 	import IconArrowBackUp from '@tabler/icons-svelte/icons/arrow-back-up';
 	import IconArrowsMoveVertical from '@tabler/icons-svelte/icons/arrows-move-vertical';
@@ -41,9 +39,11 @@
 		tripCode: string;
 		bikePlate: string;
 		date?: Date;
+		/** Below the search bar and whatever strips it has out */
+		top: number;
 	}
 
-	let { tripCode, bikePlate, date }: Props = $props();
+	let { tripCode, bikePlate, date, top }: Props = $props();
 
 	type Panel = 'hidden' | 'compact' | 'expanded';
 	type Pending = { rating: number; details?: TripRatingDetails; panel: Panel; reasons: TripRatingReasonCode[]; comment: string };
@@ -84,7 +84,6 @@
 	let headerHeight = $state(0);
 	let cardHeight = $state(0);
 	let detailsNaturalHeight = $state(0);
-	const top = $derived(Math.max(16, $safeInsets.top + 8) + 64 + ($currentRoute ? 40 : 0));
 	const expandedWidth = $derived(Math.max(COMPACT_WIDTH, Math.min(MAX_EXPANDED_WIDTH, innerWidth - 24)));
 	// Never past the bottom of the screen; the details scroll instead. The keyboard is deliberately
 	// not subtracted: the card sits at the top and would only jump around as it comes and goes
@@ -282,8 +281,8 @@
 	{/if}
 {/snippet}
 
-<!-- sits below the search bar (64px), and below its route summary extension too when one is shown -->
-<div in:fly={{ y: -120 }} out:fade={{ duration: 150 }} class="absolute left-0 right-0 flex justify-center pointer-events-none" style:top="{top}px">
+<!-- follows the search bar's strips with their duration and easing, so the two move together -->
+<div in:fly={{ y: -120 }} out:fade={{ duration: 150 }} class="absolute left-0 right-0 flex justify-center pointer-events-none transition-[top] duration-150" style:top="{top}px">
 	<div
 		bind:clientHeight={cardHeight}
 		class="pointer-events-auto flex flex-col items-center overflow-hidden bg-background text-info"
