@@ -4,11 +4,11 @@ import type { AccountSnapshot, SubscriptionInfo } from '$lib/gira-api/models';
 import { selectedStation } from '$lib/map.svelte';
 import { currentTrip, tripRating } from '$lib/trip';
 import { Network } from '@capacitor/network';
-import { Preferences } from '@capacitor/preferences';
 import { get, writable } from 'svelte/store';
 import { getVaimooUser, InvalidCredentialsError, loginWithEmel, refreshVaimooSession, VaimooApiError } from '$lib/vaimoo-api/client';
 import { reportApiError } from '$lib/error-reporting';
 import type { VaimooSession } from '$lib/vaimoo-api/types';
+import { clearCredentials, loadCredentials, saveCredentials, type Credentials } from '$lib/credentials';
 
 export type Token = {
 	accessToken: string;
@@ -25,7 +25,7 @@ export type Subscription = SubscriptionInfo;
 export type AccountInfo = AccountSnapshot;
 
 export const token = writable<Token|null|undefined>(undefined);
-export const userCredentials = writable<{email: string, password: string}|null>(null);
+export const userCredentials = writable<Credentials|null>(null);
 export const user = writable<User|null>(null);
 export const accountInfo = writable<AccountInfo|null>(null);
 
@@ -71,12 +71,9 @@ export function currentSession(): VaimooSession | null {
 }
 
 export async function loadUserCreds() {
-	const [email, password] = await Promise.all([
-		Preferences.get({ key: 'email' }).then(r => r.value),
-		Preferences.get({ key: 'password' }).then(r => r.value),
-	]);
-	if (email && password) {
-		userCredentials.set({ email, password });
+	const saved = await loadCredentials();
+	if (saved) {
+		userCredentials.set(saved);
 	} else {
 		// This is here to show the login dialog if there are no credentials set
 		token.set(null);
@@ -84,13 +81,11 @@ export async function loadUserCreds() {
 
 	userCredentials.subscribe(async v => {
 		if (!v) {
-			Preferences.remove({ key: 'email' });
-			Preferences.remove({ key: 'password' });
+			clearCredentials().catch(error => console.error('Could not clear the saved credentials', error));
 			return;
 		}
 		if (get(token)) {
-			Preferences.set({ key: 'email', value: v.email });
-			Preferences.set({ key: 'password', value: v.password });
+			persistCredentials(v);
 			return;
 		}
 		let responseCode: number;
@@ -105,17 +100,16 @@ export async function loadUserCreds() {
 		if (responseCode !== 0) {
 			console.error('Login failed!');
 			token.set(null);
-			// Invalid credentials
-			if (responseCode === 100) {
-				Preferences.remove({ key: 'email' });
-				Preferences.remove({ key: 'password' });
-			}
+			// Invalid credentials are cleared from storage by the null this sets
 			userCredentials.set(null);
 		} else {
-			Preferences.set({ key: 'email', value: v.email });
-			Preferences.set({ key: 'password', value: v.password });
+			persistCredentials(v);
 		}
 	});
+}
+
+function persistCredentials(credentials: Credentials) {
+	saveCredentials(credentials).catch(error => console.error('Could not save the credentials', error));
 }
 
 export async function login(email: string, password: string) {
