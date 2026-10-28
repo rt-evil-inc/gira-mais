@@ -13,7 +13,8 @@
 	import { getMapStyle } from '$lib/map-style';
 	import { addLayers, following, loadImages, routeFramed, selectedStation, setSourceData, STATION_MARKER_FADE_END, STATION_MARKER_FADE_START, stationDotColor, stationDotStrokeColor, stationIcon, stations, viewMode } from '$lib/map.svelte';
 	import { appSettings } from '$lib/settings';
-	import { createMarkerAnimator, type MarkerState } from '$lib/marker-animation';
+	import { createMarkerAnimator, shortestAngleDelta, type MarkerState } from '$lib/marker-animation';
+	import { createUserMarker } from '$lib/user-marker';
 	import { compassAccuracy, compassHeading } from '$lib/compass';
 	import { beamHalfAngle } from '$lib/heading-beam';
 	import { computeRoute, currentRoute, recheckRouteStations, routeDestination, type PlannedRoute } from '$lib/routing';
@@ -95,18 +96,38 @@
 		return pointersDown.size > 0 || map.isMoving();
 	}
 
+	// Every camera move re-renders the whole map (in the navigation view, tilted
+	// with 3D buildings), and the glide alone never stops while riding: one
+	// glide runs into the next fix's. Drawn on every display frame, that kept
+	// a couple of cores busy throughout trips (#131) — 30 fps is still smooth
+	// at riding speed, where the map only travels a few pixels a second
+	const FOLLOW_FRAME_ms = 1000 / 30;
+	// Camera moves too small to see are skipped altogether; a turn is measured
+	// by how far it moves the corners of the view
+	const FOLLOW_MIN_SHIFT_px = 0.5;
+
+	function followShift(state: MarkerState, withBearing: boolean) {
+		const shift = map.project([state.lng, state.lat]).dist(map.project(map.getCenter()));
+		if (!withBearing) return shift;
+		const canvas = map.getCanvas();
+		const reach = Math.hypot(canvas.clientWidth, canvas.clientHeight) / 2;
+		return Math.max(shift, Math.abs(shortestAngleDelta(map.getBearing(), state.heading)) * Math.PI / 180 * reach);
+	}
+
 	// Glides the location marker between GPS fixes instead of teleporting it;
 	// while following, the camera is pinned to the gliding marker rather than
 	// re-centered on each raw fix, so the map travels as smoothly as the marker
 	const marker = createMarkerAnimator(state => {
 		renderUserMarker(state);
 		if (!mapLoaded || blurred || cameraTransition || !get(following) || gestureInProgress()) return;
-		if (get(viewMode) === 'heading') {
+		const heading = get(viewMode) === 'heading';
+		if (followShift(state, heading) < FOLLOW_MIN_SHIFT_px) return;
+		if (heading) {
 			map.jumpTo({ center: [state.lng, state.lat], bearing: state.heading });
 		} else {
 			map.jumpTo({ center: [state.lng, state.lat] });
 		}
-	});
+	}, { frameInterval: FOLLOW_FRAME_ms });
 
 	// During a trip the marker turns with the traveling direction (the GPS
 	// course, with the compass standing in at stops), which is what the chevron
@@ -127,23 +148,16 @@
 		return { lng: pos.coords.longitude, lat: pos.coords.latitude, heading: markerHeading() ?? 0 };
 	}
 
+	let userMarker: ReturnType<typeof createUserMarker>|null = null;
+
 	function renderUserMarker(state: MarkerState|null = markerState()) {
-		if (!mapLoaded || !state) return;
-		const src = map.getSource<maplibregl.GeoJSONSource>('user-location');
-		if (src == null) return;
-		// the animator holds the last heading (or north) while none is known,
-		// so the beam is gated on the compass store, not the displayed value
-		const beam = get(compassHeading) !== null ? { beam: beamHalfAngle(get(compassAccuracy)) } : {};
-		src.setData({
-			type: 'FeatureCollection',
-			features: [{
-				type: 'Feature',
-				properties: { nav: get(currentTrip) !== null, heading: state.heading, ...beam },
-				geometry: {
-					type: 'Point',
-					coordinates: [state.lng, state.lat],
-				},
-			}],
+		if (!mapLoaded || !state || !userMarker) return;
+		userMarker.update(map, {
+			...state,
+			nav: get(currentTrip) !== null,
+			// the animator holds the last heading (or north) while none is known,
+			// so the beam is gated on the compass store, not the displayed value
+			beam: get(compassHeading) !== null ? beamHalfAngle(get(compassAccuracy)) : null,
 		});
 	}
 
@@ -199,9 +213,9 @@
 	// big enough for the tilted view and scaled down as the map flattens out,
 	// where the full size would look oversized. The dot is unaffected
 	function updateMarkerScale() {
-		if (!mapLoaded || map.getLayer('user-location') == null) return;
+		if (!mapLoaded) return;
 		const t = Math.min(map.getPitch() / NAV_PITCH, 1);
-		map.setLayoutProperty('user-location', 'icon-size', ['case', ['to-boolean', ['get', 'nav']], 0.8 + 0.2 * t, 1]);
+		userMarker?.setChevronScale(0.8 + 0.2 * t);
 	}
 
 	// The per-frame follow reuses the padding left behind by enterNavView, so
@@ -477,6 +491,17 @@
 	// glide against the raw fix stream
 	appSettings.subscribe(settings => marker.setSmoothing(settings?.markerSmoothing ?? true));
 
+	// Every setData re-tiles the source on a worker and re-places the map's
+	// labels, which then fade for a few hundred milliseconds of extra frames —
+	// and this runs on every fix, mostly with nothing new to show (#131)
+	const lastSourceData = new Map<string, string>;
+	function setChangedData(src: maplibregl.GeoJSONSource, data: GeoJSON) {
+		const json = JSON.stringify(data);
+		if (lastSourceData.get(src.id) === json) return;
+		lastSourceData.set(src.id, json);
+		src.setData(data);
+	}
+
 	function applyRouteData(route: PlannedRoute|null, pos = get(currentPos)) {
 		const src = map.getSource<maplibregl.GeoJSONSource>('route');
 		const destSrc = map.getSource<maplibregl.GeoJSONSource>('route-destination');
@@ -495,7 +520,7 @@
 			currentTrip.update(trip => trip ? { ...trip, distanceLeft: remaining.distance / 1000, arrivalTime, predictedEndDate: arrivalTime } : trip);
 		}
 		const displayLegs = route ? clipRouteAtProjection(route, routeClippingState.accepted) : [];
-		src.setData({
+		setChangedData(src, {
 			type: 'FeatureCollection',
 			features: displayLegs.map(leg => ({
 				type: 'Feature' as const,
@@ -508,7 +533,7 @@
 		});
 		const destination = get(routeDestination);
 		// A station destination is already marked by its station bubble
-		destSrc.setData({
+		setChangedData(destSrc, {
 			type: 'FeatureCollection',
 			features: destination && destination.type !== 'station' ? [{
 				type: 'Feature' as const,
@@ -662,8 +687,15 @@
 		}, 200);
 	});
 
+	// The path only grows by the fixes pushed onto it, while the trip is also
+	// updated with the HUD figures between fixes — redrawing it then would
+	// re-tile the whole ride for nothing
+	let drawnPath: { points: ActiveTrip['pathTaken']|undefined, length: number }|null = null;
 	currentTrip.subscribe((trip: ActiveTrip | null) => {
 		if (!mapLoaded) return;
+		const points = trip?.pathTaken;
+		if (drawnPath && drawnPath.points === points && drawnPath.length === (points?.length ?? 0)) return;
+		drawnPath = { points, length: points?.length ?? 0 };
 		const src = map.getSource<maplibregl.GeoJSONSource>('trip-path');
 		const data:GeoJSON = {
 			type: 'Feature',
@@ -690,8 +722,13 @@
 			center: [-9.15, 38.744],
 			zoom: 11,
 			attributionControl: false,
+			// Labels re-placed after a camera move fade in and out over extra
+			// frames, and the following camera re-places them all the time: the
+			// fades alone kept the map rendering at full rate during trips (#131)
+			fadeDuration: 0,
 		});
 		map.addControl(new maplibregl.AttributionControl, 'bottom-left');
+		userMarker = createUserMarker();
 		// Development only: a handle on the map for the console and for the
 		// screenshot script, which projects coordinates with it and uses it to
 		// tell when the camera and the tiles have settled
@@ -720,7 +757,7 @@
 			mapLoaded = true;
 			setSourceData(map);
 			addLayers(map);
-			applyStationDisplayState();
+			applyTripDisplayState();
 			renderUserMarker();
 			updateMarkerScale();
 			applyRouteData(get(currentRoute));
@@ -730,6 +767,7 @@
 			window.removeEventListener('pointerup', releasePointer);
 			window.removeEventListener('pointercancel', releasePointer);
 			marker.stop();
+			userMarker?.remove();
 			map.remove();
 		};
 	});
@@ -738,9 +776,13 @@
 		if (map && currentTheme) {
 			map.once('styledata', async () => {
 				await loadImages(map);
+				userMarker?.redraw();
+				// the style swap drops the runtime sources, which come back empty
+				lastSourceData.clear();
+				drawnPath = null;
 				setSourceData(map);
 				addLayers(map);
-				applyStationDisplayState();
+				applyTripDisplayState();
 				renderUserMarker();
 				updateMarkerScale();
 				applyRouteData(get(currentRoute));
@@ -748,6 +790,19 @@
 			map.setStyle(getMapStyle(currentTheme), { diff: true });
 		}
 	});
+
+	// Only for the trip starting or ending (and the map's style being rebuilt):
+	// the trip itself is updated twice per fix, and every style setter repaints
+	// the map even when it changes nothing
+	function applyTripDisplayState() {
+		if (!mapLoaded) return;
+		const trip = get(currentTrip) !== null;
+		applyStationDisplayState();
+		// while riding, the route has to stay legible at a glance, so thicken it
+		map.setPaintProperty('route-outline', 'line-width', trip ? 12 : 9);
+		map.setPaintProperty('route-bike', 'line-width', trip ? 8 : 5);
+		map.setPaintProperty('route-foot', 'line-width', trip ? 8 : 5);
+	}
 
 	let wasOnTrip = get(currentTrip) !== null;
 	currentTrip.subscribe(trip => {
@@ -766,13 +821,7 @@
 			const heading = markerHeading();
 			if (heading !== null) marker.setHeading(heading);
 			renderUserMarker();
-		}
-		if (mapLoaded) {
-			applyStationDisplayState();
-			// while riding, the route has to stay legible at a glance, so thicken it
-			map.setPaintProperty('route-outline', 'line-width', trip ? 12 : 9);
-			map.setPaintProperty('route-bike', 'line-width', trip ? 8 : 5);
-			map.setPaintProperty('route-foot', 'line-width', trip ? 8 : 5);
+			applyTripDisplayState();
 		}
 	});
 
@@ -784,11 +833,16 @@
 	$effect(() => {
 		if (stations.value && map) {
 			$selectedStation = $selectedStation;
-			if (mapLoaded) {
-				setSourceData(map);
-				applyStationDisplayState();
-			}
+			if (mapLoaded) setSourceData(map);
 		}
+	});
+
+	// How the stations are drawn follows the selection (and the trip and the
+	// route, applied where those change), not the live counts — and every style
+	// setter repaints the map, which kept it busy after each feed update
+	$effect(() => {
+		void $selectedStation;
+		if (mapLoaded) untrack(applyStationDisplayState);
 	});
 
 	// Like the navigation view, the top-down follow centers once when it becomes

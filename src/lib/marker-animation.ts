@@ -22,12 +22,18 @@ const MAX_GLIDE_ms = 1500;
 const MAX_HEADING_GLIDE_ms = 300;
 const SNAP_DISTANCE_deg = 0.005; // ~500 m
 
+// Frame times wobble by a millisecond or two: measured strictly, a frame due
+// right at the cap would often be skipped, halving the rate again
+const FRAME_SLACK_ms = 4;
+
 /**
  * Glides a marker between position updates instead of teleporting it.
- * `apply` is called with the interpolated state on every animation frame
- * (and synchronously when a target snaps).
+ * `apply` is called with the interpolated state on animation frames, at most
+ * once every `frameInterval` ms while a glide is in flight (the camera follows
+ * the marker, and every applied frame re-renders the map), and always with
+ * the state a glide settles on (and synchronously when a target snaps).
  */
-export function createMarkerAnimator(apply: (state: MarkerState) => void) {
+export function createMarkerAnimator(apply: (state: MarkerState) => void, { frameInterval = 0 } = {}) {
 	let displayed: MarkerState|null = null;
 	// Position and heading glide on independent tracks: a compass heading can
 	// arrive mid-glide (and Svelte defers a store set made inside another store's
@@ -45,6 +51,7 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 	let lastTargetTime: number|null = null;
 	let lastHeadingTime: number|null = null;
 	let frame: number|null = null;
+	let lastApplied = -Infinity;
 	let smoothing = true;
 
 	/** Progress along a track, clamped to the segment it interpolates. */
@@ -85,7 +92,12 @@ export function createMarkerAnimator(apply: (state: MarkerState) => void) {
 			lat: posFrom.lat + (posTarget.lat - posFrom.lat) * tp,
 			heading: (headFrom + shortestAngleDelta(headFrom, headTarget) * th + 360) % 360,
 		};
-		if (tp < 1 || th < 1) frame = requestAnimationFrame(step);
+		const settled = tp >= 1 && th >= 1;
+		if (!settled) {
+			frame = requestAnimationFrame(step);
+			if (now - lastApplied < frameInterval - FRAME_SLACK_ms) return;
+		}
+		lastApplied = now;
 		apply(displayed);
 	}
 

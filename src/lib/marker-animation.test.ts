@@ -137,4 +137,32 @@ describe('createMarkerAnimator', () => {
 		expect(applied.at(-1)).toEqual({ lng: -9.15, lat: 38.9, heading: 0 });
 		expect(frames).toHaveLength(0);
 	});
+
+	it('caps how often a glide is applied, but always lands on the target', () => {
+		const applied: MarkerState[] = [];
+		const animator = createMarkerAnimator(state => applied.push(state), { frameInterval: 1000 / 30 });
+		animator.setTarget({ lng: 0, lat: 0, heading: 0 });
+		now += 1000;
+		animator.setTarget({ lng: 0.001, lat: 0, heading: 0 });
+		applied.length = 0;
+		// a second of 60 Hz frames, plus the one that settles
+		for (let i = 0; i < 61; i++) runFrame(1000 / 60);
+		expect(applied.length).toBeGreaterThanOrEqual(30);
+		expect(applied.length).toBeLessThanOrEqual(32);
+		expect(applied.at(-1)).toEqual({ lng: 0.001, lat: 0, heading: 0 });
+		expect(frames).toHaveLength(0);
+	});
+
+	it('keeps tracking the glide on the frames it skips', () => {
+		const applied: MarkerState[] = [];
+		const animator = createMarkerAnimator(state => applied.push(state), { frameInterval: 100 });
+		animator.setTarget({ lng: 0, lat: 0, heading: 0 });
+		now += 1000;
+		animator.setTarget({ lng: 0.001, lat: 0, heading: 0 });
+		runFrame(10);
+		runFrame(10);
+		// the second frame comes too soon to apply, but the glide moves on
+		expect(applied).toHaveLength(2);
+		expect(animator.displayed()?.lng).toBeCloseTo(0.00002);
+	});
 });

@@ -118,21 +118,26 @@ function followActiveBike(bikeId: string | null) {
 	);
 }
 
+/** Start the live station feed, which needs no session: at launch it runs
+ * alongside the login instead of after it, and the map waits for both. */
+export function startStationFeed() {
+	if (stopStationListener) return;
+	stopStationListener = subscribeStations(
+		value => stations.value = value,
+		error => {
+			console.error('VAIMOO station listener failed', error);
+			void reportApiError('station_feed_error', error);
+		},
+	);
+}
+
 export function startBackendSync() {
 	const firstStart = !stopTripStoreListener;
 	logBackendSync('sync-started', {
 		hasStationListener: Boolean(stopStationListener),
 		hasTripStoreListener: Boolean(stopTripStoreListener),
 	});
-	if (!stopStationListener) {
-		stopStationListener = subscribeStations(
-			value => stations.value = value,
-			error => {
-				console.error('VAIMOO station listener failed', error);
-				void reportApiError('station_feed_error', error);
-			},
-		);
-	}
+	startStationFeed();
 	if (!stopTripStoreListener) {
 		let polledTripCode: string | null = null;
 		let polledTripConfirmed: boolean | null = null;
