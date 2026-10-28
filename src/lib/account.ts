@@ -1,4 +1,4 @@
-import { startBackendSync, stopBackendSync } from '$lib/gira-api/backend-sync';
+import { startBackendSync, startStationFeed, stopBackendSync } from '$lib/gira-api/backend-sync';
 import { getAccountSnapshot } from '$lib/gira-api/api';
 import type { AccountSnapshot, SubscriptionInfo } from '$lib/gira-api/models';
 import { selectedStation } from '$lib/map.svelte';
@@ -76,6 +76,7 @@ export async function loadUserCreds() {
 		Preferences.get({ key: 'password' }).then(r => r.value),
 	]);
 	if (email && password) {
+		startStationFeed();
 		userCredentials.set({ email, password });
 	} else {
 		// This is here to show the login dialog if there are no credentials set

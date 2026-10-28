@@ -5,6 +5,7 @@ import type { BackgroundGeolocationPlugin } from '@capacitor-community/backgroun
 import { checkTripActive, currentTrip } from '$lib/trip';
 import { compassHeading } from '$lib/compass';
 import { compassOffset } from '$lib/compass-offset';
+import { shortestAngleDelta } from '$lib/marker-animation';
 import { bearingBetweenCoords, distanceBetweenCoords } from '$lib/utils';
 import { MIN_TRAVEL_DISTANCE_m } from '$lib/constants';
 import { appSettings } from './settings';
@@ -52,11 +53,18 @@ currentPos.subscribe(pos => {
 // over when standing still, where the course is unavailable or stale — with
 // the error learned along the last leg taken out
 const COMPASS_TAKEOVER_ms = 3000;
+// At a stop the compass still wavers by a few degrees, and during a trip every
+// change turns the navigation camera, re-rendering the map for a wobble nobody
+// wants to see (#131) — only turning the bike for real moves it
+const COMPASS_MIN_TURN_deg = 5;
 
 compassHeading.subscribe(heading => {
 	if (heading === null) return;
 	if (Date.now() - lastCourseTime < COMPASS_TAKEOVER_ms) return;
-	currentHeading.set(compassOffset.correct(heading));
+	const corrected = compassOffset.correct(heading);
+	const current = get(currentHeading);
+	if (current !== null && Math.abs(shortestAngleDelta(current, corrected)) < COMPASS_MIN_TURN_deg) return;
+	currentHeading.set(corrected);
 });
 
 let simulatedLocationActive = false;

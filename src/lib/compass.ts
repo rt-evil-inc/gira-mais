@@ -48,6 +48,17 @@ function screenAngle() {
 	return window.screen?.orientation?.angle ?? 0;
 }
 
+// Chromium backs each event with a sensor of its own (the plain one with a
+// relative-only rotation sensor), and both keep running while listened to —
+// once one delivers usable headings, the other is dropped
+let settled = false;
+function settleOn(type: string) {
+	if (settled) return;
+	settled = true;
+	const other = type === 'deviceorientationabsolute' ? 'deviceorientation' : 'deviceorientationabsolute';
+	window.removeEventListener(other, onOrientation as EventListener);
+}
+
 function onOrientation(e: CompassEvent) {
 	if (typeof e.webkitCompassHeading === 'number' && Number.isFinite(e.webkitCompassHeading)) {
 		// iOS: OS-provided tilt-compensated compass heading of the device top,
@@ -57,6 +68,7 @@ function onOrientation(e: CompassEvent) {
 	} else if (e.absolute && e.alpha !== null) {
 		// elsewhere alpha is the yaw relative to north when the reading is absolute
 		publish((360 - e.alpha + screenAngle()) % 360, null);
+		settleOn(e.type);
 	} else if (get(compassStatus) === 'listening') {
 		compassStatus.set('relative-only');
 	}
