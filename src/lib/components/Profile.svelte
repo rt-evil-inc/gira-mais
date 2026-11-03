@@ -65,7 +65,7 @@
 						<div class="flex flex-col items-center">
 							<div class="flex items-center gap-1">
 								<IconTicket size={28} stroke={1.9} class="text-info" />
-								<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) ?? $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
+								<div class="text-info font-bold text-lg">{$accountInfo === null ? '—' : subscriptionName ? $t(knownSubscriptionTypes[subscriptionName]) || $accountInfo?.subscription?.name : $t('no_subscription_label')}</div>
 							</div>
 							{#if $accountInfo?.subscription?.expiresAt}
 								<span class="text-2xs font-semibold text-label text-center leading-none">
