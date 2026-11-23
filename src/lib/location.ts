@@ -1,6 +1,7 @@
 import { registerPlugin } from '@capacitor/core';
 import { get, writable } from 'svelte/store';
 import { type Position, Geolocation } from '@capacitor/geolocation';
+import { Preferences } from '@capacitor/preferences';
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation';
 import { checkTripActive, currentTrip } from '$lib/trip';
 import { compassHeading } from '$lib/compass';
@@ -97,7 +98,20 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('Backg
 
 let watchId: string|null = null;
 let backgroundWatchId: string|null = null;
+let fallbackWatchId: string|null = null;
 let initialFixRequested = false;
+
+// On Android, every watch or fix from @capacitor/geolocation first checks the
+// location settings through Play Services and, when Google's "Location
+// accuracy" is off, opens a dialog asking to turn it on. Declining it fails the
+// request with this code, and since the dialog pauses the app, closing it fires
+// a resume — which restarts the watcher and opens the dialog again, forever.
+// So a decline is remembered, across launches too, and from then on positions
+// come from the background plugin's watcher (fallbackWatchId) instead: it
+// doesn't run that check and works fine on GPS alone
+const LOCATION_ENABLE_REQUEST_DENIED = 'OS-PLUG-GLOC-0009';
+const LOCATION_ACCURACY_DECLINED_KEY = 'locationAccuracyDeclined';
+let locationAccuracyDeclined: boolean|null = null;
 
 // A fresh GPS fix takes a few seconds after launch, so the OS's last known
 // position (typically from the previous session or another app) is shown in
@@ -152,15 +166,19 @@ export async function restartPositionWatch() {
 async function clearWatchers() {
 	const foreground = watchId;
 	const background = backgroundWatchId;
+	const fallback = fallbackWatchId;
 	watchId = null;
 	backgroundWatchId = null;
+	fallbackWatchId = null;
 	if (foreground !== null) await Geolocation.clearWatch({ id: foreground }).catch(() => {});
 	if (background !== null) await BackgroundGeolocation.removeWatcher({ id: background }).catch(() => {});
+	if (fallback !== null) await BackgroundGeolocation.removeWatcher({ id: fallback }).catch(() => {});
 }
 
 async function setupWatcher() {
 	const permission = (await Geolocation.checkPermissions()).location;
 	if (permission !== 'granted') return;
+	locationAccuracyDeclined ??= (await Preferences.get({ key: LOCATION_ACCURACY_DECLINED_KEY })).value === 'true';
 
 	// Called at launch before the settings are loaded, in which case there's no
 	// trip yet either and the foreground watcher is the right one
@@ -185,6 +203,22 @@ async function setupWatcher() {
 			}
 			checkTripActive();
 		});
+	} else if (locationAccuracyDeclined) {
+		if (fallbackWatchId !== null) return;
+		await clearWatchers();
+
+		// Without a background message the plugin runs no foreground service
+		// (and shows no notification): updates only arrive while the app is open
+		fallbackWatchId = await BackgroundGeolocation.addWatcher({}, (position, error) => {
+			if (error) {
+				console.error('Fallback location watcher failed', error);
+				fallbackWatchId = null;
+				return;
+			}
+			if (position && !simulatedLocationActive) {
+				currentPos.set({ coords: { ...position, heading: position.bearing }, timestamp: position.time ?? Date.now() });
+			}
+		});
 	} else {
 		if (watchId !== null) return;
 		await clearWatchers();
@@ -194,7 +228,12 @@ async function setupWatcher() {
 			enableHighAccuracy: true,
 			timeout: 2000,
 			minimumUpdateInterval: 0,
-		}, position => {
+		}, (position, error) => {
+			if (error?.code === LOCATION_ENABLE_REQUEST_DENIED) {
+				locationAccuracyDeclined = true;
+				void Preferences.set({ key: LOCATION_ACCURACY_DECLINED_KEY, value: 'true' });
+				void watchPosition();
+			}
 			if (position && !simulatedLocationActive) {
 				currentPos.set(position);
 			}
