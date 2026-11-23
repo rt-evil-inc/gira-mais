@@ -1,33 +1,41 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { get } from 'svelte/store';
 
 type Callback = (position: unknown, error?: { code: string }) => void;
 
 const mocks = vi.hoisted(() => ({
 	geoWatchers: new Map<string, Callback>,
 	bgWatchers: new Map<string, Callback>,
+	preferences: new Map<string, string>,
 	next: 0,
 }));
 
 vi.mock('@capacitor/core', () => ({
 	registerPlugin: () => ({
-		addWatcher: vi.fn(async (_options: unknown, callback: Callback) => {
+		addWatcher: async (_options: unknown, callback: Callback) => {
 			const id = `bg-${mocks.next++}`;
 			mocks.bgWatchers.set(id, callback);
 			return id;
-		}),
-		removeWatcher: vi.fn(async ({ id }: { id: string }) => void mocks.bgWatchers.delete(id)),
+		},
+		removeWatcher: async ({ id }: { id: string }) => void mocks.bgWatchers.delete(id),
 	}),
 }));
 vi.mock('@capacitor/geolocation', () => ({
 	Geolocation: {
-		checkPermissions: vi.fn(async () => ({ location: 'granted' })),
+		checkPermissions: async () => ({ location: 'granted' }),
 		getCurrentPosition: vi.fn(() => new Promise(() => {})),
 		watchPosition: vi.fn(async (_options: unknown, callback: Callback) => {
 			const id = `geo-${mocks.next++}`;
 			mocks.geoWatchers.set(id, callback);
 			return id;
 		}),
-		clearWatch: vi.fn(async ({ id }: { id: string }) => void mocks.geoWatchers.delete(id)),
+		clearWatch: async ({ id }: { id: string }) => void mocks.geoWatchers.delete(id),
+	},
+}));
+vi.mock('@capacitor/preferences', () => ({
+	Preferences: {
+		get: async ({ key }: { key: string }) => ({ value: mocks.preferences.get(key) ?? null }),
+		set: async ({ key, value }: { key: string, value: string }) => void mocks.preferences.set(key, value),
 	},
 }));
 vi.mock('$lib/trip', async () => {
@@ -38,49 +46,97 @@ vi.mock('./settings', async () => {
 	const { writable } = await import('svelte/store');
 	return { appSettings: writable(null) };
 });
-vi.mock('$lib/translations', async () => {
-	const { readable } = await import('svelte/store');
-	return { t: readable((key: string) => key) };
-});
-vi.mock('$lib/compass', async () => {
-	const { writable } = await import('svelte/store');
-	return { compassHeading: writable(null) };
-});
-vi.mock('$lib/compass-offset', () => ({ compassOffset: { observeCourse: vi.fn(), correct: (h: number) => h } }));
 
-import { Geolocation } from '@capacitor/geolocation';
-import { currentPos, restartPositionWatch, watchPosition } from './location';
-
+const DECLINED = { code: 'OS-PLUG-GLOC-0009' };
+const DECLINED_KEY = 'locationAccuracyDeclined';
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+// The decline is module state, so every launch gets a module of its own
+async function launch() {
+	vi.resetModules();
+	vi.clearAllMocks();
+	const { Geolocation } = await import('@capacitor/geolocation');
+	return { Geolocation: vi.mocked(Geolocation), ...await import('./location') };
+}
 
 describe('declining the location accuracy prompt', () => {
 	beforeEach(() => {
-		vi.mocked(Geolocation.watchPosition).mockClear();
+		mocks.geoWatchers.clear();
+		mocks.bgWatchers.clear();
+		mocks.preferences.clear();
 	});
 
-	it('stops asking again on every resume and falls back to a watcher without the prompt', async () => {
+	it('falls back to the watcher without the prompt and never starts the regular one again', async () => {
+		const { Geolocation, currentPos, restartPositionWatch, watchPosition } = await launch();
 		await watchPosition();
-		expect(Geolocation.watchPosition).toHaveBeenCalledTimes(1);
-		const [[id, callback]] = [...mocks.geoWatchers];
+		const [regular] = mocks.geoWatchers.values();
 
-		// The user taps "No" in the Play Services dialog
-		callback(null, { code: 'OS-PLUG-GLOC-0009' });
+		// The user taps "No thanks" in the Play Services dialog
+		regular(null, DECLINED);
 		await flush();
-
-		expect(mocks.geoWatchers.has(id)).toBe(false);
+		expect(mocks.geoWatchers.size).toBe(0);
 		expect(mocks.bgWatchers.size).toBe(1);
+		const [firstFallbackId] = mocks.bgWatchers.keys();
+		await watchPosition();
+		expect([...mocks.bgWatchers.keys()]).toEqual([firstFallbackId]);
 
 		// Closing the dialog resumes the app, which restarts the watcher
 		await restartPositionWatch();
-		await restartPositionWatch();
 		expect(Geolocation.watchPosition).toHaveBeenCalledTimes(1);
 		expect(mocks.bgWatchers.size).toBe(1);
+		const [[fallbackId, fallback]] = [...mocks.bgWatchers];
+		expect(fallbackId).not.toBe(firstFallbackId);
 
-		const [[, fallback]] = [...mocks.bgWatchers];
-		fallback({ latitude: 38.7, longitude: -9.1, accuracy: 5, bearing: 90, time: 1000 });
-		expect(currentPos).toBeDefined();
-		let pos: unknown;
-		currentPos.subscribe(v => pos = v)();
-		expect(pos).toMatchObject({ coords: { latitude: 38.7, longitude: -9.1, heading: 90 }, timestamp: 1000 });
+		fallback({ latitude: 38.7, longitude: -9.1, bearing: 90, time: 1000 });
+		expect(get(currentPos)).toMatchObject({ coords: { latitude: 38.7, longitude: -9.1, heading: 90 }, timestamp: 1000 });
+	});
+
+	it('does not ask again on later launches', async () => {
+		const first = await launch();
+		await first.watchPosition();
+		const [regular] = mocks.geoWatchers.values();
+		regular(null, DECLINED);
+		await flush();
+		mocks.bgWatchers.clear();
+
+		const { Geolocation, watchPosition } = await launch();
+		await watchPosition();
+		expect(Geolocation.watchPosition).not.toHaveBeenCalled();
+		expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled();
+		expect(mocks.bgWatchers.size).toBe(1);
+	});
+
+	it('swaps the fallback watcher for the trip one and back', async () => {
+		mocks.preferences.set(DECLINED_KEY, 'true');
+		const { watchPosition } = await launch();
+		const { currentTrip } = await import('$lib/trip');
+		const { appSettings } = await import('./settings');
+		await watchPosition();
+		const [fallbackId] = mocks.bgWatchers.keys();
+
+		appSettings.set({ backgroundLocation: true } as never);
+		currentTrip.set({ pathTaken: [] } as never);
+		await watchPosition();
+		const [tripId] = mocks.bgWatchers.keys();
+		expect(mocks.bgWatchers.size).toBe(1);
+		expect(tripId).not.toBe(fallbackId);
+
+		currentTrip.set(null);
+		await watchPosition();
+		expect(mocks.bgWatchers.size).toBe(1);
+		expect(mocks.bgWatchers.has(tripId)).toBe(false);
+	});
+
+	it('starts another fallback watcher after one failed to start', async () => {
+		mocks.preferences.set(DECLINED_KEY, 'true');
+		const { watchPosition } = await launch();
+		await watchPosition();
+		const [failed] = mocks.bgWatchers.values();
+
+		// The plugin reports it never had the watcher
+		mocks.bgWatchers.clear();
+		failed(null, { code: 'NOT_AUTHORIZED' });
+		await watchPosition();
+		expect(mocks.bgWatchers.size).toBe(1);
 	});
 });
