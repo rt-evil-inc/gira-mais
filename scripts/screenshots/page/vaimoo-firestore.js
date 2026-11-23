@@ -75,6 +75,10 @@ export function subscribeFirestoreBikes(stationId, onData) {
 	return subscribe(bikesAt(stationId), onData);
 }
 
+export function subscribeFirestoreBikesWithComment(comment, onData) {
+	return subscribe(everyBike().filter(bike => bike.Comment === comment), onData);
+}
+
 export function subscribeFirestoreBike(visualId, onData) {
 	const riding = ridingBike();
 	const bike = riding?.VisualId === visualId ? riding : everyBike().find(candidate => candidate.VisualId === visualId) ?? null;

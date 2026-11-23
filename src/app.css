@@ -48,6 +48,11 @@ a {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* the attribution's own margin then keeps it clear of the location button
+   (see --location-button-clearance on the main page) */
+.maplibregl-ctrl-bottom-left {
+  right: var(--location-button-clearance, 0px);
+}
 .maplibregl-ctrl-attrib.maplibregl-compact {
   @apply !bg-background;
 }

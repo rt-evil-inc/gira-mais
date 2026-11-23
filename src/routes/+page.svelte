@@ -43,6 +43,12 @@
 	let searchBarBottom = $derived(searchBarY + 4 + SEARCH_BAR_EXTENT_px);
 	let profileOpen = $state(false);
 	let locationPermission = $state(false);
+	// The location button floats over the map's bottom-right corner; the map's
+	// attribution (bottom-left, expanded on small screens) stops short of its
+	// column and wraps instead of running underneath it
+	const LOCATION_BUTTON_RIGHT_px = 20;
+	const LOCATION_BUTTON_SIZE_px = 48;
+	let locationButtonClearance = $derived(LOCATION_BUTTON_RIGHT_px + LOCATION_BUTTON_SIZE_px + $safeInsets.right);
 
 	// Toasts anchor to the sheet's predicted top edge (anchorTop), which tracks
 	// station switches immediately instead of waiting for bike info to load.
@@ -93,7 +99,7 @@
 
 <svelte:window bind:innerHeight />
 
-<div class="h-full w-full relative overflow-hidden">
+<div class="h-full w-full relative overflow-hidden" style:--location-button-clearance="{locationButtonClearance}px">
 	{#if $token === null}
 		<div transition:fade={{ duration: 150 }} class="absolute w-full h-full z-20 flex items-center justify-center">
 			<Login />
@@ -116,7 +122,7 @@
 
 	<!-- during a trip the station menu is unmounted and its position is a stale
 		snapshot of the previous orientation — anchor to the window bottom instead -->
-	<Floating right={20} y={$currentTrip !== null ? innerHeight : stationMenuPos} bottom offset={20}>
+	<Floating right={LOCATION_BUTTON_RIGHT_px} y={$currentTrip !== null ? innerHeight : stationMenuPos} bottom offset={20}>
 		<LocationButton bind:locationPermission />
 	</Floating>
 
