@@ -138,10 +138,14 @@ const UNAVAILABLE_SERVICE_STATUSES = new Set(['DISABLED', 'UNAVAILABLE_BY_SYSTEM
 
 // The workshop, "999 - Oficina", is listed as an available station with a counter that follows neither rule
 // above (132 bikes on 22 October 2026, none of them unlockable), so routing would send riders there for a bike.
-const WORKSHOP_STATION_ID = 4552;
+// "998 - LAB Testes", which appeared next to it in November 2026, is the same kind of internal station.
+const INTERNAL_STATION_IDS = new Set([
+	4552, // 999 - Oficina
+	4779, // 998 - LAB Testes
+]);
 
 function isStationInService(station: VaimooStation) {
-	return station.DockingStationId !== WORKSHOP_STATION_ID && !UNAVAILABLE_SERVICE_STATUSES.has(station.ServiceStatus);
+	return !INTERNAL_STATION_IDS.has(station.DockingStationId) && !UNAVAILABLE_SERVICE_STATUSES.has(station.ServiceStatus);
 }
 
 function mapStations(response: VaimooStation[]): StationInfo[] {

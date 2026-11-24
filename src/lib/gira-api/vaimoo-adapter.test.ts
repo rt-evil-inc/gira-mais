@@ -309,8 +309,12 @@ describe('VAIMOO app-domain adapter', () => {
 		unsubscribe();
 	});
 
-	it('keeps the workshop out of service', async () => {
-		mocks.getFirestoreStations.mockResolvedValue([station, { ...station, DockingStationId: 4552, Name: '999 - Oficina', AvailableBikes: 132 }]);
-		expect((await getStations()).map(s => s.assetStatus)).toEqual(['active', 'repair']);
+	it('keeps the workshop and the test lab out of service', async () => {
+		mocks.getFirestoreStations.mockResolvedValue([
+			station,
+			{ ...station, DockingStationId: 4552, Name: '999 - Oficina', AvailableBikes: 132 },
+			{ ...station, DockingStationId: 4779, Name: '998 - LAB Testes', AvailableBikes: 5 },
+		]);
+		expect((await getStations()).map(s => s.assetStatus)).toEqual(['active', 'repair', 'repair']);
 	});
 });
