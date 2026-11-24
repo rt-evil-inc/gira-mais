@@ -22,6 +22,12 @@ If you have an idea for a new feature or an improvement to an existing one, we'd
 
 We welcome pull requests. If you're planning to implement a new feature, please open an issue first to discuss it with the maintainers.
 
+- **Keep it lean.** Less is more. Simplicity is valued. Check that all of your changes are actually relevant.
+- **Write tests that can fail.** A test must fail when the behaviour it names breaks. Skip tests for what can't break, such as types, constants or a mock returning what it was told to.
+- **Comment rarely.** Write a comment only for a reason the code can't show. Don't restate the code or describe the change.
+- **Say how you checked it.** Mention the device or emulator, and what you couldn't check. UI changes need before and after screenshots.
+- **Using AI.** Coding agents are welcome and the same rules apply, so read the diff before you open the PR. End the description with the model and harness that did the work, for example `Model: Claude Opus 5.5 · Harness: Claude Code`. Agents read [`AGENTS.md`](AGENTS.md).
+
 ## Development Setup
 
 The project is built with SvelteKit and Capacitor. To get started with development, please follow the instructions in the [`README.md`](README.md:1) file for your operating system (Android or iOS).
